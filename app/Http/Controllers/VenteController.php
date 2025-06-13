@@ -173,4 +173,32 @@ class VenteController extends Controller
         });
         return redirect()->route('pointsDeVente.show', $pointDeVente->entreprise_id)->with('success', 'Point de vente fermé.');
     }
+
+    public function setClient(\Illuminate\Http\Request $request)
+    {
+        $tableId = $request->get('table_id');
+        if (!$tableId) {
+            return response()->json(['error' => 'Aucune table sélectionnée'], 422);
+        }
+        $paniers = session()->get('paniers', []);
+        $panier = $paniers[$tableId] ?? [];
+        $panier['client_id'] = $request->client_id;
+        $paniers[$tableId] = $panier;
+        session(['paniers' => $paniers]);
+        return response()->json(['ok' => true]);
+    }
+
+    public function setServeuse(\Illuminate\Http\Request $request)
+    {
+        $tableId = $request->get('table_id');
+        if (!$tableId) {
+            return response()->json(['error' => 'Aucune table sélectionnée'], 422);
+        }
+        $paniers = session()->get('paniers', []);
+        $panier = $paniers[$tableId] ?? [];
+        $panier['serveuse_id'] = $request->serveuse_id;
+        $paniers[$tableId] = $panier;
+        session(['paniers' => $paniers]);
+        return response()->json(['ok' => true]);
+    }
 }

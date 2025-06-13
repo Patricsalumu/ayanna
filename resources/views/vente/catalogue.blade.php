@@ -76,16 +76,26 @@
     <!-- Sélecteurs + Options -->
     <div class="bg-white rounded-2xl shadow p-1 min-h-0 h-auto mt-1 mb-0">
       <div class="flex flex-row gap-0.5 mb-3 justify-between items-center">
-        <select class="flex-1 h-12 min-w-[110px] max-w-[140px] text-base border-0 rounded-xl bg-pink-500 text-white font-bold shadow focus:ring-2 focus:ring-pink-300 transition text-center mx-1 px-2 py-0.5 appearance-none" style="height:48px;" >
-          <option>Client</option>
+        <select
+          class="flex-1 h-12 min-w-[110px] max-w-[140px] text-base border-0 rounded-xl bg-pink-500 text-white font-bold shadow focus:ring-2 focus:ring-pink-300 transition text-center mx-1 px-2 py-0.5 appearance-none"
+          style="height:48px;"
+          x-model="client_id"
+          @change="setClient(client_id)"
+        >
+          <option value="">Client</option>
           @foreach($clients as $c)
-            <option value="{{ $c->id }}">{{ $c->nom }}</option>
+            <option value="{{ $c->id }}" {{ (isset($panier['client_id']) && $panier['client_id'] == $c->id) ? 'selected' : '' }}>{{ $c->nom }}</option>
           @endforeach
         </select>
-        <select class="flex-1 h-12 min-w-[110px] max-w-[140px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-1 px-2 py-0.5 appearance-none" style="height:48px;">
-          <option>Serveuse</option>
+        <select
+          class="flex-1 h-12 min-w-[110px] max-w-[140px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-1 px-2 py-0.5 appearance-none"
+          style="height:48px;"
+          x-model="serveuse_id"
+          @change="setServeuse(serveuse_id)"
+        >
+          <option value="">Serveuse</option>
           @foreach($serveuses as $s)
-            <option value="{{ $s->id }}">{{ $s->name }}</option>
+            <option value="{{ $s->id }}" {{ (isset($panier['serveuse_id']) && $panier['serveuse_id'] == $s->id) ? 'selected' : '' }}>{{ $s->name }}</option>
           @endforeach
         </select>
         <select class="flex-1 h-12 min-w-[110px] max-w-[140px] text-base border-0 rounded-xl bg-yellow-400 text-gray-800 font-bold shadow cursor-not-allowed text-center mx-1 px-2 py-0.5 appearance-none" style="height:48px;" disabled>
@@ -240,6 +250,8 @@ function posApp() {
     selectedIndex: null,
     showOptions: false,
     currentCat: null,
+    client_id: '{{ $panier['client_id'] ?? '' }}',
+serveuse_id: '{{ $panier['serveuse_id'] ?? '' }}',
     touches: [
       {label:'1',action:'1',class:'bg-gray-100'},
       {label:'2',action:'2',class:'bg-gray-100'},
@@ -289,6 +301,26 @@ function posApp() {
           'Content-Type':'application/json'
         },
         body:JSON.stringify({quantite:1, table_id: {{ $tableCourante ? (int)$tableCourante : 'null' }} })
+      });
+    },
+    setClient(id) {
+      fetch('/vente/panier/set-client', {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': '{{ csrf_token() }}',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ client_id: id, table_id: {{ $tableCourante ? (int)$tableCourante : 'null' }} })
+      });
+    },
+    setServeuse(id) {
+      fetch('/vente/panier/set-serveuse', {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': '{{ csrf_token() }}',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ serveuse_id: id, table_id: {{ $tableCourante ? (int)$tableCourante : 'null' }} })
       });
     },
     selectItem(idx){

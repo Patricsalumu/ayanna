@@ -144,3 +144,6 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+Route::post('/vente/panier/set-client', [\App\Http\Controllers\VenteController::class, 'setClient']);
+Route::post('/vente/panier/set-serveuse', [\App\Http\Controllers\VenteController::class, 'setServeuse']);
