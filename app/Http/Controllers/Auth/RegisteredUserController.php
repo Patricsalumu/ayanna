@@ -1,0 +1,79 @@
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Auth\Events\Registered;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules;
+use Illuminate\View\View;
+
+class RegisteredUserController extends Controller
+{
+    /**
+     * Display the registration view.
+     */
+    public function create(): View
+    {
+        return view('auth.register');
+    }
+
+    /**
+     * Handle an incoming registration request.
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
+            'country_code' => ['required', 'string'],
+            'phone' => [
+                'required',
+                'string',
+                'max:20',
+                // Accepte 9 chiffres commençant par 0 ou non
+                'regex:/^(0)?[0-9]{9}$/',
+                'unique:users,phone'
+            ],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ], [
+            'phone.unique' => __('validation.unique_phone'),
+            'phone.regex' => __('validation.phone.regex'),
+        ]);
+
+        // Concaténer le code pays et le numéro (en supprimant le 0 initial si présent)
+
+        // Nettoyer le numéro : supprimer espaces, tirets, etc.
+        $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
+        // Si le numéro commence par 0, on le retire pour concaténer au code pays
+        if (substr($cleanPhone, 0, 1) === '0') {
+            $cleanPhone = substr($cleanPhone, 1);
+        }
+        // Si le numéro fait déjà 9 chiffres sans 0, on accepte aussi
+        $fullPhone = $request->country_code . $cleanPhone;
+
+        // Vérifier si ce numéro existe déjà (éviter l'erreur SQL et donner un message clair)
+        if (User::where('phone', $fullPhone)->exists()) {
+            return back()->withInput()->withErrors(['phone' => __('validation.unique_phone')]);
+        }
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $fullPhone,
+            'password' => Hash::make($request->password),
+        ]);
+
+        event(new Registered($user));
+
+        Auth::login($user);
+
+        return redirect(route('dashboard', absolute: false));
+    }
+}
