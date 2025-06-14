@@ -82,10 +82,10 @@
 
     <!-- Sélecteurs + Options -->
     <div class="bg-white rounded-2xl shadow p-1 min-h-0 h-auto mt-1 mb-0">
-      <div class="flex flex-row gap-0.5 mb-3 justify-between items-center">
+      <div class="flex flex-row gap-0.5 mb-4 justify-between items-center">
         <select
-          class="flex-1 h-12 min-w-[110px] max-w-[140px] text-base border-0 rounded-xl bg-pink-500 text-white font-bold shadow focus:ring-2 focus:ring-pink-300 transition text-center mx-1 px-2 py-0.5 appearance-none"
-          style="height:48px;"
+          class="flex-1 h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-pink-500 text-white font-bold shadow focus:ring-2 focus:ring-pink-300 transition text-center mx-1 px-2 py-0.5 appearance-none"
+          style="height:40px;"
           x-model="client_id"
           @change="setClient(client_id)"
         >
@@ -95,8 +95,8 @@
           @endforeach
         </select>
         <select
-          class="flex-1 h-12 min-w-[110px] max-w-[140px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-1 px-2 py-0.5 appearance-none"
-          style="height:48px;"
+          class="flex-1 h-12 min-w-[85px] max-w-[110px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-1 px-2 py-0.5 appearance-none"
+          style="height:40px;"
           x-model="serveuse_id"
           @change="setServeuse(serveuse_id)"
         >
@@ -105,7 +105,7 @@
             <option value="{{ $s->id }}" {{ (isset($panier['serveuse_id']) && $panier['serveuse_id'] == $s->id) ? 'selected' : '' }}>{{ $s->name }}</option>
           @endforeach
         </select>
-        <select class="flex-1 h-12 min-w-[110px] max-w-[140px] text-base border-0 rounded-xl bg-yellow-400 text-gray-800 font-bold shadow cursor-not-allowed text-center mx-1 px-2 py-0.5 appearance-none" style="height:48px;" disabled>
+        <select class="flex-1 h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-yellow-400 text-gray-800 font-bold shadow cursor-not-allowed text-center mx-1 px-2 py-0.5 appearance-none" style="height:40px;" disabled>
           @if(isset($tableCourante))
             @php $table = $tables->firstWhere('id', $tableCourante); @endphp
             <option selected>
@@ -125,6 +125,7 @@
             <option selected>Table</option>
           @endif
         </select>
+        <button class="flex-1 h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-1 px-2 py-0.5 appearance-none" style="height:40px;">Paiement</button>
         <!-- Bouton menu trois points verticaux -->
         <button @click="showModal = true" class="ml-2 flex items-center justify-center w-10 h-12 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 text-2xl font-bold focus:outline-none" title="Options">
           <span style="font-size:2rem;line-height:1;">&#8942;</span>
@@ -137,7 +138,7 @@
         <div class="bg-white rounded-2xl shadow-xl p-6 min-w-[260px] flex flex-col items-center relative">
           <button @click="showModal = false" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl">&times;</button>
           <div class="mb-4 text-lg font-bold text-gray-700">Actions</div>
-          <button class="w-full mb-2 py-3 rounded-lg bg-gray-600 text-white font-bold text-base shadow hover:bg-gray-700 transition">Imprimer</button>
+          <button class="w-full mb-2 py-3 rounded-lg bg-gray-600 text-white font-bold text-base shadow hover:bg-gray-700 transition">Addition</button>
           <button class="w-full mb-2 py-3 rounded-lg bg-green-600 text-white font-bold text-base shadow hover:bg-green-700 transition">Paiement</button>
           <button class="w-full py-3 rounded-lg bg-red-600 text-white font-bold text-base shadow hover:bg-red-700 transition">Annuler</button>
         </div>
@@ -180,11 +181,11 @@
             <!-- Menu navigation déroulant -->
             <div x-show="showNavMenu" @click.away="showNavMenu = false" x-transition
                  class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl z-30 flex flex-col p-2 border border-gray-100">
-              <button class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4" title="Panier">Panier</button>
-              <button class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4" title="Tables">Tables</button>
-              <button class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4" title="Commandes">Commandes</button>
-              <button class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4" title="Créances">Créances</button>
-              <button class="w-full py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4" title="Entrée/Sortie">Entrée/Sortie</button>
+              <button class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4" title="Panier">Fiche Produit</button>
+              <button class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4" title="Tables">Commandes</button>
+              <button class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4" title="Commandes">Créances</button>
+              <button class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4" title="Créances">Entrées-sorties</button>
+              <button class="w-full py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4" title="Entrée/Sortie">Fermer</button>
             </div>
           </div>
         </div>
