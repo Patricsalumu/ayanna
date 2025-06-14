@@ -6,6 +6,7 @@ use App\Models\PointDeVente;
 use App\Models\Historiquepdv;
 use App\Models\Panier;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
 class VenteController extends Controller
@@ -15,73 +16,126 @@ class VenteController extends Controller
      */
     public function catalogue(Request $request, $pointDeVenteId)
     {
-        $pointDeVente = PointDeVente::findOrFail($pointDeVenteId);
-        // Récupérer uniquement les catégories associées au point de vente (pas toutes celles de l'entreprise)
-        $categories = $pointDeVente->categories;
-        $categorieActive = $request->get('categorie');
-        $search = $request->get('search');
+        try {
+            $pointDeVente = PointDeVente::findOrFail($pointDeVenteId);
+            $categories = $pointDeVente->categories;
+            $categorieActive = $request->get('categorie');
+            $search = $request->get('search');
 
-        // Produits filtrés par catégorie et recherche
-        $produitsQuery = \App\Models\Produit::query();
-        if ($categorieActive) {
-            $produitsQuery->where('categorie_id', $categorieActive);
-        } else {
-            // Produits de toutes les catégories du PDV
-            $produitsQuery->whereIn('categorie_id', $categories->pluck('id'));
+            $produitsQuery = \App\Models\Produit::query();
+            if ($categorieActive) {
+                $produitsQuery->where('categorie_id', $categorieActive);
+            } else {
+                $produitsQuery->whereIn('categorie_id', $categories->pluck('id'));
+            }
+            if ($search) {
+                $produitsQuery->where('nom', 'like', '%'.$search.'%');
+            }
+            $produits = $produitsQuery->orderBy('nom')->get();
+
+            // Gestion multi-paniers par table (NOUVELLE LOGIQUE)
+            $tableCourante = $request->get('table_id');
+            $produitsPanier = [];
+            if ($tableCourante) {
+                $panier = \App\Models\Panier::where('table_id', $tableCourante)
+                    ->where('point_de_vente_id', $pointDeVenteId)
+                    ->first();
+                if ($panier) {
+                    $panier->load('produits');
+                    $produitsPanier = $panier->produits->map(function($prod) {
+                        return [
+                            'id' => $prod->id,
+                            'nom' => $prod->nom,
+                            'qte' => $prod->pivot->quantite,
+                            'prix' => $prod->prix_vente,
+                            'image' => $prod->image ? asset('storage/'.$prod->image) : null,
+                            'cat_id' => $prod->categorie_id,
+                        ];
+                    })->values()->toArray();
+                }
+            }
+
+            // Création automatique du panier vide si besoin
+            if ($tableCourante) {
+                $panier = \App\Models\Panier::firstOrCreate([
+                    'table_id' => $tableCourante,
+                    'point_de_vente_id' => $pointDeVenteId,
+                ], [
+                    'opened_by' => \Auth::id(),
+                ]);
+                $panier->load('produits');
+                $produitsPanier = $panier->produits->map(function($prod) {
+                    return [
+                        'id' => $prod->id,
+                        'nom' => $prod->nom,
+                        'qte' => $prod->pivot->quantite,
+                        'prix' => $prod->prix_vente,
+                        'image' => $prod->image ? asset('storage/'.$prod->image) : null,
+                        'cat_id' => $prod->categorie_id,
+                    ];
+                })->values()->toArray();
+            }
+
+            $clients = $pointDeVente->entreprise->clients;
+            $serveuses = $pointDeVente->entreprise->users()->where('role', 'serveuse')->get();
+            $tables = \App\Models\TableResto::whereIn('salle_id', $pointDeVente->salles->pluck('id'))->get();
+
+            return view('vente.catalogue', [
+                'pointDeVente' => $pointDeVente,
+                'categories' => $categories,
+                'categorieActive' => $categorieActive,
+                'search' => $search,
+                'produits' => $produits,
+                'produitsPanier' => $produitsPanier,
+                'clients' => $clients,
+                'serveuses' => $serveuses,
+                'tables' => $tables,
+                'tableCourante' => $tableCourante,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Erreur catalogue vente: '.$e->getMessage(), ['exception' => $e]);
+            return back()->with('error', 'Erreur serveur: '.$e->getMessage());
         }
-        if ($search) {
-            $produitsQuery->where('nom', 'like', '%'.$search.'%');
-        }
-        $produits = $produitsQuery->orderBy('nom')->get();
-
-
-        // Gestion multi-paniers par table
-        $tableCourante = $request->get('table_id');
-        $paniers = session()->get('paniers', []);
-        $panier = $tableCourante ? ($paniers[$tableCourante] ?? []) : [];
-        $produitsPanier = \App\Models\Produit::whereIn('id', array_keys($panier))->get();
-
-        // Récupérer les clients de l'entreprise liée au PDV
-        $clients = $pointDeVente->entreprise->clients;
-        // Récupérer les serveuses (utilisateurs avec role 'serveuse') de l'entreprise
-        $serveuses = $pointDeVente->entreprise->users()->where('role', 'serveuse')->get();
-
-        // Récupérer les tables associées au point de vente (via les salles)
-        $tables = \App\Models\TableResto::whereIn('salle_id', $pointDeVente->salles->pluck('id'))->get();
-
-        return view('vente.catalogue', [
-            'pointDeVente' => $pointDeVente,
-            'categories' => $categories,
-            'categorieActive' => $categorieActive,
-            'search' => $search,
-            'produits' => $produits,
-            'panier' => $panier,
-            'produitsPanier' => $produitsPanier,
-            'clients' => $clients,
-            'serveuses' => $serveuses,
-            'tables' => $tables,
-            'tableCourante' => $tableCourante,
-        ]);
     }
 
 
     public function afficherPanier(Request $request, $pointDeVenteId)
     {
-        $pointDeVente = PointDeVente::findOrFail($pointDeVenteId);
-        $panier = session()->get('panier', []);
-        // Récupérer les infos produits pour affichage
-        $produits = \App\Models\Produit::whereIn('id', array_keys($panier))->get();
-        // Récupérer les clients de l'entreprise liée au PDV
-        $clients = $pointDeVente->entreprise->clients;
-        // Récupérer les serveuses (utilisateurs avec role 'serveuse') de l'entreprise
-        $serveuses = $pointDeVente->entreprise->users()->where('role', 'serveuse')->get();
-        return view('vente.panier', [
-            'pointDeVente' => $pointDeVente,
-            'panier' => $panier,
-            'produits' => $produits,
-            'clients' => $clients,
-            'serveuses' => $serveuses,
-        ]);
+        try {
+            $pointDeVente = PointDeVente::findOrFail($pointDeVenteId);
+            $tableCourante = $request->get('table_id');
+            $produitsPanier = [];
+            if ($tableCourante) {
+                $panier = \App\Models\Panier::where('table_id', $tableCourante)
+                    ->where('point_de_vente_id', $pointDeVenteId)
+                    ->first();
+                if ($panier) {
+                    $panier->load('produits');
+                    $produitsPanier = $panier->produits->map(function($prod) {
+                        return [
+                            'id' => $prod->id,
+                            'nom' => $prod->nom,
+                            'qte' => $prod->pivot->quantite,
+                            'prix' => $prod->prix_vente,
+                            'image' => $prod->image ? asset('storage/'.$prod->image) : null,
+                            'cat_id' => $prod->categorie_id,
+                        ];
+                    })->values()->toArray();
+                }
+            }
+            $clients = $pointDeVente->entreprise->clients;
+            $serveuses = $pointDeVente->entreprise->users()->where('role', 'serveuse')->get();
+            return view('vente.panier', [
+                'pointDeVente' => $pointDeVente,
+                'produitsPanier' => $produitsPanier,
+                'clients' => $clients,
+                'serveuses' => $serveuses,
+                'tableCourante' => $tableCourante,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Erreur afficherPanier: '.$e->getMessage(), ['exception' => $e]);
+            return back()->with('error', 'Erreur serveur: '.$e->getMessage());
+        }
     }
     
       /**
@@ -92,15 +146,31 @@ class VenteController extends Controller
         try {
             $tableId = $request->get('table_id');
             $pointDeVenteId = $request->get('point_de_vente_id');
+            $clientId = $request->get('client_id');
+            $serveuseId = $request->get('serveuse_id');
+            $openedBy = \Auth::id();
             if (!$tableId || !$pointDeVenteId) {
                 return response()->json(['error' => 'Aucune table ou point de vente sélectionné'], 422);
             }
 
             // 1. Récupérer ou créer le panier pour la table et le point de vente
-            $panier = \App\Models\Panier::firstOrCreate([
-                'table_id' => $tableId,
-                'point_de_vente_id' => $pointDeVenteId,
-            ]);
+            $panier = \App\Models\Panier::firstOrCreate(
+                [
+                    'table_id' => $tableId,
+                    'point_de_vente_id' => $pointDeVenteId,
+                ],
+                [
+                    'client_id' => $clientId,
+                    'serveuse_id' => $serveuseId,
+                    'opened_by' => $openedBy,
+                ]
+            );
+            // Si le panier existait déjà mais les champs sont vides, on les remplit si possible
+            $updated = false;
+            if (!$panier->opened_by && $openedBy) { $panier->opened_by = $openedBy; $updated = true; }
+            if (!$panier->client_id && $clientId) { $panier->client_id = $clientId; $updated = true; }
+            if (!$panier->serveuse_id && $serveuseId) { $panier->serveuse_id = $serveuseId; $updated = true; }
+            if ($updated) $panier->save();
 
             // 2. Vérifier si le produit est déjà dans le panier
             $existant = $panier->produits()->where('produit_id', $produitId)->first();

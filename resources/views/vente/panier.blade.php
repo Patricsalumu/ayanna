@@ -57,13 +57,13 @@
 
     <div class="flex flex-col h-[calc(100vh-180px)] w-full">
         <div class="flex-1">
-            @if(count($panier) === 0)
+            @if(count($produitsPanier) === 0)
                 <div class="text-gray-500 italic text-center py-8">Votre panier est vide.</div>
             @else
                 @php
                     $total = 0;
                     $maxVisible = 5;
-                    $nbProduits = count($produits);
+                    $nbProduits = count($produitsPanier);
                 @endphp
                 <div class="bg-white rounded-2xl shadow p-0 overflow-hidden mb-4 h-full"
                      style="max-height: 270px; min-height: 120px; overflow-y: auto;">
@@ -77,17 +77,16 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($produits as $i => $produit)
+                            @foreach($produitsPanier as $i => $item)
                                 @if($i < $maxVisible)
                                     @php
-                                        $qte = $panier[$produit->id]['quantite'] ?? 0;
-                                        $ligne = $qte * $produit->prix_vente;
+                                        $ligne = $item['qte'] * $item['prix'];
                                         $total += $ligne;
                                     @endphp
                                     <tr class="border-b hover:bg-gray-50 transition">
-                                        <td class="px-4 py-3 font-medium text-gray-900">{{ $produit->nom }}</td>
-                                        <td class="px-2 py-3 text-center">{{ $qte }}</td>
-                                        <td class="px-2 py-3 text-right">{{ number_format($produit->prix_vente, 0, ',', ' ') }} F</td>
+                                        <td class="px-4 py-3 font-medium text-gray-900">{{ $item['nom'] }}</td>
+                                        <td class="px-2 py-3 text-center">{{ $item['qte'] }}</td>
+                                        <td class="px-2 py-3 text-right">{{ number_format($item['prix'], 0, ',', ' ') }} F</td>
                                         <td class="px-4 py-3 text-right font-semibold">{{ number_format($ligne, 0, ',', ' ') }} F</td>
                                     </tr>
                                 @endif

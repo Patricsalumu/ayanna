@@ -101,16 +101,26 @@ class SalleController extends Controller
         $pointDeVente = \App\Models\PointDeVente::find($pointDeVenteId);
         $sallesLiees = $pointDeVente ? $pointDeVente->salles : collect([$salle]);
 
-        // Gestion multi-paniers par table (pour badge et couleur)
-        $paniers = session()->get('paniers', []);
-        // On enrichit chaque table avec nb_commandes et is_busy
+        // Nouvelle logique : on récupère les paniers en base pour chaque table de la salle
+        $tableIds = $salle->tables->pluck('id');
+        $paniers = \App\Models\Panier::whereIn('table_id', $tableIds)
+            ->where('point_de_vente_id', $pointDeVenteId)
+            ->with('produits')
+            ->get()
+            ->keyBy('table_id');
+
         foreach ($salle->tables as $table) {
-            $panier = $paniers[$table->id] ?? [];
+            $panier = $paniers[$table->id] ?? null;
             $qte = 0;
-            foreach ($panier as $item) {
-                $qte += $item['quantite'] ?? 0;
+            $montant = 0;
+            if ($panier) {
+                foreach ($panier->produits as $prod) {
+                    $qte += $prod->pivot->quantite;
+                    $montant += $prod->pivot->quantite * $prod->prix_vente;
+                }
             }
             $table->nb_commandes = $qte;
+            $table->montant_total = $montant;
             $table->is_busy = $qte > 0;
         }
 

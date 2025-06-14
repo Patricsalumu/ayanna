@@ -144,5 +144,12 @@ Route::middleware('auth')->group(function () {
 
 require __DIR__.'/auth.php';
 
-Route::post('/vente/panier/set-client', [\App\Http\Controllers\VenteController::class, 'setClient']);
-Route::post('/vente/panier/set-serveuse', [\App\Http\Controllers\VenteController::class, 'setServeuse']);
+// Routes AJAX panier (hors préfixe entreprise)
+Route::middleware(['auth'])->group(function () {
+    Route::post('/panier/set-client', [\App\Http\Controllers\PanierController::class, 'setClient'])->name('panier.setClient');
+    Route::post('/panier/set-serveuse', [\App\Http\Controllers\PanierController::class, 'setServeuse'])->name('panier.setServeuse');
+    Route::post('/panier/liberer', [\App\Http\Controllers\PanierController::class, 'libererTable'])->name('panier.libererTable');
+});
+
+// Panier (AJAX)
+Route::post('/panier/modifier-produit/{produit_id}', [\App\Http\Controllers\PanierController::class, 'modifierProduit'])->name('panier.modifierProduit');

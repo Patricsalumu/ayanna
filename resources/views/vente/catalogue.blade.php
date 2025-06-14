@@ -13,7 +13,11 @@
     <!-- Panier -->
     <div class="bg-white rounded-2xl shadow p-1 min-h-0 h-auto" style="padding-top:0.25rem;padding-bottom:0.25rem;">
       <div class="flex justify-between items-center mb-2">
-        <a href="{{ route('salle.plan.vente', ['entreprise' => $pointDeVente->entreprise_id, 'salle' => $tables->first()?->salle_id ?? 1, 'point_de_vente_id' => $pointDeVente->id]) }}"
+        <a href="{{ route('salle.plan.vente', [
+            'entreprise' => $pointDeVente->entreprise_id,
+            'salle' => optional($tables->firstWhere('id', $tableCourante))->salle_id ?? ($tables->first()?->salle_id ?? 1),
+            'point_de_vente_id' => $pointDeVente->id
+        ]) }}"
            class="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 hover:bg-blue-100 text-blue-700 font-semibold text-sm shadow transition"
            title="Retour au plan des tables">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
@@ -69,7 +73,10 @@
         </div>
       </template>
       <template x-if="!panier.length">
-        <div class="text-gray-400 italic mt-4">Votre panier est vide.</div>
+        <div class="flex flex-col items-center mt-4 gap-2">
+          <div class="text-gray-400 italic">Votre panier est vide.</div>
+          <button @click="libererTable" class="bg-red-600 text-white px-4 py-2 rounded font-bold shadow hover:bg-red-700 transition">Libérer la table</button>
+        </div>
       </template>
     </div>
 
@@ -214,44 +221,36 @@
 </div>
 
 {{-- Alpine.js + JS --}}
+@php
+try {
+    $produitsArray = $produits->map(function($p){
+        return [
+            'id'=>$p->id,
+            'nom'=>$p->nom,
+            'prix'=>$p->prix_vente,
+            'image'=> $p->image ? asset('storage/'.$p->image) : null,
+            'cat_id'=>$p->categorie_id
+        ];
+    })->toArray();
+    $client_id = isset($panier) && isset($panier->client_id) ? $panier->client_id : '';
+    $serveuse_id = isset($panier) && isset($panier->serveuse_id) ? $panier->serveuse_id : '';
+} catch (\Throwable $e) {
+    echo '<div style="color:red;font-weight:bold">Erreur PHP: '.e($e->getMessage()).'</div>';
+}
+@endphp
 <script>
 function posApp() {
   return {
     showModal: false,
     showNavMenu: false,
-      @php
-      $produitsArray = $produits->map(function($p){
-          return [
-              'id'=>$p->id,
-              'nom'=>$p->nom,
-              'prix'=>$p->prix_vente,
-              'image'=> $p->image ? asset('storage/'.$p->image) : null,
-              'cat_id'=>$p->categorie_id
-          ];
-      })->toArray();
-      $panierArray = isset($panier, $produitsPanier) && $panier && $produitsPanier
-        ? collect($panier)->map(function($item, $id) use ($produitsPanier) {
-            $prod = $produitsPanier->firstWhere('id', $id);
-            if (!$prod) return null;
-            return [
-                'id' => $prod->id,
-                'nom' => $prod->nom,
-                'prix' => $prod->prix_vente,
-                'qte' => $item['quantite'],
-                'image' => $prod->image ? asset('storage/'.$prod->image) : null,
-                'cat_id' => $prod->categorie_id
-            ];
-        })->filter()->values()->toArray()
-        : [];
-      @endphp
-        produits:@json($produitsArray),
-        panier: @json($panierArray),
+    produits: @json($produitsArray),
+    panier: @json($produitsPanier),
     search: '',
     selectedIndex: null,
     showOptions: false,
     currentCat: null,
-    client_id: '{{ $panier['client_id'] ?? '' }}',
-serveuse_id: '{{ $panier['serveuse_id'] ?? '' }}',
+    client_id: '{{ $client_id }}',
+serveuse_id: '{{ $serveuse_id }}',
     touches: [
       {label:'1',action:'1',class:'bg-gray-100'},
       {label:'2',action:'2',class:'bg-gray-100'},
@@ -290,37 +289,64 @@ serveuse_id: '{{ $panier['serveuse_id'] ?? '' }}',
       this.showOptions = !this.showOptions;
     },
     ajouterProduit(prod){
-      const idx=this.panier.findIndex(i=>i.id===prod.id);
-      if(idx>=0) this.panier[idx].qte++;
-      else this.panier.push({...prod,qte:1});
-      // AJAX avec table_id
-      fetch(`/vente/panier/ajouter/${prod.id}`,{
-        method:'POST',
-        headers:{
-          'X-CSRF-TOKEN':'{{ csrf_token() }}',
-          'Content-Type':'application/json'
+      const idx = this.panier.findIndex(i => i.id === prod.id);
+    
+    // On met à jour localement, mais on attend aussi le retour du serveur
+    if (idx >= 0) this.panier[idx].qte++;
+    else this.panier.push({ ...prod, qte: 1 });
+
+    fetch(`/vente/panier/ajouter/${prod.id}`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json'
         },
-        body:JSON.stringify({quantite:1, table_id: {{ $tableCourante ? (int)$tableCourante : 'null' }} })
-      });
+        body: JSON.stringify({
+            quantite: 1,
+            table_id: {{ $tableCourante ? (int)$tableCourante : 'null' }},
+            point_de_vente_id: {{ $pointDeVente->id ?? 'null' }}
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            this.panier = data.panier; // on remplace le panier local par celui renvoyé par Laravel
+        } else {
+            alert(data.error || "Une erreur s'est produite");
+        }
+    })
+    .catch(err => {
+        console.error("Erreur réseau :", err);
+        alert("Erreur de connexion avec le serveur");
+    });
+      
     },
     setClient(id) {
-      fetch('/vente/panier/set-client', {
+      fetch('{{ url('/panier/set-client') }}', {
         method: 'POST',
         headers: {
           'X-CSRF-TOKEN': '{{ csrf_token() }}',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ client_id: id, table_id: {{ $tableCourante ? (int)$tableCourante : 'null' }} })
+        body: JSON.stringify({
+          client_id: id ? Number(id) : null,
+          table_id: {{ $tableCourante ? (int)$tableCourante : 'null' }},
+          point_de_vente_id: {{ $pointDeVente->id ?? 'null' }}
+        })
       });
     },
     setServeuse(id) {
-      fetch('/vente/panier/set-serveuse', {
+      fetch('{{ url('/panier/set-serveuse') }}', {
         method: 'POST',
         headers: {
           'X-CSRF-TOKEN': '{{ csrf_token() }}',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ serveuse_id: id, table_id: {{ $tableCourante ? (int)$tableCourante : 'null' }} })
+        body: JSON.stringify({
+          serveuse_id: id ? Number(id) : null,
+          table_id: {{ $tableCourante ? (int)$tableCourante : 'null' }},
+          point_de_vente_id: {{ $pointDeVente->id ?? 'null' }}
+        })
       });
     },
     selectItem(idx){
@@ -330,13 +356,10 @@ serveuse_id: '{{ $panier['serveuse_id'] ?? '' }}',
       if(this.selectedIndex===null) return;
       const item=this.panier[this.selectedIndex];
       if(!item) return;
+      let oldQte = item.qte;
       if(!isNaN(action)){
         item.qte = parseInt(`${item.qte}${action}`.slice(0,3));
       } else if(action==='x'){
-        // Nouvelle logique :
-        // - de 10 à infini : supprime le dernier chiffre
-        // - de 1 à 9 : passe à 0
-        // - 0 : retire le produit
         let qte = item.qte;
         if(qte >= 10) {
           let qteStr = qte.toString();
@@ -349,17 +372,63 @@ serveuse_id: '{{ $panier['serveuse_id'] ?? '' }}',
           else if(this.selectedIndex >= this.panier.length) this.selectedIndex = this.panier.length-1;
         }
       } else if(action==='C') {
-        // Réinitialise la quantité à 0
         item.qte = 0;
       } else if(action==='+') {
-        // Ajoute 1 à la quantité
         item.qte++;
       } else if(action==='-') {
-        // Retire 1 à la quantité, minimum 0
-        if(item.qte > 0) item.qte--;
-        // Si la quantité devient 0, on peut choisir de retirer le produit automatiquement (optionnel)
+        item.qte > 0 ? item.qte-- : 0;
       }
-      // AJAX mise à jour si besoin
+      // Appel AJAX pour MAJ la base si la quantité a changé
+      if(item.qte !== oldQte) {
+        fetch(`/panier/modifier-produit/${item.id}`, {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            quantite: item.qte,
+            table_id: {{ $tableCourante ? (int)$tableCourante : 'null' }},
+            point_de_vente_id: {{ $pointDeVente->id ?? 'null' }}
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if(data.success) {
+            this.panier = data.panier;
+          } else {
+            alert(data.error || "Erreur lors de la mise à jour du panier");
+          }
+        })
+        .catch(err => {
+          console.error("Erreur réseau :", err);
+          alert("Erreur de connexion avec le serveur");
+        });
+      }
+    },
+    libererTable() {
+      fetch('/panier/liberer', {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': '{{ csrf_token() }}',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          table_id: {{ $tableCourante ? (int)$tableCourante : 'null' }},
+          point_de_vente_id: {{ $pointDeVente->id ?? 'null' }}
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if(data.success) {
+          window.location.reload();
+        } else {
+          alert(data.error || "Erreur lors de la libération de la table");
+        }
+      })
+      .catch(err => {
+        alert("Erreur de connexion avec le serveur");
+      });
     },
     activeCatClass: 'px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-semibold shadow',
     inactiveCatClass: 'px-4 py-2 rounded-full bg-gray-100 hover:bg-blue-100 text-sm font-semibold shadow',
