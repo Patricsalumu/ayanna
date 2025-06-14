@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\PointDeVente;
 use App\Models\Historiquepdv;
+use App\Models\Panier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
@@ -88,25 +89,52 @@ class VenteController extends Controller
      */
     public function ajouterAuPanier(Request $request, $produitId)
     {
-        // Gestion multi-paniers par table
-        $tableId = $request->get('table_id');
-        if (!$tableId) {
-            return response()->json(['error' => 'Aucune table sélectionnée'], 422);
+        try {
+            $tableId = $request->get('table_id');
+            $pointDeVenteId = $request->get('point_de_vente_id');
+            if (!$tableId || !$pointDeVenteId) {
+                return response()->json(['error' => 'Aucune table ou point de vente sélectionné'], 422);
+            }
+
+            // 1. Récupérer ou créer le panier pour la table et le point de vente
+            $panier = \App\Models\Panier::firstOrCreate([
+                'table_id' => $tableId,
+                'point_de_vente_id' => $pointDeVenteId,
+            ]);
+
+            // 2. Vérifier si le produit est déjà dans le panier
+            $existant = $panier->produits()->where('produit_id', $produitId)->first();
+            if ($existant) {
+                $nouvelleQte = $existant->pivot->quantite + 1;
+                $panier->produits()->updateExistingPivot($produitId, ['quantite' => $nouvelleQte]);
+            } else {
+                $panier->produits()->attach($produitId, ['quantite' => 1]);
+            }
+
+            // 3. Retourner le panier actualisé (structure attendue par le JS/vue)
+            $panier->load('produits');
+            $panierArray = $panier->produits->map(function($prod){
+                return [
+                    'id' => $prod->id,
+                    'nom' => $prod->nom,
+                    'prix' => $prod->prix_vente,
+                    'qte' => $prod->pivot->quantite,
+                    'image' => $prod->image ? asset('storage/'.$prod->image) : null,
+                    'cat_id' => $prod->categorie_id,
+                ];
+            })->values()->toArray();
+
+            return response()->json([
+                'success' => true,
+                'panier' => $panierArray
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Erreur ajout panier: '.$e->getMessage(), ['exception' => $e]);
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur serveur: '.$e->getMessage()
+            ], 500);
         }
-        $paniers = session()->get('paniers', []);
-        $panier = $paniers[$tableId] ?? [];
-        // Incrémenter la quantité si déjà présent, sinon ajouter
-        if (isset($panier[$produitId])) {
-            $panier[$produitId]['quantite'] += 1;
-        } else {
-            $panier[$produitId] = [
-                'produit_id' => $produitId,
-                'quantite' => 1
-            ];
-        }
-        $paniers[$tableId] = $panier;
-        session(['paniers' => $paniers]);
-        return response()->json(['success' => true, 'panier' => $panier]);
     }
 
     // Affiche la page de vente pour un point de vente donné

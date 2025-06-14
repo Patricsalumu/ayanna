@@ -97,12 +97,11 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/tables', [TableRestoController::class, 'store'])->name('tables.store');
 
     // Catalogue produits pour la vente (PDV)
-
-    Route::middleware(['auth'])->group(function () {
-        Route::get('/vente/catalogue/{pointDeVente}', [VenteController::class, 'catalogue'])->name('vente.catalogue');
-        Route::post('/vente/panier/ajouter/{produit}', [VenteController::class, 'ajouterAuPanier'])->name('vente.panier.ajouter');
-        Route::get('/vente/panier/{pointDeVente}', [VenteController::class, 'afficherPanier'])->name('vente.panier');
-    });
+    Route::get('/vente/catalogue/{pointDeVente}', [VenteController::class, 'catalogue'])->name('vente.catalogue');
+    // Route AJAX pour ajouter un produit au panier (table pivot)
+    Route::post('/vente/panier/ajouter/{produitId}', [\App\Http\Controllers\VenteController::class, 'ajouterAuPanier'])->name('vente.panier.ajouter');
+    Route::get('/vente/panier/{pointDeVente}', [VenteController::class, 'afficherPanier'])->name('vente.panier');
+    
     
     //Route Ajax
     Route::get('/entreprises/{entreprise}/produits/search', [ProduitController::class, 'searchAjax'])->name('produits.searchAjax');
