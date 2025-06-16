@@ -15,7 +15,6 @@ class PanierController extends Controller
     public function getPanier(Request $request)
     {
         $table_id = $request->input('table_id');
-        $point_de_vente_id = $request->input('point_de_vente_id');
         $panier = Panier::where('table_id', $table_id)
             ->where('status', 'en_cours')
             ->first();
@@ -45,13 +44,18 @@ class PanierController extends Controller
     public function ajouterProduit(Request $request, $produit_id)
     {
         $table_id = $request->input('table_id');
-        $point_de_vente_id = $request->input('point_de_vente_id');
         $quantite = $request->input('quantite', 1);
 
-        $panier = Panier::firstOrCreate(
-            ['table_id' => $table_id, 'point_de_vente_id' => $point_de_vente_id],
-            ['produits' => json_encode([])]
-        );
+        $panier = Panier::where('table_id', $table_id)
+            ->where('status', 'en_cours')
+            ->first();
+        if (!$panier) {
+            $panier = Panier::create([
+                'table_id' => $table_id,
+                'status' => 'en_cours',
+                'produits' => json_encode([]),
+            ]);
+        }
 
         $produits = json_decode($panier->produits, true) ?? [];
         $found = false;
@@ -76,18 +80,16 @@ class PanierController extends Controller
     {
         try {
             $table_id = $request->input('table_id');
-            $point_de_vente_id = $request->input('point_de_vente_id');
             $quantite = $request->input('quantite');
 
             $panier = Panier::where('table_id', $table_id)
-                ->where('point_de_vente_id', $point_de_vente_id)
+                ->where('status', 'en_cours')
                 ->first();
 
             if (!$panier) return response()->json(['error' => 'Panier non trouvé'], 404);
 
             $existant = $panier->produits()->where('produit_id', $produit_id)->first();
             if ($existant) {
-                // On met à jour la quantité même si elle est à 0
                 $panier->produits()->updateExistingPivot($produit_id, ['quantite' => $quantite]);
             } else if ($quantite > 0) {
                 $panier->produits()->attach($produit_id, ['quantite' => $quantite]);
@@ -118,16 +120,13 @@ class PanierController extends Controller
         Log::debug('[supprimerProduit] Reçu', [
             'produit_id' => $produit_id,
             'table_id' => $request->input('table_id'),
-            'point_de_vente_id' => $request->input('point_de_vente_id'),
             'user_id' => Auth::id(),
             'body' => $request->all()
         ]);
 
         $table_id = $request->input('table_id');
-        $point_de_vente_id = $request->input('point_de_vente_id');
-
         $panier = Panier::where('table_id', $table_id)
-            ->where('point_de_vente_id', $point_de_vente_id)
+            ->where('status', 'en_cours')
             ->first();
 
         if (!$panier) return response()->json(['error' => 'Panier non trouvé'], 404);
@@ -158,23 +157,22 @@ class PanierController extends Controller
     // Met à jour le client du panier (pivot DB)
     public function setClient(Request $request)
     {
-        dd($request->all());
         try {
             Log::info('[setClient] Requête reçue', $request->all());
             $table_id = $request->input('table_id');
-            $point_de_vente_id = $request->input('point_de_vente_id');
             $client_id = $request->input('client_id');
             $opened_by = Auth::id();
-            Log::info('[setClient] table_id='.$table_id.' point_de_vente_id='.$point_de_vente_id.' client_id='.$client_id);
-            $panier = Panier::firstOrCreate(
-                [
+            Log::info('[setClient] table_id='.$table_id.' client_id='.$client_id);
+            $panier = Panier::where('table_id', $table_id)
+                ->where('status', 'en_cours')
+                ->first();
+            if (!$panier) {
+                $panier = Panier::create([
                     'table_id' => $table_id,
-                    'point_de_vente_id' => $point_de_vente_id,
-                ],
-                [
+                    'status' => 'en_cours',
                     'opened_by' => $opened_by,
-                ]
-            );
+                ]);
+            }
             $panier->client_id = $client_id;
             $panier->save();
             Log::info('[setClient] Panier id='.$panier->id.' client_id enregistré='.$panier->client_id);
@@ -188,23 +186,22 @@ class PanierController extends Controller
     // Met à jour la serveuse du panier (pivot DB)
     public function setServeuse(Request $request)
     {
-        dd($request->all());
         try {
             Log::info('[setServeuse] Requête reçue', $request->all());
             $table_id = $request->input('table_id');
-            $point_de_vente_id = $request->input('point_de_vente_id');
             $serveuse_id = $request->input('serveuse_id');
             $opened_by = Auth::id();
-            Log::info('[setServeuse] table_id='.$table_id.' point_de_vente_id='.$point_de_vente_id.' serveuse_id='.$serveuse_id);
-            $panier = Panier::firstOrCreate(
-                [
+            Log::info('[setServeuse] table_id='.$table_id.' serveuse_id='.$serveuse_id);
+            $panier = Panier::where('table_id', $table_id)
+                ->where('status', 'en_cours')
+                ->first();
+            if (!$panier) {
+                $panier = Panier::create([
                     'table_id' => $table_id,
-                    'point_de_vente_id' => $point_de_vente_id,
-                ],
-                [
+                    'status' => 'en_cours',
                     'opened_by' => $opened_by,
-                ]
-            );
+                ]);
+            }
             $panier->serveuse_id = $serveuse_id;
             $panier->save();
             Log::info('[setServeuse] Panier id='.$panier->id.' serveuse_id enregistré='.$panier->serveuse_id);
@@ -220,8 +217,8 @@ class PanierController extends Controller
     {
         try {
             $table_id = $request->input('table_id');
-            // On ne filtre plus par point_de_vente_id pour libérer la table globalement
             $panier = Panier::where('table_id', $table_id)
+                ->where('status', 'en_cours')
                 ->first();
             if ($panier) {
                 $panier->produits()->detach();

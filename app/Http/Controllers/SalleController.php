@@ -115,8 +115,10 @@ class SalleController extends Controller
             $montant = 0;
             if ($panier) {
                 foreach ($panier->produits as $prod) {
-                    $qte += $prod->pivot->quantite;
-                    $montant += $prod->pivot->quantite * $prod->prix_vente;
+                    if ($prod->pivot->quantite > 0) {
+                        $qte += $prod->pivot->quantite;
+                        $montant += $prod->pivot->quantite * $prod->prix_vente;
+                    }
                 }
             }
             $table->nb_commandes = $qte;

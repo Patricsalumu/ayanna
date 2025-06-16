@@ -36,10 +36,12 @@ class VenteController extends Controller
             // Gestion multi-paniers par table (NOUVELLE LOGIQUE)
             $tableCourante = $request->get('table_id');
             $produitsPanier = [];
+            Log::debug('[CATALOGUE] table_id reçu', ['table_id' => $tableCourante, 'point_de_vente_id' => $pointDeVenteId]);
             if ($tableCourante) {
-                $panier = \App\Models\Panier::where('table_id', $tableCourante)
+                $panier = Panier::where('table_id', $tableCourante)
                     ->where('status','en_cours')
                     ->first();
+                Log::debug('[CATALOGUE] Panier trouvé ?', ['panier_id' => $panier ? $panier->id : null]);
                 if ($panier) {
                     $panier->load('produits');
                     $produitsPanier = $panier->produits->map(function($prod) {
@@ -52,42 +54,24 @@ class VenteController extends Controller
                             'cat_id' => $prod->categorie_id,
                         ];
                     })->values()->toArray();
-                }else {
-                    // Si pas de panier, on crée un panier vide
-                    $panier = \App\Models\Panier::firstOrCreate([
+                } else {
+                    Log::debug('[CATALOGUE] Création d\'un nouveau panier pour la table', ['table_id' => $tableCourante, 'point_de_vente_id' => $pointDeVenteId]);
+                    $panier = Panier::create([
                         'table_id' => $tableCourante,
                         'point_de_vente_id' => $pointDeVenteId,
-                    ], [
-                        'opened_by' => \Auth::id(),
+                        'status' => 'en_cours',
+                        'opened_by' => Auth::id(),
                     ]);
                     $panier->load('produits');
                 }
             }
 
-            // Création automatique du panier vide si besoin
-            if ($tableCourante) {
-                $panier = \App\Models\Panier::firstOrCreate([
-                    'table_id' => $tableCourante,
-                    'point_de_vente_id' => $pointDeVenteId,
-                ], [
-                    'opened_by' => \Auth::id(),
-                ]);
-                $panier->load('produits');
-                $produitsPanier = $panier->produits->map(function($prod) {
-                    return [
-                        'id' => $prod->id,
-                        'nom' => $prod->nom,
-                        'qte' => $prod->pivot->quantite,
-                        'prix' => $prod->prix_vente,
-                        'image' => $prod->image ? asset('storage/'.$prod->image) : null,
-                        'cat_id' => $prod->categorie_id,
-                    ];
-                })->values()->toArray();
-            }
-
             $clients = $pointDeVente->entreprise->clients;
             $serveuses = $pointDeVente->entreprise->users()->where('role', 'serveuse')->get();
             $tables = \App\Models\TableResto::whereIn('salle_id', $pointDeVente->salles->pluck('id'))->get();
+
+            $client_id = $panier ? $panier->client_id : '';
+            $serveuse_id = $panier ? $panier->serveuse_id : '';
 
             return view('vente.catalogue', [
                 'pointDeVente' => $pointDeVente,
@@ -100,6 +84,8 @@ class VenteController extends Controller
                 'serveuses' => $serveuses,
                 'tables' => $tables,
                 'tableCourante' => $tableCourante,
+                'client_id' => $client_id,
+                'serveuse_id' => $serveuse_id,
             ]);
         } catch (\Throwable $e) {
             \Log::error('Erreur catalogue vente: '.$e->getMessage(), ['exception' => $e]);
@@ -288,9 +274,7 @@ class VenteController extends Controller
             return response()->json(['error' => 'Aucune table sélectionnée'], 422);
         }
         $paniers = session()->get('paniers', []);
-        $panier = $paniers[$tableId] ?? [];
-        $panier['client_id'] = $request->client_id;
-        $paniers[$tableId] = $panier;
+       
         session(['paniers' => $paniers]);
         return response()->json(['ok' => true]);
     }

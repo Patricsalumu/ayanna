@@ -91,7 +91,7 @@
         >
           <option value="">Client</option>
           @foreach($clients as $c)
-            <option value="{{ $c->id }}" {{ (isset($panier['client_id']) && $panier['client_id'] == $c->id) ? 'selected' : '' }}>{{ $c->nom }}</option>
+            <option value="{{ (string) $c->id }}">{{ $c->nom }}</option>
           @endforeach
         </select>
         <select
@@ -102,7 +102,7 @@
         >
           <option value="">Serveuse</option>
           @foreach($serveuses as $s)
-            <option value="{{ $s->id }}" {{ (isset($panier['serveuse_id']) && $panier['serveuse_id'] == $s->id) ? 'selected' : '' }}>{{ $s->name }}</option>
+            <option value="{{ (string) $s->id }}">{{ $s->name }}</option>
           @endforeach
         </select>
         <select class="flex-1 h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-yellow-400 text-gray-800 font-bold shadow cursor-not-allowed text-center mx-1 px-2 py-0.5 appearance-none" style="height:40px;" disabled>
@@ -233,8 +233,8 @@ try {
             'cat_id'=>$p->categorie_id
         ];
     })->toArray();
-    $client_id = isset($panier) && isset($panier->client_id) ? $panier->client_id : '';
-    $serveuse_id = isset($panier) && isset($panier->serveuse_id) ? $panier->serveuse_id : '';
+    $client_id = isset($client_id) ? (string) $client_id : '';
+    $serveuse_id = isset($serveuse_id) ? (string) $serveuse_id : '';
 } catch (\Throwable $e) {
     echo '<div style="color:red;font-weight:bold">Erreur PHP: '.e($e->getMessage()).'</div>';
 }
@@ -251,7 +251,9 @@ function posApp() {
     showOptions: false,
     currentCat: null,
     client_id: '{{ $client_id }}',
-serveuse_id: '{{ $serveuse_id }}',
+    serveuse_id: '{{ $serveuse_id }}',
+    notification: '',
+    notificationTimeout: null,
     touches: [
       {label:'1',action:'1',class:'bg-gray-100'},
       {label:'2',action:'2',class:'bg-gray-100'},
@@ -271,7 +273,7 @@ serveuse_id: '{{ $serveuse_id }}',
       {label:'x',action:'x',class:'bg-red-100'},
     ],
     get total(){
-      return this.panier.reduce((a,b)=> a+ b.qte*b.prix,0);
+      return this.panier.filter(item => item.qte > 0).reduce((a,b)=> a+ b.qte*b.prix,0);
     },
     get filteredProduits(){
       return this.produits.filter(p => {
@@ -334,7 +336,16 @@ serveuse_id: '{{ $serveuse_id }}',
           table_id: "{{ $tableCourante ? (int)$tableCourante : '' }}",
           point_de_vente_id: "{{ $pointDeVente->id ?? '' }}"
         })
-      });
+      })
+      .then(res => res.json())
+      .then(data => {
+        if(data.success) {
+          this.showNotification('Client enregistré !');
+        } else {
+          this.showNotification(data.error || 'Erreur lors de la sélection du client', true);
+        }
+      })
+      .catch(() => this.showNotification('Erreur de connexion', true));
     },
     setServeuse(id) {
       fetch('{{ url('/panier/set-serveuse') }}', {
@@ -348,7 +359,21 @@ serveuse_id: '{{ $serveuse_id }}',
           table_id: "{{ $tableCourante ? (int)$tableCourante : '' }}",
           point_de_vente_id: "{{ $pointDeVente->id ?? '' }}"
         })
-      });
+      })
+      .then(res => res.json())
+      .then(data => {
+        if(data.success) {
+          this.showNotification('Serveuse enregistrée !');
+        } else {
+          this.showNotification(data.error || 'Erreur lors de la sélection de la serveuse', true);
+        }
+      })
+      .catch(() => this.showNotification('Erreur de connexion', true));
+    },
+    showNotification(msg, isError = false) {
+      this.notification = msg;
+      clearTimeout(this.notificationTimeout);
+      this.notificationTimeout = setTimeout(() => { this.notification = ''; }, 2000);
     },
     selectItem(idx){
       this.selectedIndex = idx;
@@ -469,4 +494,10 @@ serveuse_id: '{{ $serveuse_id }}',
   }
 }
 </script>
+
+<!-- Notification (ajouté sous le header panier) -->
+<template x-if="notification">
+  <div x-text="notification" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-2 rounded shadow-lg z-50 text-lg font-bold animate-bounce"></div>
+</template>
+
 </x-app-layout>
