@@ -30,8 +30,12 @@
                     @endphp
                     @foreach($modules as $module)
                         <div class="group bg-white border border-gray-200 rounded-2xl shadow hover:shadow-lg transition p-6 flex flex-col items-center cursor-pointer hover:bg-indigo-50">
-                            <div class="text-4xl rounded-full p-4 bg-indigo-100 text-indigo-600 mb-3 transition group-hover:scale-110">
-                                {{ $module->icon ?? '🧩' }}
+                            <div class="w-16 h-16 flex items-center justify-center mb-3">
+                                @if($module->icon)
+                                    <img src="{{ asset('storage/' . $module->icon) }}" alt="Icône du module" class="w-12 h-12 object-contain rounded-full shadow bg-white border">
+                                @else
+                                    <span class="text-4xl">🧩</span>
+                                @endif
                             </div>
                             <span class="mt-2 text-sm font-medium text-center text-gray-800">{{ $module->nom }}</span>
                             <div class="text-xs text-gray-500 text-center mb-2 line-clamp-2">{{ $module->description }}</div>
@@ -52,7 +56,7 @@
                                 <button type="button" class="mt-auto px-4 py-2 bg-green-200 text-green-900 rounded-full text-sm font-medium shadow cursor-not-allowed" @click="openModal = true">
                                     Activer
                                 </button>
-                                <!-- Modal indisponible -->
+                                <!-- Module indisponible -->
                                 <div x-data="{ openModal: false }">
                                     <template x-if="openModal">
                                         <div class="fixed inset-0 flex items-center justify-center z-50">

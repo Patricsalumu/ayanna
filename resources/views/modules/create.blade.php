@@ -36,8 +36,16 @@
                     </textarea>
                 </div>
                 <div class="mb-4">
-                    <label class="block font-medium text-sm text-gray-700" for="icon">Icône du module</label>
-                    <input type="text" name="icon" id="icon" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm w-full">
+                    <label class="block font-medium text-sm text-gray-700" for="icon">Icône du module (image)</label>
+                    <input type="file" name="icon" id="icon" accept="image/*" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm w-full">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block font-medium text-sm text-gray-700" for="disponible">Module disponible ?</label>
+                    <select name="disponible" id="disponible" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm w-full">
+                        <option value="1">Oui</option>
+                        <option value="0">Non</option>
+                    </select>
                 </div>
 
                     <div class="flex items-center justify-end">

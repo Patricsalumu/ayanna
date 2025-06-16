@@ -8,7 +8,22 @@ class Entreprise extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nom', 'telephone', 'email', 'logo'];
+    protected $fillable = [
+        'nom',
+        'module',
+        'telephone',
+        'logo',
+        'adresse',
+        'ville',
+        'pays',
+        'slogan',
+        'site_web',
+        'identifiant_fiscale',
+        'registre_commerce',
+        'numero_entreprise',
+        'numero_tva',
+        'email',
+    ];
 
     /**
      * Relation : une entreprise possède plusieurs utilisateurs

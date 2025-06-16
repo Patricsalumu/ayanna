@@ -62,8 +62,17 @@ class ModulesController extends Controller
         $validated = $request->validate([
             'nom' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'icon' => 'nullable|string|max:2048',
+            'icon' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,ico|max:2048',
+            'disponible' => 'required|boolean',
         ]);
+
+        // Gestion de l'upload de l'icône
+        if ($request->hasFile('icon')) {
+            $iconPath = $request->file('icon')->store('modules/icons', 'public');
+            $validated['icon'] = $iconPath;
+        } else {
+            unset($validated['icon']);
+        }
 
         Module::create($validated);
         return redirect()->route('entreprises.show', auth()->user()->entreprise->id)
@@ -80,8 +89,17 @@ class ModulesController extends Controller
         $validated = $request->validate([
             'nom' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'icon' => 'nullable|string|max:2048',
+            'icon' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,ico|max:2048',
+            'disponible' => 'required|boolean',
         ]);
+
+        // Gestion de l'upload de l'icône
+        if ($request->hasFile('icon')) {
+            $iconPath = $request->file('icon')->store('modules/icons', 'public');
+            $validated['icon'] = $iconPath;
+        } else {
+            unset($validated['icon']);
+        }
 
         $module->update($validated);
         return redirect()->route('entreprises.show', auth()->user()->entreprise->id)

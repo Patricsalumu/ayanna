@@ -50,7 +50,7 @@ class ProduitController extends Controller
             'categorie_id' => 'required|exists:categories,id',
             'nom' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'prix_achat' => 'required|numeric|min:0',
+            'prix_achat' => 'nullable|numeric|min:0',
             'prix_vente' => 'required|numeric|min:0',
             'image' => 'nullable|image|max:2048', // validation de l'image
         ]);
@@ -99,7 +99,7 @@ class ProduitController extends Controller
             'categorie_id' => 'required|exists:categories,id',
             'nom' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'prix_achat' => 'required|numeric|min:0',
+            'prix_achat' => 'nullable|numeric|min:0',
             'prix_vente' => 'required|numeric|min:0',
             'image' => 'nullable|image|max:2048',
         ]);

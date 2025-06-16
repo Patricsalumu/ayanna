@@ -51,7 +51,7 @@
             " class="flex-1">
               <table class="w-full text-sm">
                 <tbody>
-                  <template x-for="(item,i) in panier" :key="item.id">
+                  <template x-for="(item,i) in panierAffiche" :key="item.id">
                   <tr @click="selectItem(i)" :class="{'bg-blue-50': selectedIndex===i}" class="hover:bg-blue-100 cursor-pointer">
                     <td x-text="item.nom" class="py-1"></td>
                     <td class="text-center" x-text="item.qte"></td>
@@ -304,8 +304,8 @@ serveuse_id: '{{ $serveuse_id }}',
         },
         body: JSON.stringify({
             quantite: 1,
-            table_id: {{ $tableCourante ? (int)$tableCourante : 'null' }},
-            point_de_vente_id: {{ $pointDeVente->id ?? 'null' }}
+            table_id: "{{ $tableCourante ? (int)$tableCourante : '' }}",
+            point_de_vente_id: "{{ $pointDeVente->id ?? '' }}"
         })
     })
     .then(res => res.json())
@@ -331,8 +331,8 @@ serveuse_id: '{{ $serveuse_id }}',
         },
         body: JSON.stringify({
           client_id: id ? Number(id) : null,
-          table_id: {{ $tableCourante ? (int)$tableCourante : 'null' }},
-          point_de_vente_id: {{ $pointDeVente->id ?? 'null' }}
+          table_id: "{{ $tableCourante ? (int)$tableCourante : '' }}",
+          point_de_vente_id: "{{ $pointDeVente->id ?? '' }}"
         })
       });
     },
@@ -345,8 +345,8 @@ serveuse_id: '{{ $serveuse_id }}',
         },
         body: JSON.stringify({
           serveuse_id: id ? Number(id) : null,
-          table_id: {{ $tableCourante ? (int)$tableCourante : 'null' }},
-          point_de_vente_id: {{ $pointDeVente->id ?? 'null' }}
+          table_id: "{{ $tableCourante ? (int)$tableCourante : '' }}",
+          point_de_vente_id: "{{ $pointDeVente->id ?? '' }}"
         })
       });
     },
@@ -361,17 +361,41 @@ serveuse_id: '{{ $serveuse_id }}',
       if(!isNaN(action)){
         item.qte = parseInt(`${item.qte}${action}`.slice(0,3));
       } else if(action==='x'){
-        let qte = item.qte;
-        if(qte >= 10) {
-          let qteStr = qte.toString();
+        if(item.qte >= 10) {
+          let qteStr = item.qte.toString();
           item.qte = parseInt(qteStr.slice(0, -1));
-        } else if(qte > 0) {
+        } else if(item.qte > 0) {
           item.qte = 0;
-        } else if(qte === 0) {
-          this.panier.splice(this.selectedIndex,1);
-          if(this.panier.length === 0) this.selectedIndex = null;
-          else if(this.selectedIndex >= this.panier.length) this.selectedIndex = this.panier.length-1;
+        } else if(item.qte === 0) {
+          // Suppression explicite côté backend
+          fetch(`/panier/supprimer-produit/${item.id}`, {
+            method: 'POST',
+            headers: {
+              'X-CSRF-TOKEN': '{{ csrf_token() }}',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              table_id: "{{ $tableCourante ? (int)$tableCourante : '' }}",
+              point_de_vente_id: "{{ $pointDeVente->id ?? '' }}"
+            })
+          })
+          .then(res => res.json())
+          .then(data => {
+            if(data.success) {
+              this.panier = data.panier || [];
+              if(this.selectedIndex !== null && this.selectedIndex >= this.panier.length) {
+                this.selectedIndex = this.panier.length > 0 ? this.panier.length-1 : null;
+              }
+            } else {
+              alert(data.error || "Erreur lors de la suppression du produit");
+            }
+          })
+          .catch(err => {
+            alert("Erreur de connexion avec le serveur");
+          });
+          return;
         }
+        // On ne supprime plus le produit ici, on attend la réponse serveur
       } else if(action==='C') {
         item.qte = 0;
       } else if(action==='+') {
@@ -389,14 +413,17 @@ serveuse_id: '{{ $serveuse_id }}',
           },
           body: JSON.stringify({
             quantite: item.qte,
-            table_id: {{ $tableCourante ? (int)$tableCourante : 'null' }},
-            point_de_vente_id: {{ $pointDeVente->id ?? 'null' }}
+            table_id: "{{ $tableCourante ? (int)$tableCourante : '' }}",
+            point_de_vente_id: "{{ $pointDeVente->id ?? '' }}"
           })
         })
         .then(res => res.json())
         .then(data => {
           if(data.success) {
             this.panier = data.panier;
+            if(this.selectedIndex !== null && this.selectedIndex >= this.panier.length) {
+              this.selectedIndex = this.panier.length > 0 ? this.panier.length-1 : null;
+            }
           } else {
             alert(data.error || "Erreur lors de la mise à jour du panier");
           }
@@ -415,13 +442,15 @@ serveuse_id: '{{ $serveuse_id }}',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          table_id: {{ $tableCourante ? (int)$tableCourante : 'null' }},
-          point_de_vente_id: {{ $pointDeVente->id ?? 'null' }}
+          table_id: "{{ $tableCourante ? (int)$tableCourante : '' }}",
+          point_de_vente_id: "{{ $pointDeVente->id ?? '' }}"
         })
       })
       .then(res => res.json())
       .then(data => {
-        if(data.success) {
+        if(data.success && data.redirect_url) {
+          window.location.href = data.redirect_url;
+        } else if(data.success) {
           window.location.reload();
         } else {
           alert(data.error || "Erreur lors de la libération de la table");
@@ -430,6 +459,10 @@ serveuse_id: '{{ $serveuse_id }}',
       .catch(err => {
         alert("Erreur de connexion avec le serveur");
       });
+    },
+    // Ajout d'un computed pour filtrer les produits à afficher dans le panier
+    get panierAffiche() {
+      return this.panier.filter(item => item.qte !== null && item.qte >= 0);
     },
     activeCatClass: 'px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-semibold shadow',
     inactiveCatClass: 'px-4 py-2 rounded-full bg-gray-100 hover:bg-blue-100 text-sm font-semibold shadow',

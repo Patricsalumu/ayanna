@@ -15,6 +15,11 @@
     <!-- Zone du plan (affichage tables, pas d'édition) -->
     <div id="plan" class="relative w-full h-[500px] border border-gray-300 rounded bg-gray-100 overflow-hidden" style="background-image: linear-gradient(0deg, transparent 24%, #e5e7eb 25%, #e5e7eb 26%, transparent 27%, transparent 74%, #e5e7eb 75%, #e5e7eb 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, #e5e7eb 25%, #e5e7eb 26%, transparent 27%, transparent 74%, #e5e7eb 75%, #e5e7eb 76%, transparent 77%, transparent); background-size: 40px 40px;">
         @foreach ($salle->tables as $table)
+            @php
+                $tableOccupee = \App\Models\Panier::where('table_id', $table->id)
+                    ->where('status', 'en_cours')
+                    ->exists();
+            @endphp
             <a href="{{ route('vente.catalogue', ['pointDeVente' => request('point_de_vente_id')]) }}?table_id={{ $table->id }}"
                class="table-item absolute border-4 flex items-center justify-center shadow-lg"
                style="
@@ -23,7 +28,7 @@
                     width: {{ $table->width ?? 70 }}px;
                     height: {{ $table->height ?? 70 }}px;
                     @if ($table->forme === 'cercle') border-radius: 50%; @endif
-                    background: {{ $table->is_busy ? '#4ade80' : '#f3f4f6' }};
+                    background: {{ $tableOccupee ? '#4ade80' : '#f3f4f6' }};
                     border-color: #22c55e;
                "
             >

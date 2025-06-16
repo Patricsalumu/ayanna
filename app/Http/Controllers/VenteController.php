@@ -38,7 +38,7 @@ class VenteController extends Controller
             $produitsPanier = [];
             if ($tableCourante) {
                 $panier = \App\Models\Panier::where('table_id', $tableCourante)
-                    ->where('point_de_vente_id', $pointDeVenteId)
+                    ->where('status','en_cours')
                     ->first();
                 if ($panier) {
                     $panier->load('produits');
@@ -52,6 +52,15 @@ class VenteController extends Controller
                             'cat_id' => $prod->categorie_id,
                         ];
                     })->values()->toArray();
+                }else {
+                    // Si pas de panier, on crée un panier vide
+                    $panier = \App\Models\Panier::firstOrCreate([
+                        'table_id' => $tableCourante,
+                        'point_de_vente_id' => $pointDeVenteId,
+                    ], [
+                        'opened_by' => \Auth::id(),
+                    ]);
+                    $panier->load('produits');
                 }
             }
 
@@ -107,7 +116,7 @@ class VenteController extends Controller
             $produitsPanier = [];
             if ($tableCourante) {
                 $panier = \App\Models\Panier::where('table_id', $tableCourante)
-                    ->where('point_de_vente_id', $pointDeVenteId)
+                    ->where('status', 'en_cours')
                     ->first();
                 if ($panier) {
                     $panier->load('produits');

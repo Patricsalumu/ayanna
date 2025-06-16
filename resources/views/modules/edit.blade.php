@@ -21,7 +21,7 @@
                 <div class="mb-4 text-green-600">{{ session('success') }}</div>
             @endif
 
-            <form method="POST" action="{{ route('modules.update', $module->id) }}">
+            <form method="POST" action="{{ route('modules.update', $module->id) }}" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
 
@@ -35,8 +35,22 @@
                     <textarea name="description" rows="5" cols="50" id="description" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm w-full">{{ old('description', $module->description) }}</textarea>
                 </div>
                 <div class="mb-4">
-                    <label class="block font-medium text-sm text-gray-700" for="icon">Icône du module</label>
-                    <input type="text" name="icon" id="icon" value="{{ old('icon', $module->icon) }}" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm w-full">
+                    <label class="block font-medium text-sm text-gray-700" for="icon">Icône du module (image)</label>
+                    @if($module->icon)
+                        <div class="mb-2">
+                            <img src="{{ asset('storage/' . $module->icon) }}" alt="Icône actuelle" class="w-16 h-16 object-contain rounded-full shadow bg-white border">
+                        </div>
+                    @endif
+                    <input type="file" name="icon" id="icon" accept="image/*" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm w-full">
+                    <small class="text-gray-500">Laisser vide pour conserver l'icône actuelle.</small>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block font-medium text-sm text-gray-700" for="disponible">Module disponible ?</label>
+                    <select name="disponible" id="disponible" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm w-full">
+                        <option value="1" {{ old('disponible', $module->disponible) == 1 ? 'selected' : '' }}>Oui</option>
+                        <option value="0" {{ old('disponible', $module->disponible) == 0 ? 'selected' : '' }}>Non</option>
+                    </select>
                 </div>
 
                 <div class="flex items-center justify-end">

@@ -104,7 +104,7 @@ class SalleController extends Controller
         // Nouvelle logique : on récupère les paniers en base pour chaque table de la salle
         $tableIds = $salle->tables->pluck('id');
         $paniers = \App\Models\Panier::whereIn('table_id', $tableIds)
-            ->where('point_de_vente_id', $pointDeVenteId)
+            ->where('status', 'en_cours')
             ->with('produits')
             ->get()
             ->keyBy('table_id');

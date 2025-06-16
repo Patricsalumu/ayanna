@@ -42,7 +42,7 @@
 
             <div class="mb-4">
                 <label for="prix_achat" class="block text-sm font-medium text-gray-700">Prix d'achat</label>
-                <input type="number" step="0.01" name="prix_achat" id="prix_achat" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                <input type="number" step="0.01" name="prix_achat" id="prix_achat" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
             </div>
 
             <div class="mb-4">

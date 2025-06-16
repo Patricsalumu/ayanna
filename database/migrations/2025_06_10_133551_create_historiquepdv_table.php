@@ -15,8 +15,8 @@ return new class extends Migration
             $table->foreignId('point_de_vente_id')->constrained('points_de_vente')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->enum('etat', ['ouvert', 'ferme']);
+            $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
-            $table->timestamps();
         });
     }
 

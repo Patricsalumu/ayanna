@@ -7,6 +7,7 @@ use App\Models\Produit;
 use App\Models\User;
 use App\Models\Client;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class PanierController extends Controller
 {
@@ -16,7 +17,7 @@ class PanierController extends Controller
         $table_id = $request->input('table_id');
         $point_de_vente_id = $request->input('point_de_vente_id');
         $panier = Panier::where('table_id', $table_id)
-            ->where('point_de_vente_id', $point_de_vente_id)
+            ->where('status', 'en_cours')
             ->first();
 
         if (!$panier) {
@@ -86,11 +87,8 @@ class PanierController extends Controller
 
             $existant = $panier->produits()->where('produit_id', $produit_id)->first();
             if ($existant) {
-                if ($quantite > 0) {
-                    $panier->produits()->updateExistingPivot($produit_id, ['quantite' => $quantite]);
-                } else {
-                    $panier->produits()->detach($produit_id);
-                }
+                // On met à jour la quantité même si elle est à 0
+                $panier->produits()->updateExistingPivot($produit_id, ['quantite' => $quantite]);
             } else if ($quantite > 0) {
                 $panier->produits()->attach($produit_id, ['quantite' => $quantite]);
             }
@@ -109,7 +107,7 @@ class PanierController extends Controller
 
             return response()->json(['success' => true, 'panier' => $panierArray]);
         } catch (\Throwable $e) {
-            \Log::error('Erreur modifierProduit panier: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Erreur modifierProduit panier: '.$e->getMessage(), ['exception' => $e]);
             return response()->json(['success' => false, 'error' => 'Erreur serveur: '.$e->getMessage()], 500);
         }
     }
@@ -117,6 +115,14 @@ class PanierController extends Controller
     // Supprimer un produit du panier
     public function supprimerProduit(Request $request, $produit_id)
     {
+        Log::debug('[supprimerProduit] Reçu', [
+            'produit_id' => $produit_id,
+            'table_id' => $request->input('table_id'),
+            'point_de_vente_id' => $request->input('point_de_vente_id'),
+            'user_id' => Auth::id(),
+            'body' => $request->all()
+        ]);
+
         $table_id = $request->input('table_id');
         $point_de_vente_id = $request->input('point_de_vente_id');
 
@@ -126,15 +132,27 @@ class PanierController extends Controller
 
         if (!$panier) return response()->json(['error' => 'Panier non trouvé'], 404);
 
-        $produits = collect(json_decode($panier->produits, true) ?? [])
-            ->reject(fn($item) => $item['produit_id'] == $produit_id)
-            ->values()
-            ->all();
+        // Marquer le produit comme supprimé (quantité -1 dans la table pivot)
+        $existant = $panier->produits()->where('produit_id', $produit_id)->first();
+        if ($existant) {
+            $panier->produits()->updateExistingPivot($produit_id, ['quantite' => -1]);
+        }
 
-        $panier->produits = json_encode($produits);
-        $panier->save();
+        $panier->load('produits');
+        $panierArray = $panier->produits
+            ->filter(fn($prod) => $prod->pivot->quantite !== null && $prod->pivot->quantite >= 0)
+            ->map(function($prod){
+                return [
+                    'id' => $prod->id,
+                    'nom' => $prod->nom,
+                    'prix' => $prod->prix_vente,
+                    'qte' => $prod->pivot->quantite,
+                    'image' => $prod->image ? asset('storage/'.$prod->image) : null,
+                    'cat_id' => $prod->categorie_id,
+                ];
+            })->values()->toArray();
 
-        return response()->json(['success' => true, 'produits' => $produits]);
+        return response()->json(['success' => true, 'panier' => $panierArray]);
     }
 
     // Met à jour le client du panier (pivot DB)
@@ -142,12 +160,12 @@ class PanierController extends Controller
     {
         dd($request->all());
         try {
-            \Log::info('[setClient] Requête reçue', $request->all());
+            Log::info('[setClient] Requête reçue', $request->all());
             $table_id = $request->input('table_id');
             $point_de_vente_id = $request->input('point_de_vente_id');
             $client_id = $request->input('client_id');
-            $opened_by = \Auth::id();
-            \Log::info('[setClient] table_id='.$table_id.' point_de_vente_id='.$point_de_vente_id.' client_id='.$client_id);
+            $opened_by = Auth::id();
+            Log::info('[setClient] table_id='.$table_id.' point_de_vente_id='.$point_de_vente_id.' client_id='.$client_id);
             $panier = Panier::firstOrCreate(
                 [
                     'table_id' => $table_id,
@@ -159,10 +177,10 @@ class PanierController extends Controller
             );
             $panier->client_id = $client_id;
             $panier->save();
-            \Log::info('[setClient] Panier id='.$panier->id.' client_id enregistré='.$panier->client_id);
+            Log::info('[setClient] Panier id='.$panier->id.' client_id enregistré='.$panier->client_id);
             return response()->json(['success' => true]);
         } catch (\Throwable $e) {
-            \Log::error('Erreur setClient panier: '.$e->getMessage(), ['exception' => $e, 'request' => $request->all()]);
+            Log::error('Erreur setClient panier: '.$e->getMessage(), ['exception' => $e, 'request' => $request->all()]);
             return response()->json(['success' => false, 'error' => 'Erreur serveur: '.$e->getMessage()], 500);
         }
     }
@@ -172,12 +190,12 @@ class PanierController extends Controller
     {
         dd($request->all());
         try {
-            \Log::info('[setServeuse] Requête reçue', $request->all());
+            Log::info('[setServeuse] Requête reçue', $request->all());
             $table_id = $request->input('table_id');
             $point_de_vente_id = $request->input('point_de_vente_id');
             $serveuse_id = $request->input('serveuse_id');
-            $opened_by = \Auth::id();
-            \Log::info('[setServeuse] table_id='.$table_id.' point_de_vente_id='.$point_de_vente_id.' serveuse_id='.$serveuse_id);
+            $opened_by = Auth::id();
+            Log::info('[setServeuse] table_id='.$table_id.' point_de_vente_id='.$point_de_vente_id.' serveuse_id='.$serveuse_id);
             $panier = Panier::firstOrCreate(
                 [
                     'table_id' => $table_id,
@@ -189,10 +207,10 @@ class PanierController extends Controller
             );
             $panier->serveuse_id = $serveuse_id;
             $panier->save();
-            \Log::info('[setServeuse] Panier id='.$panier->id.' serveuse_id enregistré='.$panier->serveuse_id);
+            Log::info('[setServeuse] Panier id='.$panier->id.' serveuse_id enregistré='.$panier->serveuse_id);
             return response()->json(['success' => true]);
         } catch (\Throwable $e) {
-            \Log::error('Erreur setServeuse panier: '.$e->getMessage(), ['exception' => $e, 'request' => $request->all()]);
+            Log::error('Erreur setServeuse panier: '.$e->getMessage(), ['exception' => $e, 'request' => $request->all()]);
             return response()->json(['success' => false, 'error' => 'Erreur serveur: '.$e->getMessage()], 500);
         }
     }
@@ -202,17 +220,27 @@ class PanierController extends Controller
     {
         try {
             $table_id = $request->input('table_id');
-            $point_de_vente_id = $request->input('point_de_vente_id');
+            // On ne filtre plus par point_de_vente_id pour libérer la table globalement
             $panier = Panier::where('table_id', $table_id)
-                ->where('point_de_vente_id', $point_de_vente_id)
                 ->first();
             if ($panier) {
                 $panier->produits()->detach();
                 $panier->delete();
             }
-            return response()->json(['success' => true]);
+            // Trouver la salle de la table pour la redirection
+            $table = \App\Models\TableResto::find($table_id);
+            $salle_id = $table ? $table->salle_id : null;
+            $entreprise_id = $table && $table->salle ? $table->salle->entreprise_id : null;
+            return response()->json([
+                'success' => true,
+                'redirect_url' => $salle_id && $entreprise_id ? route('salle.plan.vente', [
+                    'entreprise' => $entreprise_id,
+                    'salle' => $salle_id,
+                    'point_de_vente_id' => $request->input('point_de_vente_id')
+                ]) : null
+            ]);
         } catch (\Throwable $e) {
-            \Log::error('Erreur libererTable: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Erreur libererTable: '.$e->getMessage(), ['exception' => $e]);
             return response()->json(['success' => false, 'error' => 'Erreur serveur: '.$e->getMessage()], 500);
         }
     }

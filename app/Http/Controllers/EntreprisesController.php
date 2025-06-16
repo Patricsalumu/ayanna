@@ -58,14 +58,31 @@ class EntreprisesController extends Controller
 
     public function update(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'nom' => 'required|string|max:255',
+            'module' => 'nullable|string|max:255',
+            'telephone' => 'nullable|string|max:255',
             'logo' => 'nullable|image|max:2048',
+            'adresse' => 'nullable|string|max:255',
+            'ville' => 'nullable|string|max:255',
+            'pays' => 'nullable|string|max:255',
+            'slogan' => 'nullable|string|max:255',
+            'site_web' => 'nullable|string|max:255',
+            'identifiant_fiscale' => 'nullable|string|max:255',
+            'registre_commerce' => 'nullable|string|max:255',
+            'numero_entreprise' => 'nullable|string|max:255',
+            'numero_tva' => 'nullable|string|max:255',
+            'email' => 'nullable|email',
         ]);
 
         $entreprise = auth()->user()->entreprise;
 
-        $entreprise->nom = $request->nom;
+        foreach ($validated as $key => $value) {
+            if ($key !== 'logo') {
+                $entreprise->$key = $value;
+            }
+        }
+
         if ($request->hasFile('logo')) {
             $logoPath = $request->file('logo')->store('logos', 'public');
             $entreprise->logo = $logoPath;

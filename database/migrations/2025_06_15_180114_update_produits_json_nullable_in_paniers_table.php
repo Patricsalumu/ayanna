@@ -11,8 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('entreprises', function (Blueprint $table) {
-              $table->string('logo')->nullable()->after('nom');
+        Schema::table('paniers', function (Blueprint $table) {
+            //
+            $table->json('produits_json')->nullable()->change();
         });
     }
 
@@ -21,8 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('entreprises', function (Blueprint $table) {
-            $table->dropColumn('logo');
+        Schema::table('paniers', function (Blueprint $table) {
+            //
         });
     }
 };
