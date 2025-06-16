@@ -19,7 +19,7 @@
             </div>
         @endif
         <div class="mt-8">
-            <a href="{{ route('pointsDeVente.show', $pointDeVente->entreprise_id) }}" class="text-blue-600 hover:underline">&larr; Retour aux points de vente</a>
+            <a href="{{ route('pointsDeVente.show', [$pointDeVente->entreprise_id, $pointDeVente->id]) }}" class="text-blue-600 hover:underline">&larr; Retour aux points de vente</a>
         </div>
     </div>
 </x-app-layout>

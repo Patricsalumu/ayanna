@@ -19,6 +19,7 @@ class Panier extends Model
         'opened_by',
         'last_modified_by',
         'produits_json',
+        'status', // Ajouté pour permettre la modification
     ];
 
     protected $casts = [

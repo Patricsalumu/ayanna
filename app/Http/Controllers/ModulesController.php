@@ -33,14 +33,14 @@ class ModulesController extends Controller
             if ($module->nom === 'POS Restaubar') {
                 PosRestaubarDefaults::initialiserPour($module, $entreprise);
                 $message .= ' Les données par défaut ont été initialisées.';
-                return redirect()->route('pointsDeVente.show', $entreprise->id)
+                return redirect()->route('pointsDeVente.show', [$entreprise->id, $pointDeVente->id])
                     ->with('success', $message);
             } else {
                 $message .= 'Les données non réinitialisées';
             }
         } else {
             $message = 'Ce module est déjà activé pour cette entreprise.';
-            return redirect()->route('pointsDeVente.show', $entreprise->id)
+            return redirect()->route('pointsDeVente.show', [$entreprise->id, $pointDeVente->id])
                     ->with('success', $message);
         }
         return redirect()->route('entreprises.show', $entreprise->id)

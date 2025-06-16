@@ -86,6 +86,7 @@ class VenteController extends Controller
                 'tableCourante' => $tableCourante,
                 'client_id' => $client_id,
                 'serveuse_id' => $serveuse_id,
+                'panier' => $panier ?? null,
             ]);
         } catch (\Throwable $e) {
             \Log::error('Erreur catalogue vente: '.$e->getMessage(), ['exception' => $e]);
@@ -153,6 +154,7 @@ class VenteController extends Controller
                 [
                     'table_id' => $tableId,
                     'point_de_vente_id' => $pointDeVenteId,
+                    'status' => 'en_cours',
                 ],
                 [
                     'client_id' => $clientId,
@@ -264,7 +266,7 @@ class VenteController extends Controller
                 'etat' => 'ferme',
             ]);
         });
-        return redirect()->route('pointsDeVente.show', $pointDeVente->entreprise_id)->with('success', 'Point de vente fermé.');
+        return redirect()->route('pointsDeVente.show', [$pointDeVente->entreprise_id, $pointDeVente->id])->with('success', 'Point de vente fermé.');
     }
 
     public function setClient(\Illuminate\Http\Request $request)

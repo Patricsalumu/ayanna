@@ -1,7 +1,7 @@
 <x-app-layout>
     <div class="container mx-auto">
     <h1 class="text-2xl font-bold mb-4">
-    <a href="{{ route('pointsDeVente.show', $entreprise->id) }}" class="text-blue-600 hover:underline">&larr;</a>    
+    <a href="{{ route('pointsDeVente.show', [$entreprise->id, $pointDeVente->id]) }}" class="text-blue-600 hover:underline">&larr;</a>    
     Salle</h1>
     <!-- Barre d'outils globale et onglets zones -->
     <div class="flex justify-between items-center mb-2">

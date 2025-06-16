@@ -41,7 +41,7 @@
                             <div class="text-xs text-gray-500 text-center mb-2 line-clamp-2">{{ $module->description }}</div>
                             @if($module->disponible)
                                 @if(in_array($module->id, $modulesActives))
-                                    <a href="{{ route('pointsDeVente.show', [$entreprise->id, 'module_id' => $module->id]) }}" class="mt-auto px-4 py-2 bg-green-500 text-white rounded-full text-sm font-medium shadow hover:bg-green-600 transition">
+                                    <a href="{{ route('pointsDeVente.show', [$entreprise->id, 'module_id' => $module->id]) }}" class="mt-auto px-4 py-2 bg-green-500 text-white rounded-full text-sm font-medium shadow hover:bg-green-600 transition block text-center">
                                         Voir
                                     </a>
                                 @else

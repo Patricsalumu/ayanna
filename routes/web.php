@@ -154,3 +154,9 @@ Route::middleware(['auth'])->group(function () {
 // Panier (AJAX)
 Route::post('/panier/modifier-produit/{produit_id}', [\App\Http\Controllers\PanierController::class, 'modifierProduit'])->name('panier.modifierProduit');
 Route::post('/panier/supprimer-produit/{produit_id}', [\App\Http\Controllers\PanierController::class, 'supprimerProduit'])->name('panier.supprimerProduit');
+
+// Liste des paniers du jour (comptoir)
+Route::get('/paniers/jour', [\App\Http\Controllers\PanierController::class, 'paniersDuJour'])->name('paniers.jour');
+
+// Annuler un panier
+Route::patch('/paniers/{panier}/annuler', [\App\Http\Controllers\PanierController::class, 'annuler'])->name('paniers.annuler');

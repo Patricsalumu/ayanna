@@ -62,7 +62,7 @@ class PointDeVenteController extends Controller
         $pointDeVente->categories()->sync($validated['categories'] ?? []);
         $pointDeVente->salles()->sync($validated['salles'] ?? []);
 
-        return redirect()->route('pointsDeVente.show', [$entreprise->id, 'module_id' => $validated['module_id']])
+        return redirect()->route('pointsDeVente.show', [$entreprise->id, $pointDeVente->id, 'module_id' => $validated['module_id']])
             ->with('success', 'Point de vente créé !');
     }
 
@@ -117,7 +117,7 @@ class PointDeVenteController extends Controller
         $pointDeVente->salles()->sync($validated['salles'] ?? []);
 
         $module_id = $pointDeVente->module_id;
-        return redirect()->route('pointsDeVente.show', [$entreprise->id, 'module_id' => $module_id])
+        return redirect()->route('pointsDeVente.show', [$entreprise->id, $pointDeVente->id, 'module_id' => $module_id])
             ->with('success', 'Point de vente modifié !');
     }
 
@@ -125,7 +125,7 @@ class PointDeVenteController extends Controller
     {
         $pointDeVente = $entreprise->pointsDeVente()->findOrFail($pointDeVenteId);
         $pointDeVente->delete();
-        return redirect()->route('pointsDeVente.show', [$entreprise->id, 'module_id' => $pointDeVente->module_id])
+        return redirect()->route('pointsDeVente.show', [$entreprise->id, $pointDeVente->id, 'module_id' => $pointDeVente->module_id])
             ->with('success', 'Point de vente supprimé !');
     }
 }

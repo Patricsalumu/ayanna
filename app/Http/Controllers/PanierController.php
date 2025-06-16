@@ -241,4 +241,38 @@ class PanierController extends Controller
             return response()->json(['success' => false, 'error' => 'Erreur serveur: '.$e->getMessage()], 500);
         }
     }
+
+    /**
+     * Affiche tous les paniers du jour (quel que soit le statut)
+     */
+    public function paniersDuJour(Request $request)
+    {
+        $today = now()->startOfDay();
+        $paniers = Panier::whereDate('created_at', $today)
+            ->with(['tableResto', 'serveuse', 'client', 'produits'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+        return view('paniers.jour', compact('paniers'));
+    }
+
+    /**
+     * Annuler un panier (status = 'annulé')
+     */
+    public function annuler($id)
+    {
+        $panier = Panier::findOrFail($id);
+        \Log::debug('[DEBUG PANIER ANNULER] Avant', ['id' => $id, 'status' => $panier->status]);
+        if ($panier->status === 'en_cours') {
+            $panier->status = 'annulé';
+            $panier->save();
+            \Log::debug('[DEBUG PANIER ANNULER] Après', ['id' => $id, 'status' => $panier->status]);
+        }
+        $requestFrom = request('from');
+        if ($requestFrom === 'jour') {
+            return redirect()->route('paniers.jour')->with('success', 'Panier annulé.');
+        } elseif ($requestFrom === 'catalogue') {
+            return redirect()->back()->with('success', 'Panier annulé.');
+        }
+        return redirect()->back()->with('success', 'Panier annulé.');
+    }
 }

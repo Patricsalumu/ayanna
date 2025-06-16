@@ -1,8 +1,15 @@
-<x-app-layout>
+@extends('layouts.app')
+@section('content')
     <div class="container mx-auto">
-    <h1 class="text-2xl font-bold mb-4">
-    <a href="{{ route('pointsDeVente.show', $entreprise->id) }}" class="text-blue-600 hover:underline">&larr;</a>    
-    Salle</h1>
+    @php
+        $pointDeVenteId = request('point_de_vente_id');
+        $pointDeVente = isset($pointDeVente) ? $pointDeVente : ($pointDeVenteId ? \App\Models\PointDeVente::find($pointDeVenteId) : null);
+    @endphp
+    <h1 class="text-2xl font-bold mb-4 flex items-center gap-4">
+    <a href="{{ $pointDeVente ? route('pointsDeVente.show', [$entreprise->id, $pointDeVente->id]) : '#' }}" class="text-blue-600 hover:underline">&larr;</a>    
+    Salle
+    <a href="{{ route('paniers.jour') }}" class="ml-auto px-4 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 transition">Paniers du jour</a>
+    </h1>
     <!-- Onglets de navigation entre salles -->
     <div class="flex gap-2 mb-4">
         @foreach($salles as $zone)
@@ -42,4 +49,4 @@
         @endforeach
     </div>
     </div>
-</x-app-layout>
+@endsection
