@@ -52,17 +52,8 @@
                   <th>Total</th>
                 </tr>
               </thead>
-            </table>
-            <div :class="
-              selectedIndex !== null && panier.length >= 5
-                ? 'max-h-40 overflow-y-auto' // 5 lignes visibles (environ 32px/ligne)
-                : panier.length >= 15
-                  ? 'max-h-[400px] overflow-y-auto' // 15 lignes visibles
-                  : ''
-            " class="flex-1">
-              <table class="w-full text-sm">
-                <tbody>
-                  <template x-for="(item,i) in panierAffiche" :key="item.id">
+              <tbody>
+                <template x-for="(item,i) in panierAffiche" :key="item.id">
                   <tr @click="selectItem(i)" :class="{'bg-blue-50': selectedIndex===i}" class="hover:bg-blue-100 cursor-pointer">
                     <td x-text="item.nom" class="py-1"></td>
                     <td class="text-center" x-text="item.qte"></td>
@@ -72,15 +63,15 @@
                 </template>
               </tbody>
             </table>
+            <table class="w-full text-sm">
+              <tbody>
+                <tr class="font-bold border-t">
+                  <td colspan="3" class="text-right py-1">Total</td>
+                  <td class="text-right" x-text="total.toLocaleString()+' F'"></td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <table class="w-full text-sm">
-            <tbody>
-              <tr class="font-bold border-t">
-                <td colspan="3" class="text-right py-1">Total</td>
-                <td class="text-right" x-text="total.toLocaleString()+' F'"></td>
-              </tr>
-            </tbody>
-          </table>
         </div>
       </template>
       <template x-if="!panier.length">
@@ -149,7 +140,7 @@
         <div class="bg-white rounded-2xl shadow-xl p-6 min-w-[260px] flex flex-col items-center relative">
           <button @click="showModal = false" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl">&times;</button>
           <div class="mb-4 text-lg font-bold text-gray-700">Actions</div>
-          <button class="w-full mb-2 py-3 rounded-lg bg-gray-600 text-white font-bold text-base shadow hover:bg-gray-700 transition">Addition</button>
+          <button class="w-full mb-2 py-3 rounded-lg bg-gray-600 text-white font-bold text-base shadow hover:bg-gray-700 transition" @click="printAddition">Addition</button>
           <button class="w-full mb-2 py-3 rounded-lg bg-green-600 text-white font-bold text-base shadow hover:bg-green-700 transition">Paiement</button>
           <!-- Bouton Annuler dans la modale -->
           <form method="POST" action="{{ (isset($panier) && !empty($panier->id)) ? route('paniers.annuler', $panier->id) : '#' }}" onsubmit="return confirm('Annuler ce panier ?');" style="width:100%;">
@@ -161,6 +152,7 @@
         </div>
         <div @click="showModal = false" class="fixed inset-0" style="z-index:-1;"></div>
       </div>
+
     </div>
 
     <!-- Pavé numérique -->
@@ -297,6 +289,9 @@ function posApp() {
         return (!this.currentCat || p.cat_id===this.currentCat)
           && (!this.search || p.nom.toLowerCase().includes(this.search.toLowerCase()));
       });
+    },
+    get panierAffiche() {
+      return this.panier.filter(item => item.qte !== null && item.qte >= 0);
     },
     inqte(prod_id){
       const i=this.panier.find(i=>i.id===prod_id);
@@ -502,9 +497,80 @@ function posApp() {
         alert("Erreur de connexion avec le serveur");
       });
     },
-    // Ajout d'un computed pour filtrer les produits à afficher dans le panier
-    get panierAffiche() {
-      return this.panier.filter(item => item.qte !== null && item.qte >= 0);
+    // Ajout de la méthode d'impression d'addition directement dans Alpine.js
+    printAddition() {
+      const panier = this.panier || [];
+      const table = "{{ $tables->firstWhere('id', $tableCourante)->numero ?? $tables->firstWhere('id', $tableCourante)->nom ?? $tableCourante }}";
+      const pointDeVente = "{{ $pointDeVente->nom ?? 'Point de vente' }}";
+      const entreprise = window.ENTREPRISE;
+      const client = this.client_id ? (window.CLIENTS?.find?.(c => c.id == this.client_id) ?? null) : null;
+      const serveuse = this.serveuse_id ? (window.SERVEUSES?.find?.(s => s.id == this.serveuse_id) ?? null) : null;
+      const panierId = PANIER_ID;
+      let total = 0;
+      let now = new Date();
+      let dateStr = now.toLocaleDateString('fr-FR');
+      let heureStr = now.toLocaleTimeString('fr-FR');
+      let html = `<div style='width:58mm;padding:0;font-family:monospace;'>`;
+      // Logo
+      if(entreprise.logo) {
+        html += `<div style='text-align:center;'><img src='${window.location.origin}/storage/${entreprise.logo}' style='max-width:40px;max-height:40px;margin-bottom:2px;display:block;margin-left:auto;margin-right:auto;'/></div>`;
+      }
+      // Nom + infos entreprise
+      html += `<div style='text-align:center;font-weight:bold;font-size:15px;'>${entreprise.nom ?? ''}</div>`;
+      if(entreprise.numero_entreprise) html += `<div style='text-align:center;font-size:11px;'>N° Entreprise : ${entreprise.numero_entreprise}</div>`;
+      if(entreprise.email) html += `<div style='text-align:center;font-size:11px;'>${entreprise.email}</div>`;
+      if(entreprise.telephone) html += `<div style='text-align:center;font-size:11px;'>${entreprise.telephone}</div>`;
+      if(entreprise.adresse) html += `<div style='text-align:center;font-size:11px;'>${entreprise.adresse}</div>`;
+      html += `<div style='border-top:1px dashed #222;margin:6px 0;'></div>`;
+      // Infos client/serveuse/table/panier
+      html += `<div style='font-size:11px;'>Client : <b>${client?.nom ?? '-'}</b></div>`;
+      html += `<div style='font-size:11px;'>Servie par : <b>${serveuse?.name ?? '-'}</b></div>`;
+      html += `<div style='font-size:11px;'>Table : <b>${table}</b> | Panier n° <b>${panierId ?? '-'}</b></div>`;
+      html += `<div style='border-top:1px dashed #222;margin:6px 0;'></div>`;
+      // Tableau produits
+      html += `<table style='width:100%;font-size:12px;margin:0 auto;'><thead><tr><th style='text-align:left;'>Produit</th><th>Qté</th><th style='text-align:right;'>Total</th></tr></thead><tbody>`;
+      panier.filter(item=>item.qte>0).forEach(item => {
+        const lineTotal = item.qte * item.prix;
+        total += lineTotal;
+        html += `<tr><td style='word-break:break-all;'>${item.nom}</td><td style='text-align:center;'>${item.qte}</td><td style='text-align:right;'>${lineTotal.toLocaleString()} F</td></tr>`;
+      });
+      html += `</tbody></table>`;
+      html += `<div style='border-top:1px dashed #222;margin:6px 0;'></div>`;
+      html += `<div style='text-align:right;font-size:14px;font-weight:bold;'>TOTAL : ${total.toLocaleString()} F</div>`;
+      html += `<div style='text-align:center;font-size:11px;margin-top:10px;'>Merci pour votre visite !</div>`;
+      html += `<div style='text-align:center;font-size:10px;margin-top:8px;'>Généré par Ayanna &copy; | ${dateStr} ${heureStr}</div>`;
+      html += `</div>`;
+      document.getElementById('ticket-addition').innerHTML = html;
+      const printWindow = window.open('', '', 'width=900,height=800');
+      printWindow.document.write('<html><head><title>Addition</title>');
+      printWindow.document.write('<style>body{margin:0;padding:0;}@media print{body{width:58mm!important;}}</style>');
+      printWindow.document.write('</head><body >');
+      printWindow.document.write(html);
+      printWindow.document.write('</body></html>');
+      printWindow.document.close();
+      printWindow.focus();
+      // Attendre 600ms pour laisser le temps au logo de charger avant impression
+      setTimeout(()=>{printWindow.print(); printWindow.close();}, 600);
+      // Enregistrement du snapshot d'impression
+      if (panier.length && PANIER_ID) {
+        fetch(`/panier/impression/${PANIER_ID}`, {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            total: total,
+            produits: panier
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if(data.success) {
+            this.showNotification('Facture enregistrée !');
+          }
+        });
+      }
     },
     activeCatClass: 'px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-semibold shadow',
     inactiveCatClass: 'px-4 py-2 rounded-full bg-gray-100 hover:bg-blue-100 text-sm font-semibold shadow',
@@ -512,9 +578,19 @@ function posApp() {
 }
 </script>
 
+<script>
+window.ENTREPRISE = {!! json_encode($pointDeVente->entreprise) !!};
+window.CLIENTS = {!! json_encode($clients) !!};
+window.SERVEUSES = {!! json_encode($serveuses) !!};
+const PANIER_ID = {{ isset($panier) && $panier->id ? $panier->id : 'null' }};
+</script>
+
 <!-- Notification (ajouté sous le header panier) -->
 <template x-if="notification">
   <div x-text="notification" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-2 rounded shadow-lg z-50 text-lg font-bold animate-bounce"></div>
 </template>
+
+<!-- Ticket d'addition imprimable (généré dynamiquement) -->
+<div id="ticket-addition" style="display:none;"></div>
 
 </x-app-layout>

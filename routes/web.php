@@ -160,3 +160,6 @@ Route::get('/paniers/jour', [\App\Http\Controllers\PanierController::class, 'pan
 
 // Annuler un panier
 Route::patch('/paniers/{panier}/annuler', [\App\Http\Controllers\PanierController::class, 'annuler'])->name('paniers.annuler');
+
+// Enregistrer un snapshot d'impression de panier
+Route::post('/panier/impression/{panier}', [\App\Http\Controllers\PanierController::class, 'enregistrerImpression'])->name('panier.impression');

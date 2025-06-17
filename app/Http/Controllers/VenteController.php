@@ -58,8 +58,8 @@ class VenteController extends Controller
                     Log::debug('[CATALOGUE] Création d\'un nouveau panier pour la table', ['table_id' => $tableCourante, 'point_de_vente_id' => $pointDeVenteId]);
                     $panier = Panier::create([
                         'table_id' => $tableCourante,
-                        'point_de_vente_id' => $pointDeVenteId,
                         'status' => 'en_cours',
+                        'point_de_vente_id' => $pointDeVenteId,
                         'opened_by' => Auth::id(),
                     ]);
                     $panier->load('produits');
@@ -153,10 +153,10 @@ class VenteController extends Controller
             $panier = \App\Models\Panier::firstOrCreate(
                 [
                     'table_id' => $tableId,
-                    'point_de_vente_id' => $pointDeVenteId,
                     'status' => 'en_cours',
                 ],
                 [
+                    'point_de_vente_id' => $pointDeVenteId,
                     'client_id' => $clientId,
                     'serveuse_id' => $serveuseId,
                     'opened_by' => $openedBy,

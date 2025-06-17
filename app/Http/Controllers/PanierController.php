@@ -275,4 +275,28 @@ class PanierController extends Controller
         }
         return redirect()->back()->with('success', 'Panier annulé.');
     }
+
+    /**
+     * Enregistrer un snapshot d'impression de panier
+     */
+    public function enregistrerImpression(Request $request, $panierId)
+    {
+        $panier = \App\Models\Panier::findOrFail($panierId);
+        $user = Auth::user();
+        $data = $request->validate([
+            'total' => 'required|numeric',
+            'produits' => 'required|array',
+        ]);
+        $impression = new \App\Models\ImpressionPanier();
+        $impression->panier_id = $panier->id;
+        $impression->user_id = $user ? $user->id : null;
+        $impression->total = $data['total'];
+        $impression->produits = $data['produits'];
+        $impression->printed_at = now();
+        $impression->save();
+        // Marquer le panier comme imprimé si besoin
+        $panier->is_printed = true;
+        $panier->save();
+        return response()->json(['success' => true, 'impression_id' => $impression->id]);
+    }
 }
