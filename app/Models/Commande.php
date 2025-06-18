@@ -8,12 +8,14 @@ class Commande extends Model
 {
     protected $table = 'commandes';
 
+    public $timestamps = false; // Désactive la gestion automatique des timestamps
+
     protected $fillable = [
-        'utilisateur_id', 'point_de_vente_id', 'client_id', 'table_id', 'date_commande', 'statut'
+        'panier_id', 'mode_paiement', 'statut', 'created_at'
     ];
 
-    public function pointDeVente()
+    public function panier()
     {
-        return $this->belongsTo(\App\Models\PointDeVente::class, 'point_de_vente_id');
+        return $this->belongsTo(Panier::class);
     }
 }

@@ -122,6 +122,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/vente/continuer/{id}', [VenteController::class, 'continuer'])->name('vente.continuer');
     Route::get('/vente/ouvrir/{id}', [VenteController::class, 'ouvrir'])->name('vente.ouvrir');
     Route::post('/vente/fermer/{id}', [VenteController::class, 'fermer'])->name('vente.fermer');
+    Route::post('/vente/valider', [VenteController::class, 'valider'])->name('vente.valider');
 });
 
 

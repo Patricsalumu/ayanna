@@ -5,6 +5,8 @@ use Illuminate\Http\Request;
 use App\Models\PointDeVente;
 use App\Models\Historiquepdv;
 use App\Models\Panier;
+use App\Models\Commande;
+use App\Models\Vente;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -73,6 +75,11 @@ class VenteController extends Controller
             $client_id = $panier ? $panier->client_id : '';
             $serveuse_id = $panier ? $panier->serveuse_id : '';
 
+            // Récupérer les modes de paiement actifs pour l'entreprise
+            $modesPaiement = \App\Models\ModePaiement::where('entreprise_id', $pointDeVente->entreprise_id)
+                ->where('actif', true)
+                ->get();
+
             return view('vente.catalogue', [
                 'pointDeVente' => $pointDeVente,
                 'categories' => $categories,
@@ -87,6 +94,7 @@ class VenteController extends Controller
                 'client_id' => $client_id,
                 'serveuse_id' => $serveuse_id,
                 'panier' => $panier ?? null,
+                'modesPaiement' => $modesPaiement,
             ]);
         } catch (\Throwable $e) {
             \Log::error('Erreur catalogue vente: '.$e->getMessage(), ['exception' => $e]);
@@ -293,5 +301,44 @@ class VenteController extends Controller
         $paniers[$tableId] = $panier;
         session(['paniers' => $paniers]);
         return response()->json(['ok' => true]);
+    }
+
+    public function valider(Request $request)
+    {
+        $data = $request->all();
+        Log::info('Payload reçu pour validation', $data);
+
+        if (empty($data['panier_id'])) {
+            return response()->json(['success' => false, 'error' => 'Aucun panier_id fourni.'], 400);
+        }
+
+        // Vérification spécifique pour le paiement par compte client
+        if (
+            isset($data['mode_paiement']) && strtolower($data['mode_paiement']) === 'compte client'
+        ) {
+            $panier = \App\Models\Panier::find($data['panier_id']);
+            if (!$panier || !$panier->client_id || !$panier->serveuse_id) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Pour un paiement par compte client, vous devez sélectionner un client et une serveuse.'
+                ], 422);
+            }
+        }
+
+        $commande = new Commande();
+        $commande->panier_id = $data['panier_id'];
+        $commande->mode_paiement = $data['mode_paiement'];
+        $commande->statut = 'validé';
+        $commande->created_at = now(); // Ajout manuel de la date de création
+        $commande->save();
+
+        // Mettre à jour le statut du panier à 'valide' après paiement
+        $panier = \App\Models\Panier::find($data['panier_id']);
+        if ($panier) {
+            $panier->status = 'validé';
+            $panier->save();
+        }
+
+        return response()->json(['success' => true, 'commande_id' => $commande->id]);
     }
 }

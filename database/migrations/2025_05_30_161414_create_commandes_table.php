@@ -18,8 +18,11 @@ return new class extends Migration
              $table->foreignId('point_de_vente_id')->nullable()->constrained('points_de_vente')->onDelete('set null');
             $table->foreignId('client_id')->constrained()->onDelete('cascade');
             $table->foreignId('table_id')->constrained('tables')->onDelete('cascade');
-            $table->date('date_commande'); // Date de la commande
-            $table->boolean('statut'); // Statut de la commande (par exemple, en cours, terminée, annulée)       
+            $table->date('date_commande'); // Date de la commande   
+            $table->unsignedBigInteger('panier_id');
+            $table->string('mode_paiement')->nullable();
+            $table->string('statut')->default('en attente'); // Statut de la commande (en attente, en cours, terminée, annulée)
+            $table->foreign('panier_id')->references('id')->on('paniers');
             $table->timestamps();
         });
 
