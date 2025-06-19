@@ -115,15 +115,27 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/entreprises/{entreprise}/produits/{produit}/duplicate', [ProduitController::class, 'duplicate'])->name('produits.duplicate');
     Route::delete('/entreprises/{entreprise}/produits/{produit}', [ProduitController::class, 'destroy'])->name('produits.destroy');
 
+    //Routes créances
+    Route::post('/creances/{commande}/confirmer', [App\Http\Controllers\VenteController::class, 'confirmerCreance'])->name('creances.confirmer');
+    Route::get('/creances', [App\Http\Controllers\VenteController::class, 'creances'])->name('creances.liste');
 });
 
-// Route pour continuer la vente (accessible uniquement si authentifié)
+// Comptes & Entrées-Sorties
 Route::middleware(['auth'])->group(function () {
-    Route::get('/vente/continuer/{id}', [VenteController::class, 'continuer'])->name('vente.continuer');
-    Route::get('/vente/ouvrir/{id}', [VenteController::class, 'ouvrir'])->name('vente.ouvrir');
-    Route::post('/vente/fermer/{id}', [VenteController::class, 'fermer'])->name('vente.fermer');
-    Route::post('/vente/valider', [VenteController::class, 'valider'])->name('vente.valider');
+    Route::get('/comptes', [\App\Http\Controllers\CompteController::class, 'index'])->name('comptes.index');
+    Route::get('/comptes/create', [\App\Http\Controllers\CompteController::class, 'create'])->name('comptes.create');
+    Route::post('/comptes', [\App\Http\Controllers\CompteController::class, 'store'])->name('comptes.store');
+    Route::get('/comptes/{compte}/edit', [\App\Http\Controllers\CompteController::class, 'edit'])->name('comptes.edit');
+    Route::put('/comptes/{compte}', [\App\Http\Controllers\CompteController::class, 'update'])->name('comptes.update');
+    Route::delete('/comptes/{compte}', [\App\Http\Controllers\CompteController::class, 'destroy'])->name('comptes.destroy');
+    Route::get('/comptes/{compte}/mouvements', [\App\Http\Controllers\CompteController::class, 'mouvements'])->name('comptes.mouvements');
+    Route::post('/comptes/{compte}/mouvements', [\App\Http\Controllers\CompteController::class, 'ajouterMouvement'])->name('comptes.mouvements.ajouter');
+    Route::delete('/mouvements/{mouvement}', [\App\Http\Controllers\CompteController::class, 'supprimerMouvement'])->name('comptes.mouvements.supprimer');
 });
+
+// Mouvements (entrées/sorties) d'un point de vente
+Route::get('/points-de-vente/{pointDeVente}/mouvements', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'index'])->name('mouvements.pdv');
+Route::post('/points-de-vente/{pointDeVente}/mouvements', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'store'])->name('mouvements.pdv.store');
 
 
 Route::get('/', function () {
@@ -164,3 +176,10 @@ Route::patch('/paniers/{panier}/annuler', [\App\Http\Controllers\PanierControlle
 
 // Enregistrer un snapshot d'impression de panier
 Route::post('/panier/impression/{panier}', [\App\Http\Controllers\PanierController::class, 'enregistrerImpression'])->name('panier.impression');
+
+// Ouvrir/Fermer un point de vente (vente)
+Route::post('/vente/{pointDeVente}/fermer', [App\Http\Controllers\VenteController::class, 'fermer'])->name('vente.fermer');
+Route::get('/vente/{pointDeVente}/ouvrir', [App\Http\Controllers\VenteController::class, 'ouvrir'])->name('vente.ouvrir');
+// Continuer une vente (accès direct à la page de vente d'un point de vente)
+Route::get('/vente/{pointDeVente}/continuer', [App\Http\Controllers\VenteController::class, 'continuer'])->name('vente.continuer');
+Route::post('/vente/valider', [App\Http\Controllers\VenteController::class, 'valider'])->name('vente.valider');

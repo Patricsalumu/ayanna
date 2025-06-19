@@ -187,8 +187,16 @@
                      class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl z-30 flex flex-col p-2 border border-gray-100">
                   <button class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4" title="Panier">Fiche Produit</button>
                   <button class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4" title="Tables">Commandes</button>
-                  <button class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4" title="Commandes">Créances</button>
-                  <button class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4" title="Créances">Entrées-sorties</button>
+                  <a href="{{ route('creances.liste') }}"
+                     class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4"
+                     title="Créances">
+                     Créances
+                  </a>
+                  <a href="{{ route('mouvements.pdv', $pointDeVente->id) }}"
+                     class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4"
+                     title="Entrées-sorties">
+                     Entrées-sorties
+                  </a>
                   <button class="w-full py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4" title="Entrée/Sortie">Fermer</button>
                 </div>
               </div>
@@ -267,6 +275,11 @@ window.POINT_DE_VENTE_ID = "{{ $pointDeVente->id ?? '' }}";
 window.SET_CLIENT_URL = "{{ url('/panier/set-client') }}";
 window.SET_SERVEUSE_URL = "{{ url('/panier/set-serveuse') }}";
 window.PANIER_ID = @json($panier->id ?? ($panier['id'] ?? null));
+window.ENTREPRISE = @json($pointDeVente->entreprise);
+window.CLIENTS = @json($clients);
+window.SERVEUSES = @json($serveuses);
+window.TABLE_COURANTE_LABEL = "{{ $tables->firstWhere('id', $tableCourante)->numero ?? $tables->firstWhere('id', $tableCourante)->nom ?? $tableCourante }}";
+window.POINT_DE_VENTE_NOM = "{{ $pointDeVente->nom ?? '' }}";
 // Ajoute ici toutes les autres variables nécessaires à posApp
 </script>
 </div>

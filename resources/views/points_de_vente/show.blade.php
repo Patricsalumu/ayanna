@@ -2,13 +2,14 @@
     <x-slot name="header">
             <!-- Menu supérieur -->
     <nav class="mb-6 border-b pb-4 flex flex-wrap gap-4 text-sm font-medium text-gray-700">
-        <a href="#" class="hover:text-blue-600">Points de Vente</a>
-        <a href="{{ route('salles.show', $entreprise->id) }}" class="hover:text-blue-600">Plans de Salle</a>
-        <a href="{{ route('categories.show', ['entreprise' => $entreprise->id, 'module_id' => request('module_id')]) }}" class="hover:text-blue-600">Catégories</a>
-        <a href="{{ route('produits.entreprise', $entreprise->id) }}" class="hover:text-blue-600">Produits</a>
-        <a href="#" class="hover:text-blue-600">Commandes</a>
-        <a href="{{ route('clients.show', $entreprise->id) }}" class="hover:text-blue-600">Clients</a>
-        <a href="{{ route('users.show', $entreprise->id) }}" class="hover:text-blue-600">Utilisateurs</a>
+    <a href="{{ route('pointsDeVente.show', $entreprise->id) }}" class="hover:text-blue-600">Points de Vente</a>
+    <a href="{{ route('salles.show', $entreprise->id) }}" class="hover:text-blue-600">Plans de Salle</a>
+    <a href="{{ route('categories.show', ['entreprise' => $entreprise->id, 'module_id' => request('module_id')]) }}" class="hover:text-blue-600">Catégories</a>
+    <a href="{{ route('produits.entreprise', $entreprise->id) }}" class="hover:text-blue-600">Produits</a>
+    <a href="#" class="hover:text-blue-600">Commandes</a>
+    <a href="{{ route('clients.show', $entreprise->id) }}" class="hover:text-blue-600">Clients</a>
+    <a href="{{ route('users.show', $entreprise->id) }}" class="hover:text-blue-600">Utilisateurs</a>
+    <a href="{{ route('comptes.index') }}" class="hover:text-blue-600 text-green-700 font-bold">Comptes</a>
     </nav>
     </x-slot>
 <div class="p-6">

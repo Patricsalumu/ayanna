@@ -417,6 +417,79 @@ function posApp() {
       })
       .catch(() => alert('Erreur de connexion avec le serveur'));
     },
+    printAddition() {
+      const panier = this.panier || [];
+      const table = window.TABLE_COURANTE_LABEL || '';
+      const pointDeVente = window.POINT_DE_VENTE_NOM || '';
+      const entreprise = window.ENTREPRISE || {};
+      const client = this.client_id ? (window.CLIENTS?.find?.(c => c.id == this.client_id) ?? null) : null;
+      const serveuse = this.serveuse_id ? (window.SERVEUSES?.find?.(s => s.id == this.serveuse_id) ?? null) : null;
+      const panierId = window.PANIER_ID;
+      let total = 0;
+      let now = new Date();
+      let dateStr = now.toLocaleDateString('fr-FR');
+      let heureStr = now.toLocaleTimeString('fr-FR');
+      let html = `<div style='width:58mm;padding:0;font-family:monospace;'>`;
+      // Logo
+      if(entreprise.logo) {
+        html += `<div style='text-align:center;'><img src='${window.location.origin}/storage/${entreprise.logo}' style='max-width:40px;max-height:40px;margin-bottom:2px;display:block;margin-left:auto;margin-right:auto;'/></div>`;
+      }
+      // Nom + infos entreprise
+      html += `<div style='text-align:center;font-weight:bold;font-size:15px;'>${entreprise.nom ?? ''}</div>`;
+      if(entreprise.numero_entreprise) html += `<div style='text-align:center;font-size:11px;'>N° Entreprise : ${entreprise.numero_entreprise}</div>`;
+      if(entreprise.email) html += `<div style='text-align:center;font-size:11px;'>${entreprise.email}</div>`;
+      if(entreprise.telephone) html += `<div style='text-align:center;font-size:11px;'>${entreprise.telephone}</div>`;
+      if(entreprise.adresse) html += `<div style='text-align:center;font-size:11px;'>${entreprise.adresse}</div>`;
+      html += `<div style='border-top:1px dashed #222;margin:6px 0;'></div>`;
+      // Infos client/serveuse/table/panier
+      html += `<div style='font-size:11px;'>Client : <b>${client?.nom ?? '-'}</b></div>`;
+      html += `<div style='font-size:11px;'>Servie par : <b>${serveuse?.name ?? '-'}</b></div>`;
+      html += `<div style='font-size:11px;'>Table : <b>${table}</b> | Panier n° <b>${panierId ?? '-'}</b></div>`;
+      html += `<div style='border-top:1px dashed #222;margin:6px 0;'></div>`;
+      // Tableau produits
+      html += `<table style='width:100%;font-size:12px;margin:0 auto;'><thead><tr><th style='text-align:left;'>Produit</th><th>Qté</th><th style='text-align:right;'>Total</th></tr></thead><tbody>`;
+      panier.filter(item=>item.qte>0).forEach(item => {
+        const lineTotal = item.qte * item.prix;
+        total += lineTotal;
+        html += `<tr><td style='word-break:break-all;'>${item.nom}</td><td style='text-align:center;'>${item.qte}</td><td style='text-align:right;'>${lineTotal.toLocaleString()} F</td></tr>`;
+      });
+      html += `</tbody></table>`;
+      html += `<div style='border-top:1px dashed #222;margin:6px 0;'></div>`;
+      html += `<div style='text-align:right;font-size:14px;font-weight:bold;'>TOTAL : ${total.toLocaleString()} F</div>`;
+      html += `<div style='text-align:center;font-size:11px;margin-top:10px;'>Merci pour votre visite !</div>`;
+      html += `<div style='text-align:center;font-size:10px;margin-top:8px;'>Généré par Ayanna &copy; | ${dateStr} ${heureStr}</div>`;
+      html += `</div>`;
+      document.getElementById('ticket-addition').innerHTML = html;
+      const printWindow = window.open('', '', 'width=900,height=800');
+      printWindow.document.write('<html><head><title>Addition</title>');
+      printWindow.document.write('<style>body{margin:0;padding:0;}@media print{body{width:58mm!important;}}</style>');
+      printWindow.document.write('</head><body >');
+      printWindow.document.write(html);
+      printWindow.document.write('</body></html>');
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(()=>{printWindow.print(); printWindow.close();}, 800);
+      // Enregistrement du snapshot d'impression
+      if (panier.length && panierId) {
+        fetch(`/panier/impression/${panierId}`, {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': window.CSRF_TOKEN,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            total: total,
+            produits: panier
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if(data.success) {
+            this.showNotification('Facture enregistrée !');
+          }
+        });
+      }
+    },
     formatMoney(val) {
       if (typeof val !== 'number') val = parseFloat(val) || 0;
       return val.toLocaleString('fr-FR', { minimumFractionDigits: 0 });

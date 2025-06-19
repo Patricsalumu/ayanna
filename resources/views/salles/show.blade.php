@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h1 class="text-3xl font-bold text-gray-800 mb-6">
-            <a href="{{ route('pointsDeVente.show', [$entreprise->id, $pointDeVente->id]) }}" class="text-blue-600 hover:underline">&larr;</a>
+            <a href="{{ route('pointsDeVente.show', $entreprise->id) }}" class="text-blue-600 hover:underline">&larr;</a>
             Salles
         </h1>
     </x-slot>

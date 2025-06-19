@@ -38,6 +38,7 @@ class VenteController extends Controller
             // Gestion multi-paniers par table (NOUVELLE LOGIQUE)
             $tableCourante = $request->get('table_id');
             $produitsPanier = [];
+            $panier = null;
             Log::debug('[CATALOGUE] table_id reçu', ['table_id' => $tableCourante, 'point_de_vente_id' => $pointDeVenteId]);
             if ($tableCourante) {
                 $panier = Panier::where('table_id', $tableCourante)
@@ -313,6 +314,7 @@ class VenteController extends Controller
         return redirect()->route('pointsDeVente.show', [$pointDeVente->entreprise_id, $pointDeVente->id])->with('success', 'Point de vente fermé.');
     }
 
+    // Définit le client pour un panier spécifique
     public function setClient(\Illuminate\Http\Request $request)
     {
         $tableId = $request->get('table_id');
@@ -324,7 +326,8 @@ class VenteController extends Controller
         session(['paniers' => $paniers]);
         return response()->json(['ok' => true]);
     }
-
+   
+    // Définit la serveuse pour un panier spécifique
     public function setServeuse(\Illuminate\Http\Request $request)
     {
         $tableId = $request->get('table_id');
@@ -338,7 +341,7 @@ class VenteController extends Controller
         session(['paniers' => $paniers]);
         return response()->json(['ok' => true]);
     }
-
+     // Valide le paiement d'un panier et crée une commande
     public function valider(Request $request)
     {
         $data = $request->all();
@@ -358,21 +361,24 @@ class VenteController extends Controller
                     'success' => false,
                     'error' => 'Pour un paiement par compte client, vous devez sélectionner un client et une serveuse.'
                 ], 422);
-            } else {
-                // Ajout notification explicite côté API
-                return response()->json([
-                    'success' => true,
-                    'notification' => 'Paiement par compte client validé. Client et serveuse bien sélectionnés.',
-                    'client_id' => $panier->client_id,
-                    'serveuse_id' => $panier->serveuse_id
-                ]);
+            } 
+        }
+        // Déterminer le statut selon le mode de paiement
+        $statut = 'validé';
+        if (isset($data['mode_paiement'])) {
+            $mode = strtolower($data['mode_paiement']);
+            if ($mode === 'espèces' || $mode === 'especes' || $mode === 'cash') {
+                $statut = 'cash';
+            } elseif ($mode === 'compte_client' || $mode === 'compte client' || $mode === 'credit') {
+                $statut = 'credit';
+            } elseif ($mode === 'mobile_money' || $mode === 'mobile money') {
+                $statut = 'mobilemoney';
             }
         }
-
         $commande = new Commande();
         $commande->panier_id = $data['panier_id'];
         $commande->mode_paiement = $data['mode_paiement'];
-        $commande->statut = 'validé';
+        $commande->statut = $statut;
         $commande->created_at = now(); // Ajout manuel de la date de création
         $commande->save();
 
@@ -396,5 +402,24 @@ class VenteController extends Controller
         }
 
         return response()->json(['success' => true, 'commande_id' => $commande->id]);
+    }
+
+    // Affiche la liste des créances (commandes avec paiement par compte client)
+    public function creances()
+    {
+        $creances = \App\Models\Commande::with(['panier', 'panier.client'])
+            ->where('mode_paiement', 'compte_client')
+            ->whereDate('created_at', now()->toDateString())
+            ->orderByDesc('created_at')
+            ->get();
+
+        return view('creances.liste', compact('creances'));
+    }
+    public function confirmerCreance($commandeId)
+    {
+        $commande = \App\Models\Commande::findOrFail($commandeId);
+        $commande->statut = 'payé'; // ou 'validé' selon ta logique
+        $commande->save();
+        return redirect()->back()->with('success', 'Créance confirmée comme payée.');
     }
 }
