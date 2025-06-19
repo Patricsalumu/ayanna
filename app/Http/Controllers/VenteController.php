@@ -80,6 +80,38 @@ class VenteController extends Controller
                 ->where('actif', true)
                 ->get();
 
+            // Génération des tableaux pour Alpine.js (JS)
+            $produitsArray = $produits->map(function($p){
+                return [
+                    'id' => $p->id,
+                    'nom' => $p->nom,
+                    'prix' => $p->prix_vente,
+                    'image' => $p->image ? asset('storage/'.$p->image) : null,
+                    'cat_id' => $p->categorie_id
+                ];
+            })->toArray();
+
+            $clientsArray = $clients->map(function($c){
+                return [
+                    'id' => $c->id,
+                    'nom' => $c->nom,
+                ];
+            })->toArray();
+
+            $serveusesArray = $serveuses->map(function($s){
+                return [
+                    'id' => $s->id,
+                    'name' => $s->name,
+                ];
+            })->toArray();
+
+            $modesPaiementArray = $modesPaiement->map(function($m){
+                return [
+                    'id' => $m->id,
+                    'nom' => $m->nom,
+                ];
+            })->toArray();
+
             return view('vente.catalogue', [
                 'pointDeVente' => $pointDeVente,
                 'categories' => $categories,
@@ -95,9 +127,13 @@ class VenteController extends Controller
                 'serveuse_id' => $serveuse_id,
                 'panier' => $panier ?? null,
                 'modesPaiement' => $modesPaiement,
+                'produitsArray' => $produitsArray,
+                'clientsArray' => $clientsArray,
+                'serveusesArray' => $serveusesArray,
+                'modesPaiementArray' => $modesPaiementArray,
             ]);
         } catch (\Throwable $e) {
-            \Log::error('Erreur catalogue vente: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Erreur catalogue vente: '.$e->getMessage(), ['exception' => $e]);
             return back()->with('error', 'Erreur serveur: '.$e->getMessage());
         }
     }
@@ -311,10 +347,10 @@ class VenteController extends Controller
         if (empty($data['panier_id'])) {
             return response()->json(['success' => false, 'error' => 'Aucun panier_id fourni.'], 400);
         }
-
+        
         // Vérification spécifique pour le paiement par compte client
         if (
-            isset($data['mode_paiement']) && strtolower($data['mode_paiement']) === 'compte client'
+            isset($data['mode_paiement']) && strtolower($data['mode_paiement']) === 'compte_client'
         ) {
             $panier = \App\Models\Panier::find($data['panier_id']);
             if (!$panier || !$panier->client_id || !$panier->serveuse_id) {
@@ -322,6 +358,14 @@ class VenteController extends Controller
                     'success' => false,
                     'error' => 'Pour un paiement par compte client, vous devez sélectionner un client et une serveuse.'
                 ], 422);
+            } else {
+                // Ajout notification explicite côté API
+                return response()->json([
+                    'success' => true,
+                    'notification' => 'Paiement par compte client validé. Client et serveuse bien sélectionnés.',
+                    'client_id' => $panier->client_id,
+                    'serveuse_id' => $panier->serveuse_id
+                ]);
             }
         }
 
@@ -337,6 +381,18 @@ class VenteController extends Controller
         if ($panier) {
             $panier->status = 'validé';
             $panier->save();
+            // Créer un nouveau panier vide pour la même table (statut en_cours)
+            $nouveauPanier = \App\Models\Panier::create([
+                'table_id' => $panier->table_id,
+                'status' => 'en_cours',
+                'point_de_vente_id' => $panier->point_de_vente_id,
+                'opened_by' => Auth::id(),
+            ]);
+            return response()->json([
+                'success' => true,
+                'commande_id' => $commande->id,
+                'nouveau_panier_id' => $nouveauPanier->id
+            ]);
         }
 
         return response()->json(['success' => true, 'commande_id' => $commande->id]);

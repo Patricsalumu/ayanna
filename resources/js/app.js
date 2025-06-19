@@ -1,4 +1,5 @@
 import './bootstrap';
+import './posApp';
 
 import Alpine from 'alpinejs';
 

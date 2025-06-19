@@ -117,13 +117,6 @@ class PanierController extends Controller
     // Supprimer un produit du panier
     public function supprimerProduit(Request $request, $produit_id)
     {
-        Log::debug('[supprimerProduit] Reçu', [
-            'produit_id' => $produit_id,
-            'table_id' => $request->input('table_id'),
-            'user_id' => Auth::id(),
-            'body' => $request->all()
-        ]);
-
         $table_id = $request->input('table_id');
         $panier = Panier::where('table_id', $table_id)
             ->where('status', 'en_cours')
@@ -131,10 +124,10 @@ class PanierController extends Controller
 
         if (!$panier) return response()->json(['error' => 'Panier non trouvé'], 404);
 
-        // Marquer le produit comme supprimé (quantité -1 dans la table pivot)
+        // Marquer le produit comme supprimé (quantité 0 ans la table pivot)
         $existant = $panier->produits()->where('produit_id', $produit_id)->first();
         if ($existant) {
-            $panier->produits()->updateExistingPivot($produit_id, ['quantite' => -1]);
+            $panier->produits()->updateExistingPivot($produit_id, ['quantite' =>0]);
         }
 
         $panier->load('produits');
