@@ -13,6 +13,11 @@ class Historiquepdv extends Model
         'point_de_vente_id',
         'user_id',
         'etat',
+        'solde',
+        'opened_at',
+        'closed_at',
+        'opened_by',
+        'closed_by',
     ];
 
     public function pointDeVente()

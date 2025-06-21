@@ -38,5 +38,23 @@ class PointDeVente extends Model
     {
         return $this->hasMany(\App\Models\Commande::class, 'point_de_vente_id');
     }
+    /**
+     * Retourne tous les produits liés à ce point de vente via les catégories associées.
+     */
+    public function produits()
+    {
+        return \App\Models\Produit::whereIn('categorie_id', function($query) {
+            $query->select('categorie_id')
+                ->from('categorie_point_de_vente')
+                ->where('point_de_vente_id', $this->id);
+        });
+    }
+    // Retourne true si un panier en cours existe pour ce point de vente
+    public function hasPanierEnCours()
+    {
+        return \App\Models\Panier::where('point_de_vente_id', $this->id)
+            ->where('status', 'en_cours')
+            ->exists();
+    }
 }
 ?>

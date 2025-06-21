@@ -268,32 +268,16 @@ class VenteController extends Controller
         return view('vente.continuer', compact('pointDeVente'));
     }
 
-    // Ouvre un point de vente (changement d'état, traçabilité)
+    // Ouvre un point de vente (affiche la fiche d'ouverture du stock, sans changer l'état)
     public function ouvrir($id)
     {
         $pointDeVente = PointDeVente::findOrFail($id);
         if ($pointDeVente->etat === 'ouvert') {
             return redirect()->back()->with('error', 'Le point de vente est déjà ouvert.');
         }
-        DB::transaction(function () use ($pointDeVente) {
-            $pointDeVente->update(['etat' => 'ouvert']);
-            Historiquepdv::create([
-                'point_de_vente_id' => $pointDeVente->id,
-                'user_id' => Auth::id(),
-                'etat' => 'ouvert',
-            ]);
-        });
-        // Redirection directe vers le plan de la première salle du point de vente
-        $salle = $pointDeVente->salles()->first();
-        if ($salle) {
-            return redirect()->route('salle.plan.vente', [
-                'entreprise' => $pointDeVente->entreprise_id,
-                'salle' => $salle->id,
-                'point_de_vente_id' => $pointDeVente->id
-            ])->with('success', 'Point de vente ouvert. Sélectionnez une table.');
-        }
-        // Si pas de salle, fallback sur la page continuer
-        return redirect()->route('vente.continuer', $pointDeVente->id)->with('success', 'Point de vente ouvert.');
+        // NE PAS changer l'état ici, juste afficher la fiche d'ouverture du stock
+        return redirect()->route('stock_journalier.ouverture', ['pointDeVente' => $pointDeVente->id])
+            ->with('success', 'Veuillez valider la fiche d\'ouverture du stock.');
     }
 
     // Ferme un point de vente (changement d'état, traçabilité)
@@ -387,6 +371,8 @@ class VenteController extends Controller
         if ($panier) {
             $panier->status = 'validé';
             $panier->save();
+            // MAJ quantité vendue dans le stock journalier
+            $this->majQuantiteVendueStock($panier);
             // Créer un nouveau panier vide pour la même table (statut en_cours)
             $nouveauPanier = \App\Models\Panier::create([
                 'table_id' => $panier->table_id,
@@ -400,19 +386,50 @@ class VenteController extends Controller
                 'nouveau_panier_id' => $nouveauPanier->id
             ]);
         }
-
         return response()->json(['success' => true, 'commande_id' => $commande->id]);
+    }
+
+    /**
+     * Met à jour la quantité vendue dans le stock journalier à la validation d'un panier
+     */
+    private function majQuantiteVendueStock($panier)
+    {
+        if (!$panier) return;
+        $pointDeVenteId = $panier->point_de_vente_id;
+        $date = now()->toDateString();
+        // Récupérer la session en cours (la plus récente pour ce point de vente et ce jour)
+        $session = \App\Models\StockJournalier::where('point_de_vente_id', $pointDeVenteId)
+            ->where('date', $date)
+            ->orderByDesc('session')
+            ->value('session');
+        if (!$session) return;
+        foreach ($panier->produits as $produit) {
+            $stock = \App\Models\StockJournalier::where('point_de_vente_id', $pointDeVenteId)
+                ->where('date', $date)
+                ->where('session', $session)
+                ->where('produit_id', $produit->id)
+                ->first();
+            if ($stock) {
+                $qteVendue = $produit->pivot->quantite;
+                $stock->quantite_vendue = ($stock->quantite_vendue ?? 0) + $qteVendue;
+                $stock->save();
+            }
+        }
     }
 
     // Affiche la liste des créances (commandes avec paiement par compte client)
     public function creances()
     {
+        $user = Auth::user();
+        $entrepriseId = $user->entreprise_id ?? ($user->entreprise->id ?? null);
         $creances = \App\Models\Commande::with(['panier', 'panier.client'])
             ->where('mode_paiement', 'compte_client')
             ->whereDate('created_at', now()->toDateString())
+            ->whereHas('panier.tableResto.salle', function($q) use ($entrepriseId) {
+                $q->where('entreprise_id', $entrepriseId);
+            })
             ->orderByDesc('created_at')
             ->get();
-
         return view('creances.liste', compact('creances'));
     }
     public function confirmerCreance($commandeId)

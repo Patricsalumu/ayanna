@@ -240,8 +240,13 @@ class PanierController extends Controller
      */
     public function paniersDuJour(Request $request)
     {
+        $user = Auth::user();
+        $entrepriseId = $user->entreprise_id ?? ($user->entreprise->id ?? null);
         $today = now()->startOfDay();
         $paniers = Panier::whereDate('created_at', $today)
+            ->whereHas('tableResto.salle', function($q) use ($entrepriseId) {
+                $q->where('entreprise_id', $entrepriseId);
+            })
             ->with(['tableResto', 'serveuse', 'client', 'produits'])
             ->orderBy('created_at', 'desc')
             ->get();

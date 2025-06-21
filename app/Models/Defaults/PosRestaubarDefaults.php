@@ -34,41 +34,47 @@ class PosRestaubarDefaults
             'prix_achat' => 1000,
             'prix_vente' => 2000,
             'categorie_id' => $cat1->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
-            Produit::create([
+        Produit::create([
             'nom' => 'Castel lite',
             'description' => 'Bière blonde 33cl',
             'prix_achat' => 2000,
             'prix_vente' => 4000,
             'categorie_id' => $cat1->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
-            Produit::create([
+        Produit::create([
             'nom' => 'Heineken',
             'description' => 'Bière blonde 33cl',
             'prix_achat' => 2000,
             'prix_vente' => 4000,
             'categorie_id' => $cat1->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
-            Produit::create([
+        Produit::create([
             'nom' => 'Simba',
             'description' => 'Bière brasimba 73 cl',
             'prix_achat' =>3500,
             'prix_vente' => 6000,
             'categorie_id' => $cat1->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
-            Produit::create([
+        Produit::create([
             'nom' => 'Tembo',
             'description' => 'Bière brasimba 73cl',
             'prix_achat' => 3500,
             'prix_vente' => 6000,
             'categorie_id' => $cat1->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
-            Produit::create([
+        Produit::create([
             'nom' => 'Castel',
             'description' => 'Bière brasimba 67cl',
             'prix_achat' => 3500,
             'prix_vente' => 6000,
             'categorie_id' => $cat1->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
     //categorie cuisine
         Produit::create([
@@ -77,34 +83,39 @@ class PosRestaubarDefaults
             'prix_achat' => 10000,
             'prix_vente' => 30000,
             'categorie_id' => $cat2->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
-            Produit::create([
+        Produit::create([
             'nom' => 'Poulet complet',
             'description' => 'Poulet complet ',
             'prix_achat' => 15000,
             'prix_vente' => 40000,
             'categorie_id' => $cat2->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
-            Produit::create([
+        Produit::create([
             'nom' => 'Demi Poulet',
             'description' => 'Plat complet viande grillée',
             'prix_achat' => 8000,
             'prix_vente' => 25000,
             'categorie_id' => $cat2->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
-            Produit::create([
+        Produit::create([
             'nom' => 'Ailes de poulet + Frites',
             'description' => 'Plat complet viande grillée',
             'prix_achat' => 12000,
             'prix_vente' => 25000,
             'categorie_id' => $cat2->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
-                Produit::create([
+        Produit::create([
             'nom' => 'Boulettes sipmle',
             'description' => 'Boulette simple non accompagné',
             'prix_achat' => 7500,
             'prix_vente' => 15000,
             'categorie_id' => $cat2->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
        //Categorie sucrés
          Produit::create([
@@ -113,71 +124,81 @@ class PosRestaubarDefaults
             'prix_achat' => 1200,
             'prix_vente' => 3000,
             'categorie_id' => $cat3->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
-            Produit::create([
+        Produit::create([
             'nom' => 'Coca cola Gf',
             'description' => 'bouteille grand format',
             'prix_achat' => 1200,
             'prix_vente' => 5000,
             'categorie_id' => $cat3->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
-            Produit::create([
+        Produit::create([
             'nom' => 'Djino',
             'description' => 'bouteille cassable 33cl',
             'prix_achat' => 1200,
             'prix_vente' => 3000,
             'categorie_id' => $cat3->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
-            Produit::create([
+        Produit::create([
             'nom' => 'Jus ceres',
             'description' => 'carton',
             'prix_achat' => 3000,
             'prix_vente' => 6000,
             'categorie_id' => $cat3->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
-            Produit::create([
+        Produit::create([
             'nom' => 'Pepsi',
             'description' => 'bouteille plastique',
             'prix_achat' => 1200,
             'prix_vente' => 3000,
             'categorie_id' => $cat3->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
 
         //WHISKY
-            Produit::create([
+        Produit::create([
             'nom' => 'JB 65cl',
             'description' => 'JB Grand format',
             'prix_achat' => 35000,
             'prix_vente' => 60000,
             'categorie_id' => $cat4->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
-            Produit::create([
+        Produit::create([
             'nom' => 'Sir edward 65cl',
             'description' => 'Sir Edward Grand format',
             'prix_achat' => 25000,
             'prix_vente' => 60000,
             'categorie_id' => $cat4->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
-            Produit::create([
+        Produit::create([
             'nom' => 'Red label',
             'description' => 'Red label',
             'prix_achat' => 35000,
             'prix_vente' => 84000,
             'categorie_id' => $cat4->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
-            Produit::create([
+        Produit::create([
             'nom' => 'Henessy',
             'description' => 'Hennessy',
             'prix_achat' => 112000,
             'prix_vente' => 280000,
             'categorie_id' => $cat4->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
-            Produit::create([
+        Produit::create([
             'nom' => 'Williams',
             'description' => 'williams',
             'prix_achat' => 1200,
             'prix_vente' => 60000,
             'categorie_id' => $cat4->id,
+            'point_de_vente_id' => $pdv->id,
         ]);
 
         // Créer une salle par défaut

@@ -55,10 +55,14 @@
                     </form>
                     <a href="{{ route('pointsDeVente.edit', [$entreprise->id, $pdv->id]) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Modifier</a>
                     @if($pdv->etat === 'ouvert')
-                    <form action="{{ route('vente.fermer', $pdv->id) }}" method="POST" style="display:inline;">
-                    @csrf
-                    <button type="submit" class="bg-red-600 text-white px-3 py-1 rounded-md text-sm hover:bg-red-700 ml-2">Fermer</button>
-                    </form>
+                        @if(!$pdv->hasPanierEnCours())
+                            <form action="{{ route('stock_journalier.fermer_session', $pdv->id) }}" method="POST" style="display:inline;">
+                            @csrf
+                            <button type="submit" class="bg-red-600 text-white px-3 py-1 rounded-md text-sm hover:bg-red-700 ml-2">Fermer</button>
+                            </form>
+                        @else
+                            <span class="text-xs text-red-500 block px-4 py-2">Impossible de fermer : panier en cours</span>
+                        @endif
                     @endif                    
                     <form action="{{ route('pointsDeVente.destroy', [$entreprise->id, $pdv->id]) }}" method="POST" onsubmit="return confirm('Confirmer la suppression ?');">
                         @csrf
@@ -83,14 +87,14 @@
             </div>
         </div>
         @endforeach
-    </div>
-
+    </div> <!-- fermeture correcte de gridView -->
     <div id="listView" class="hidden">
         <div class="overflow-x-auto">
             <table class="w-full table-auto bg-white shadow rounded-lg">
                 <thead class="bg-gray-100 text-left text-sm font-medium text-gray-600">
                     <tr>
                         <th class="p-3">Nom</th>
+                        <th class="p-3">Ouverture</th>
                         <th class="p-3">Fermeture</th>
                         <th class="p-3">Solde</th>
                         <th class="p-3">Actions</th>
@@ -100,14 +104,44 @@
                     @foreach($pointsDeVente as $pdv)
                     <tr class="border-t hover:bg-gray-50">
                         <td class="p-3 font-semibold">{{ $pdv->nom }}</td>
-                        <td class="p-3">{{ now()->format('d/m/Y') }}</td>
-                        <td class="p-3">0,00 Fr</td>
+                        <td class="p-3">
+                            @php
+                                $lastOuverture = $pdv->historiques()->where('etat', 'ouvert')->latest('opened_at')->first();
+                            @endphp
+                            @if($lastOuverture && $lastOuverture->opened_at)
+                                Ouvert le {{ \Carbon\Carbon::parse($lastOuverture->opened_at)->format('d/m/Y H:i') }}
+                                @if($lastOuverture->opened_by)
+                                    par {{ optional($lastOuverture->openedBy)->name }}
+                                @elseif($lastOuverture->user)
+                                    par {{ $lastOuverture->user->name }}
+                                @endif
+                            @endif
+                        </td>
+                        <td class="p-3">
+                            @php
+                                $lastFermeture = $pdv->historiques()->where('etat', 'ferme')->latest('closed_at')->first();
+                            @endphp
+                            @if($lastFermeture && $lastFermeture->closed_at)
+                                Fermé le {{ \Carbon\Carbon::parse($lastFermeture->closed_at)->format('d/m/Y H:i') }}
+                                @if($lastFermeture->closed_by)
+                                    par {{ optional($lastFermeture->closedBy)->name }}
+                                @elseif($lastFermeture->user)
+                                    par {{ $lastFermeture->user->name }}
+                                @endif
+                            @endif
+                        </td>
+                        <td class="p-3">
+                            @php
+                                $solde = $lastFermeture ? number_format($lastFermeture->solde, 0, ',', ' ') : '0';
+                            @endphp
+                            {{ $solde }} Fr
+                        </td>
                         <td class="p-3 flex gap-2">
                             @if($pdv->etat === 'ferme')
                                 <a href="{{ route('vente.ouvrir', $pdv->id) }}" class="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700">Ouvrir la vente</a>
                             @else
                                 <a href="{{ route('vente.continuer', $pdv->id) }}" class="bg-purple-600 text-white px-3 py-1 rounded-md text-sm hover:bg-purple-700">Continuer la vente</a>
-                                <form action="{{ route('vente.fermer', $pdv->id) }}" method="POST" style="display:inline;">
+                                <form action="{{ route('stock_journalier.fermer_session', $pdv->id) }}" method="POST" style="display:inline;">
                                     @csrf
                                     <button type="submit" class="bg-red-600 text-white px-3 py-1 rounded-md text-sm hover:bg-red-700 ml-2">Fermer</button>
                                 </form>

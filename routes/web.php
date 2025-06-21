@@ -138,6 +138,18 @@ Route::get('/points-de-vente/{pointDeVente}/mouvements', [\App\Http\Controllers\
 Route::post('/points-de-vente/{pointDeVente}/mouvements', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'store'])->name('mouvements.pdv.store');
 
 
+// Stock journalier
+Route::middleware(['auth'])->group(function () {
+    Route::get('/stock-journalier/{pointDeVente?}', [\App\Http\Controllers\StockJournalierController::class, 'index'])->name('stock_journalier.index');
+    Route::post('/stock-journalier', [\App\Http\Controllers\StockJournalierController::class, 'store'])->name('stock_journalier.store');
+    Route::get('/stock-journalier/{pointDeVente}/export-pdf', [App\Http\Controllers\StockJournalierController::class, 'exportPdf'])->name('stock_journalier.export_pdf');
+    Route::post('/stock-journalier/qtajoute', [App\Http\Controllers\StockJournalierController::class, 'storeqtajoute'])->name('stock_journalier.storeqtajoute');
+    Route::post('/stock-journalier/qtinitial', [App\Http\Controllers\StockJournalierController::class, 'storeqtinitial'])->name('stock_journalier.storeqtinitial');
+    Route::get('/stock-journalier/ouverture/{pointDeVente}', [App\Http\Controllers\StockJournalierController::class, 'ficheOuvertureStock'])->name('stock_journalier.ouverture');
+    Route::post('/stock-journalier/valider-ouverture', [App\Http\Controllers\StockJournalierController::class, 'validerOuvertureStock'])->name('stock_journalier.valider_ouverture');
+    // Fermer une session de stock journalier (stock)
+    Route::post('/stock-journalier/{pointDeVente}/fermer-session', [App\Http\Controllers\StockJournalierController::class, 'fermerSession'])->name('stock_journalier.fermer_session');
+});
 Route::get('/', function () {
     return view('welcome');
 });

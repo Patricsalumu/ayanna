@@ -31,7 +31,7 @@ class ModulesController extends Controller
        
             // Si le module est le POS, on initialise les données par défaut    
             if ($module->nom === 'POS Restaubar') {
-                PosRestaubarDefaults::initialiserPour($module, $entreprise);
+                $pointDeVente = PosRestaubarDefaults::initialiserPour($module, $entreprise);
                 $message .= ' Les données par défaut ont été initialisées.';
                 return redirect()->route('pointsDeVente.show', [$entreprise->id, $pointDeVente->id])
                     ->with('success', $message);
@@ -40,6 +40,13 @@ class ModulesController extends Controller
             }
         } else {
             $message = 'Ce module est déjà activé pour cette entreprise.';
+            // Correction ici aussi si besoin
+            $pointDeVente = PointDeVente::where('entreprise_id', $entreprise->id)->first();
+            if (!$pointDeVente) {
+                // Aucun point de vente créé, rediriger avec un message d'erreur
+                return redirect()->route('entreprises.show', $entreprise->id)
+                    ->with('error', 'Aucun point de vente n\'a été créé pour cette entreprise.');
+            }
             return redirect()->route('pointsDeVente.show', [$entreprise->id, $pointDeVente->id])
                     ->with('success', $message);
         }

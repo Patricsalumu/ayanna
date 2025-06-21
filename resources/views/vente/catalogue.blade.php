@@ -185,7 +185,7 @@
                 <!-- Menu navigation déroulant -->
                 <div x-show="showNavMenu" @click.away="showNavMenu = false" x-transition
                      class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl z-30 flex flex-col p-2 border border-gray-100">
-                  <button class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4" title="Panier">Fiche Produit</button>
+                  <a href="{{ route('stock_journalier.index', ['pointDeVente' => $pointDeVente->id]) }}" class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4 block" title="Fiche Produit">Fiche Produit</a>
                   <button class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4" title="Tables">Commandes</button>
                   <a href="{{ route('creances.liste') }}"
                      class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4"
