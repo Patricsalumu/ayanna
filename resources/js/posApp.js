@@ -23,8 +23,8 @@ function posApp() {
       montantRecu: 0,
       monnaie: 0,
       modePaiement: 'espèces',
-      client_id: '',
-      serveuse_id: '',
+      client_id: window.CLIENT_ID || '',
+      serveuse_id: window.SERVEUSE_ID || '',
     },
     touches: [
       {label:'1',action:'1',class:'bg-gray-100', disabledEnPaiement: false},
@@ -153,6 +153,8 @@ function posApp() {
     openPaiement() {
       this.mode = 'paiement';
       this.selectedIndex = null;
+      this.paiement.montantRecu = this.total;
+      this.paiement.monnaie = 0;
     },
     // Correction : méthode pour libérer la table
     libererTable() {
@@ -186,41 +188,22 @@ function posApp() {
       if(!item) return;
       let oldQte = item.qte;
       if(!isNaN(action)){
-        // Si on clique un chiffre alors que la qte est à 1, on demande confirmation de suppression
+        // Saisie d'un chiffre
+        const chiffre = parseInt(action);
         if(item.qte === 1) {
-          if(confirm('Supprimer ce produit du panier ?')) {
-            fetch(`/panier/supprimer-produit/${item.id}`, {
-              method: 'POST',
-              headers: {
-                'X-CSRF-TOKEN': window.CSRF_TOKEN,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                table_id: window.TABLE_COURANTE,
-                point_de_vente_id: window.POINT_DE_VENTE_ID
-              })
-            })
-            .then(res => res.json())
-            .then(data => {
-              if(data.success) {
-                this.panier = data.panier ? data.panier.filter(p => p.qte > 0) : [];
-                if(this.selectedIndex !== null && this.selectedIndex >= this.panier.length) {
-                  this.selectedIndex = this.panier.length > 0 ? this.panier.length-1 : null;
-                }
-              } else {
-                alert(data.error || "Erreur lors de la suppression du produit");
-              }
-            })
-            .catch(err => {
-              alert("Erreur de connexion avec le serveur");
-            });
+          if(chiffre === 1) {
+            // 1 + 1 => 11
+            item.qte = 11;
+          } else {
+            // 1 + [2-9] => remplace par le chiffre
+            item.qte = chiffre;
           }
-          return;
         } else {
-          item.qte = parseInt(`${item.qte}${action}`.slice(0,3));
+          // [2-9] ou plusieurs chiffres + [1-9] => concatène
+          item.qte = parseInt(`${item.qte}${chiffre}`.slice(0,3));
         }
       } else if(action==='x'){
-        // Supprime le dernier chiffre, si <=1 alors reset à 1
+        // Supprime le dernier chiffre, si <=1 alors reset à 1 ou demande suppression
         if(item.qte > 1) {
           let qteStr = item.qte.toString();
           item.qte = parseInt(qteStr.slice(0, -1)) || 1;
@@ -417,19 +400,68 @@ function posApp() {
       })
       .catch(() => alert('Erreur de connexion avec le serveur'));
     },
-    printAddition() {
+    async validerEtImprimer() {
+      // Même logique que validerPaiement mais imprime si succès
+      if (this.paiement.montantRecu < this.total) {
+        alert('Le montant reçu est insuffisant.');
+        return;
+      }
+      try {
+        const response = await fetch('/vente/valider', {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': window.CSRF_TOKEN,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            montant_recu: this.paiement.montantRecu,
+            monnaie: this.paiement.monnaie,
+            mode_paiement: this.paiement.modePaiement,
+            client_id: this.paiement.client_id,
+            serveuse_id: this.paiement.serveuse_id,
+            table_id: window.TABLE_COURANTE,
+            point_de_vente_id: window.POINT_DE_VENTE_ID,
+            panier_id: (this.panier && this.panier.length && this.panier[0].panier_id) ? this.panier[0].panier_id : (window.PANIER_ID || null)
+          })
+        });
+        const data = await response.json();
+        if(data.notification) {
+          alert(data.notification);
+        }
+        if(data.success) {
+          this.printAddition('paiement');
+          if(data.redirect_url) {
+            setTimeout(() => { window.location.href = data.redirect_url; }, 1000);
+          } else {
+            setTimeout(() => { window.location.reload(); }, 1000);
+          }
+        } else {
+          alert(data.error || 'Erreur lors du paiement');
+        }
+      } catch (e) {
+        alert('Erreur de connexion avec le serveur');
+      }
+    },
+    printAddition(type = 'proforma') {
       const panier = this.panier || [];
       const table = window.TABLE_COURANTE_LABEL || '';
       const pointDeVente = window.POINT_DE_VENTE_NOM || '';
       const entreprise = window.ENTREPRISE || {};
-      const client = this.client_id ? (window.CLIENTS?.find?.(c => c.id == this.client_id) ?? null) : null;
-      const serveuse = this.serveuse_id ? (window.SERVEUSES?.find?.(s => s.id == this.serveuse_id) ?? null) : null;
+      // Infos client/serveuse/table/panier
+      const client = this.paiement.client_id ? (window.CLIENTS?.find?.(c => c.id == this.paiement.client_id) ?? null) : null;
+      const serveuse = this.paiement.serveuse_id ? (window.SERVEUSES?.find?.(s => s.id == this.paiement.serveuse_id) ?? null) : null;
       const panierId = window.PANIER_ID;
       let total = 0;
       let now = new Date();
       let dateStr = now.toLocaleDateString('fr-FR');
       let heureStr = now.toLocaleTimeString('fr-FR');
       let html = `<div style='width:58mm;padding:0;font-family:monospace;'>`;
+      // Type de reçu
+      if(type === 'proforma') {
+        html += `<div style='text-align:center;font-size:13px;font-weight:bold;color:#888;margin-bottom:2px;'>ADDITION / PROFORMA</div>`;
+      } else {
+        html += `<div style='text-align:center;font-size:13px;font-weight:bold;color:#222;margin-bottom:2px;'>REÇU DE PAIEMENT</div>`;
+      }
       // Logo
       if(entreprise.logo) {
         html += `<div style='text-align:center;'><img src='${window.location.origin}/storage/${entreprise.logo}' style='max-width:40px;max-height:40px;margin-bottom:2px;display:block;margin-left:auto;margin-right:auto;'/></div>`;
@@ -445,6 +477,9 @@ function posApp() {
       html += `<div style='font-size:11px;'>Client : <b>${client?.nom ?? '-'}</b></div>`;
       html += `<div style='font-size:11px;'>Servie par : <b>${serveuse?.name ?? '-'}</b></div>`;
       html += `<div style='font-size:11px;'>Table : <b>${table}</b> | Panier n° <b>${panierId ?? '-'}</b></div>`;
+      if(type === 'paiement') {
+        html += `<div style='font-size:11px;'>Mode de paiement : <b>${this.paiement.modePaiement === 'espèces' ? 'Espèces' : (this.paiement.modePaiement === 'mobile_money' ? 'Mobile Money' : (this.paiement.modePaiement === 'compte_client' ? 'Compte Client' : this.paiement.modePaiement))}</b></div>`;
+      }
       html += `<div style='border-top:1px dashed #222;margin:6px 0;'></div>`;
       // Tableau produits
       html += `<table style='width:100%;font-size:12px;margin:0 auto;'><thead><tr><th style='text-align:left;'>Produit</th><th>Qté</th><th style='text-align:right;'>Total</th></tr></thead><tbody>`;

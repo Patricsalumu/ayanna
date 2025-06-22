@@ -217,6 +217,7 @@ class PosRestaubarDefaults
                 'salle_id' => $salle->id,
             ]);
         }
+        return $pdv;
     }
 }
 // Usage example:

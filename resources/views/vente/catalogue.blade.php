@@ -132,7 +132,7 @@
         <div class="bg-white rounded-2xl shadow-xl p-6 min-w-[260px] flex flex-col items-center relative">
           <button @click="showModal = false" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl">&times;</button>
           <div class="mb-4 text-lg font-bold text-gray-700">Actions</div>
-          <button class="w-full mb-2 py-3 rounded-lg bg-gray-600 text-white font-bold text-base shadow hover:bg-gray-700 transition" @click="printAddition">Addition</button>
+          <button class="w-full mb-2 py-3 rounded-lg bg-gray-600 text-white font-bold text-base shadow hover:bg-gray-700 transition" @click="printAddition('proforma')">Addition</button>
           <button class="w-full mb-2 py-3 rounded-lg bg-green-600 text-white font-bold text-base shadow hover:bg-green-700 transition">Paiement</button>
           <!-- Bouton Annuler dans la modale -->
           <form method="POST" action="{{ (isset($panier) && !empty($panier->id)) ? route('paniers.annuler', $panier->id) : '#' }}" onsubmit="return confirm('Annuler ce panier ?');" style="width:100%;">
@@ -275,9 +275,10 @@
           <span class="text-gray-600">Rendu monnaie :</span>
           <span class="text-xl font-bold text-green-700" x-text="formatMoney(paiement.monnaie) + ' FC'"></span>
         </div>
-        <div class="flex justify-between mt-4">
+        <div class="flex justify-between mt-4 gap-2">
           <button @click="mode = 'commande'" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Retour</button>
           <button @click="validerPaiement()" class="px-4 py-2 rounded bg-green-600 text-white font-bold shadow hover:bg-green-700 transition">Valider</button>
+          <button @click="validerEtImprimer()" class="px-4 py-2 rounded bg-blue-600 text-white font-bold shadow hover:bg-blue-700 transition">Valider et imprimer</button>
         </div>
       </div>
     </template>

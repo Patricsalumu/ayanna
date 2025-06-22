@@ -73,8 +73,21 @@
             </div>
             <div>
                 <h2 class="text-lg font-bold mb-2">{{ $pdv->nom }}</h2>
-                <p class="text-sm text-gray-600">Fermeture : {{ now()->format('d/m/Y') }}</p>
-                <p class="text-sm text-gray-600">Solde : 0,00 Fr</p>
+                @if($pdv->etat === 'ferme')
+                    @php
+                        $lastFermeture = $pdv->historiques()->where('etat', 'ferme')->latest('closed_at')->first();
+                        $soldeFermeture = $lastFermeture ? number_format($lastFermeture->solde, 0, ',', ' ') : '0';
+                    @endphp
+                    <p class="text-sm text-gray-600">Fermé le {{ $lastFermeture && $lastFermeture->closed_at ? \Carbon\Carbon::parse($lastFermeture->closed_at)->format('d/m/Y H:i') : '-' }}</p>
+                    <p class="text-sm text-gray-600">Solde à la fermeture : {{ $soldeFermeture }} Fr</p>
+                @else
+                    @php
+                        $lastOuverture = $pdv->historiques()->where('etat', 'ouvert')->latest('opened_at')->first();
+                        $soldeEnCours = $pdv->getSoldeEnCours ? number_format($pdv->getSoldeEnCours(), 0, ',', ' ') : '0';
+                    @endphp
+                    <p class="text-sm text-gray-600">Ouvert le {{ $lastOuverture && $lastOuverture->opened_at ? \Carbon\Carbon::parse($lastOuverture->opened_at)->format('d/m/Y H:i') : '-' }}</p>
+                    <p class="text-sm text-gray-600">Solde en cours : {{ $soldeEnCours }} Fr</p>
+                @endif
                 @if($pdv->etat === 'ferme')
                     <a href="{{ route('vente.ouvrir', $pdv->id) }}" class="mt-4 inline-block bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700">
                         Ouvrir la vente
