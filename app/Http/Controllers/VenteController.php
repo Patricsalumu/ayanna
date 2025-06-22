@@ -174,7 +174,7 @@ class VenteController extends Controller
                 'tableCourante' => $tableCourante,
             ]);
         } catch (\Throwable $e) {
-            \Log::error('Erreur afficherPanier: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Erreur afficherPanier: '.$e->getMessage(), ['exception' => $e]);
             return back()->with('error', 'Erreur serveur: '.$e->getMessage());
         }
     }
@@ -189,7 +189,7 @@ class VenteController extends Controller
             $pointDeVenteId = $request->get('point_de_vente_id');
             $clientId = $request->get('client_id');
             $serveuseId = $request->get('serveuse_id');
-            $openedBy = \Auth::id();
+            $openedBy = Auth::id();
             if (!$tableId || !$pointDeVenteId) {
                 return response()->json(['error' => 'Aucune table ou point de vente sélectionné'], 422);
             }
@@ -241,7 +241,7 @@ class VenteController extends Controller
                 'panier' => $panierArray
             ]);
         } catch (\Throwable $e) {
-            \Log::error('Erreur ajout panier: '.$e->getMessage(), ['exception' => $e]);
+            Log::error('Erreur ajout panier: '.$e->getMessage(), ['exception' => $e]);
             return response()->json([
                 'success' => false,
                 'error' => 'Erreur serveur: '.$e->getMessage()
@@ -412,6 +412,9 @@ class VenteController extends Controller
             if ($stock) {
                 $qteVendue = $produit->pivot->quantite;
                 $stock->quantite_vendue = ($stock->quantite_vendue ?? 0) + $qteVendue;
+                // Mettre à jour la quantité restée
+                $q_total = ($stock->quantite_initiale ?? 0) + ($stock->quantite_ajoutee ?? 0);
+                $stock->quantite_reste = $q_total - $stock->quantite_vendue;
                 $stock->save();
             }
         }

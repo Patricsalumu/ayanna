@@ -34,6 +34,7 @@ class MouvementPointDeVenteController extends Controller
             'libele' => 'required|string',
         ]);
         $data['user_id'] = auth()->id();
+        $data['point_de_vente_id'] = $pointDeVente->id; // Ajout du point de vente
         EntreeSortie::create($data);
         return redirect()->route('mouvements.pdv', $pointDeVenteId)->with('success', 'Mouvement enregistré.');
     }

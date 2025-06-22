@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\StockJournalier;
@@ -81,15 +80,11 @@ class StockJournalierController extends Controller
             ->orderBy('session', 'desc')
             ->first();
 
-        $quantite_initiale = $stock->quantite_initiale ?? 0;
-        $quantite_vendue = $stock->quantite_vendue ?? 0;
         $quantite_ajoutee = $data['quantite_ajoutee'];
-        $q_total = $quantite_initiale + $quantite_ajoutee;
-        $quantite_reste = $stock ? ($stock->quantite_reste ?? ($q_total - $quantite_vendue)) : ($q_total - $quantite_vendue);
-
         if ($stock) {
-            $stock->quantite_ajoutee = $quantite_ajoutee;
-            $stock->quantite_reste = $quantite_reste;
+            // Nouvelle logique : on additionne à l'ancienne valeur
+            $stock->quantite_ajoutee = ($stock->quantite_ajoutee ?? 0) + $quantite_ajoutee;
+            $stock->quantite_reste = ($stock->quantite_reste ?? 0) + $quantite_ajoutee;
             $stock->save();
         }
         return redirect()->back()->with('success', 'Quantité ajoutée enregistrée.');
@@ -249,6 +244,7 @@ class StockJournalierController extends Controller
             $stock->date = $date;
             $stock->point_de_vente_id = $pointDeVenteId;
             $stock->quantite_initiale = $qte;
+            $stock->quantite_reste = $qte; // Correction : initialisation à la quantité initiale
             $stock->validated_at = $now;
             $stock->session = $session;
             $stock->save();

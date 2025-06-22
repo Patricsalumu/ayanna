@@ -195,3 +195,8 @@ Route::get('/vente/{pointDeVente}/ouvrir', [App\Http\Controllers\VenteController
 // Continuer une vente (accès direct à la page de vente d'un point de vente)
 Route::get('/vente/{pointDeVente}/continuer', [App\Http\Controllers\VenteController::class, 'continuer'])->name('vente.continuer');
 Route::post('/vente/valider', [App\Http\Controllers\VenteController::class, 'valider'])->name('vente.valider');
+
+// Rapport du jour (point de vente)
+Route::get('rapport/jour/{pointDeVenteId}', [\App\Http\Controllers\RapportController::class, 'rapportJour'])->name('rapport.jour');
+// Rapport du jour (point de vente) PDF
+Route::get('rapport/jour/{pointDeVenteId}/export-pdf', [\App\Http\Controllers\RapportController::class, 'exportPdf'])->name('rapport.export_pdf');

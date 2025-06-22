@@ -18,22 +18,24 @@
                 <table id="table-creances" class="min-w-full bg-white border rounded-lg">
                     <thead>
                         <tr class="bg-blue-100 text-blue-700">
-                            <th class="px-4 py-2">#</th>
+                            <th class="px-4 py-2">Table</th>
                             <th class="px-4 py-2">Client</th>
                             <th class="px-4 py-2">Serveuse</th>
                             <th class="px-4 py-2">Heure</th>
                             <th class="px-4 py-2">Montant</th>
+                            <th class="px-4 py-2">Point de vente</th>
                             <th class="px-4 py-2">Action</th>
                         </tr>
                     </thead>
                     <tbody id="body-creances">
                         @foreach($creances as $commande)
                             <tr class="border-b hover:bg-blue-50 transition cursor-pointer" onclick="afficherDetails({{ $commande->id }})" data-client="{{ strtolower($commande->panier->client->nom ?? '') }}" data-serveuse="{{ strtolower($commande->panier->serveuse->name ?? '') }}" data-heure="{{ \Carbon\Carbon::parse($commande->created_at)->format('H:i') }}">
-                                <td class="px-4 py-2 text-center font-semibold">{{ $commande->id }}</td>
+                                <td class="px-4 py-2 text-center font-semibold">{{ $commande->panier->tableResto->numero ?? 'N/A' }}</td>
                                 <td class="px-4 py-2 text-center">{{ $commande->panier->client->nom ?? 'N/A' }}</td>
                                 <td class="px-4 py-2 text-center">{{ $commande->panier->serveuse->name ?? 'N/A' }}</td>
                                 <td class="px-4 py-2 text-center">{{ \Carbon\Carbon::parse($commande->created_at)->format('H:i') }}</td>
                                 <td class="px-4 py-2 text-center font-bold text-green-700">{{ number_format($commande->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente), 0, ',', ' ') }} F</td>
+                                <td class="px-4 py-2 text-center">{{ $commande->panier->pointDeVente->nom ?? 'N/A' }}</td>
                                 <td class="px-4 py-2 text-center">
                                     @if($commande->mode_paiement === 'compte_client' && $commande->statut === 'payé')
                                         <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-100 text-green-700 font-semibold text-sm shadow-sm border border-green-300">

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 class EntreeSortie extends Model
 {
     protected $table = 'entrees_sorties';
-    protected $fillable = ['compte_id', 'montant', 'libele', 'user_id'];
+    protected $fillable = ['compte_id', 'montant', 'libele', 'user_id', 'point_de_vente_id'];
 
     public function compte()
     {
