@@ -33,6 +33,7 @@ class ModulesController extends Controller
             if ($module->nom === 'POS Restaubar') {
                 $pointDeVente = PosRestaubarDefaults::initialiserPour($module, $entreprise);
                 $message .= ' Les données par défaut ont été initialisées.';
+                session(['module_id' => $module->id]);
                 return redirect()->route('pointsDeVente.show', [$entreprise->id, $pointDeVente->id])
                     ->with('success', $message);
             } else {

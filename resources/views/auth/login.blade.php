@@ -1,51 +1,61 @@
-<x-guest-layout>
+<x-layouts.guest-login>
+    <!-- Lien de création de compte -->
     <div class="mb-4 text-center">
-        <span class="text-gray-700">Vous n'avez pas de compte ?</span>
-        <a href="{{ route('register') }}" class="ml-2 text-indigo-600 hover:underline font-semibold">Créer un compte</a>
+        <span class="text-[#3e2f24]">Vous n'avez pas de compte ?</span>
+        <a href="{{ route('register') }}" class="ml-2 text-[#7a6657] hover:underline font-semibold">Créer un compte</a>
     </div>
-    <!-- Session Status -->
+
+    <!-- Message de Session -->
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
-    <form method="POST" action="{{ route('login') }}">
+    <!-- Formulaire de connexion -->
+    <form method="POST" action="{{ route('login') }}" class="space-y-4">
         @csrf
 
-        <!-- Email Address -->
+        <!-- Email -->
         <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
+            <x-input-label for="email" :value="__('Email')" class="text-[#3e2f24]" />
+            <x-text-input id="email" 
+                           class="block mt-1 w-full rounded border border-[#d8c1a8] focus:outline-none focus:ring focus:border-[#d8c1a8]"
+                           type="email" 
+                           name="email" 
+                           :value="old('email')" 
+                           required autofocus autocomplete="username" />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
-        <!-- Password -->
+        <!-- Mot de passe -->
         <div class="mt-4">
-            <x-input-label for="password" :value="__('Mot de passe')" />
-
-            <x-text-input id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="current-password" />
-
+            <x-input-label for="password" :value="__('Mot de passe')" class="text-[#3e2f24]" />
+            <x-text-input id="password" 
+                           class="block mt-1 w-full rounded border border-[#d8c1a8] focus:outline-none focus:ring focus:border-[#d8c1a8]"
+                           type="password" 
+                           name="password" 
+                           required autocomplete="current-password" />
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
 
-        <!-- Remember Me -->
+        <!-- Se souvenir de moi -->
         <div class="block mt-4">
-            <label for="Se souvenir de moi" class="inline-flex items-center">
-                <input id="remember_me" type="checkbox" class="rounded dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-indigo-600 shadow-sm focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:focus:ring-offset-gray-800" name="remember">
-                <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Remember me') }}</span>
+            <label for="remember_me" class="inline-flex items-center">
+                <input id="remember_me" 
+                       type="checkbox" 
+                       class="rounded border-[#d8c1a8] text-[#3e2f24] focus:ring-[#d8c1a8]"
+                       name="remember">
+                <span class="ml-2 text-sm text-[#7a6657]">{{ __('Se souvenir de moi') }}</span>
             </label>
         </div>
-
-        <div class="flex items-center justify-end mt-4">
+        <!-- Liens + Bouton de connexion -->
+        <div class="flex items-center justify-end mt-4 space-x-3">
             @if (Route::has('password.request'))
-                <a class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800" href="{{ route('password.request') }}">
+                <a class="text-sm text-[#7a6657] hover:underline" 
+                   href="#">
                     {{ __('Mot de passe oublié ?') }}
                 </a>
             @endif
-
-            <x-primary-button class="ms-3">
-                {{ __('Se connecter') }}
+            <x-primary-button class="bg-[#d8c1a8] hover:bg-[#c7ae93] text-[#3e2f24] font-bold rounded px-4 py-2">
+                {{ __('Se Connecter') }}
             </x-primary-button>
         </div>
     </form>
-</x-guest-layout>
+</x-layouts.guest-login>

@@ -1,9 +1,6 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Modifier le point de vente
-        </h2>
-    </x-slot>
+@extends('layouts.app2')
+
+@section('content')
     @php
         $categories = $categories->sortByDesc(fn($c) => in_array($c->id, $categoriesAssociees));
         $salles = $salles->sortByDesc(fn($s) => in_array($s->id, $sallesAssociees));
@@ -49,4 +46,4 @@
             </form>
         </div>
     </div>
-</x-app-layout>
+@endsection

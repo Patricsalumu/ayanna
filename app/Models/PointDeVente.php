@@ -56,5 +56,13 @@ class PointDeVente extends Model
             ->where('status', 'en_cours')
             ->exists();
     }
+    /**
+     * Retourne le solde en cours pour ce point de vente (ou 0 si aucun historique ouvert).
+     */
+    public function getSoldeEnCours()
+    {
+        $ouverture = $this->historiques()->where('etat', 'ouvert')->latest('opened_at')->first();
+        return $ouverture && isset($ouverture->solde) ? $ouverture->solde : 0;
+    }
 }
 ?>

@@ -97,6 +97,14 @@ class EntreprisesController extends Controller
      */
     public function show(Entreprise $entreprise)
     {
+        // Si l'entreprise n'existe pas (id 0 ou null), afficher un message et proposer la création
+        if (!$entreprise || !$entreprise->id) {
+            return view('entreprises.show', [
+                'entreprise' => null,
+                'modules' => collect(),
+                'noEntrepriseMessage' => "Vous n'avez pas encore d'entreprise. Veuillez en créer une pour accéder aux modules."
+            ]);
+        }
         $modules = \App\Models\Module::all();
         return view('entreprises.show', compact('entreprise', 'modules'));
     }

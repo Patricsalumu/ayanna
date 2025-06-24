@@ -1,10 +1,4 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Modifier l'entreprise
-        </h2>
-    </x-slot>
-
+<x-app1-layout>
     <div class="py-6">
         <div class="max-w-2xl mx-auto bg-white p-6 rounded shadow">
             @if(session('success'))
@@ -12,6 +6,10 @@
             @endif
 
             <form method="POST" action="{{ route('entreprises.update') }}" enctype="multipart/form-data">
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                Modifier les informations de l'entreprise
+                <span class="text-sm text-gray-500">({{ $entreprise->nom }})</span>
+            </h2><br>
                 @csrf
 
                 <div class="mb-4">
@@ -86,4 +84,4 @@
             </form>
         </div>
     </div>
-</x-app-layout>
+</x-app1-layout>

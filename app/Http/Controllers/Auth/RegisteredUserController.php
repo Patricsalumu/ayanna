@@ -42,38 +42,44 @@ class RegisteredUserController extends Controller
                 'unique:users,phone'
             ],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'entreprise_nom' => ['required', 'string', 'max:255'],
+            'entreprise_logo' => ['nullable', 'image', 'max:2048'],
         ], [
             'phone.unique' => __('validation.unique_phone'),
             'phone.regex' => __('validation.phone.regex'),
         ]);
 
-        // Concaténer le code pays et le numéro (en supprimant le 0 initial si présent)
-
-        // Nettoyer le numéro : supprimer espaces, tirets, etc.
+        // Gestion du téléphone
         $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
-        // Si le numéro commence par 0, on le retire pour concaténer au code pays
         if (substr($cleanPhone, 0, 1) === '0') {
             $cleanPhone = substr($cleanPhone, 1);
         }
-        // Si le numéro fait déjà 9 chiffres sans 0, on accepte aussi
         $fullPhone = $request->country_code . $cleanPhone;
-
-        // Vérifier si ce numéro existe déjà (éviter l'erreur SQL et donner un message clair)
         if (User::where('phone', $fullPhone)->exists()) {
             return back()->withInput()->withErrors(['phone' => __('validation.unique_phone')]);
         }
 
+        // Création de l'entreprise
+        $entrepriseData = [
+            'nom' => $request->entreprise_nom,
+        ];
+        if ($request->hasFile('entreprise_logo')) {
+            $entrepriseData['logo'] = $request->file('entreprise_logo')->store('logos', 'public');
+        }
+        $entreprise = \App\Models\Entreprise::create($entrepriseData);
+
+        // Création de l'utilisateur lié à l'entreprise
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $fullPhone,
             'password' => Hash::make($request->password),
+            'entreprise_id' => $entreprise->id,
         ]);
 
         event(new Registered($user));
-
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        return redirect(route('entreprises.show', $entreprise->id));
     }
 }
