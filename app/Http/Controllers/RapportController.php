@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Commande;
 use App\Models\Panier;
-use App\Models\EntreSortie;
+use App\Models\EntreeSortie;
 use Illuminate\Support\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -48,7 +48,7 @@ class RapportController extends Controller
         });
 
         // 3. Dépenses : total des montants passifs (dépenses) du jour
-        $depenses = EntreSortie::whereDate('created_at', $date)
+        $depenses = EntreeSortie::whereDate('created_at', $date)
             ->where('point_de_vente_id', $pointDeVenteId)
             ->whereHas('compte', function($q) {
                 $q->where('type', 'passif');
@@ -95,7 +95,7 @@ class RapportController extends Controller
                 'total' => $total
             ];
         });
-        $depenses = EntreSortie::whereDate('created_at', $date)
+        $depenses = EntreeSortie::whereDate('created_at', $date)
             ->where('point_de_vente_id', $pointDeVenteId)
             ->whereHas('compte', function($q) {
                 $q->where('type', 'passif');

@@ -70,7 +70,7 @@
                     <td class="py-2 px-4 font-semibold text-right border border-gray-300">Montant</td>
                 </tr>
                 @php
-                    $depensesList = \App\Models\EntreSortie::whereDate('created_at', $date)
+                    $depensesList = \App\Models\EntreeSortie::whereDate('created_at', $date)
                         ->where('point_de_vente_id', request()->route('pointDeVenteId'))
                         ->whereHas('compte', function($q) {
                             $q->where('type', 'passif');

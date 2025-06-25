@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Commande;
 use App\Models\Panier;
-use App\Models\EntreSortie;
+use App\Models\EntreeSortie;
 use Illuminate\Support\Carbon;
 use PDF;
 
@@ -40,7 +40,7 @@ class RapportController extends Controller
                 'total' => $total
             ];
         });
-        $depenses = EntreSortie::whereDate('created_at', $date)
+        $depenses = EntreeSortie::whereDate('created_at', $date)
             ->where('point_de_vente_id', $pointDeVenteId)
             ->whereHas('compte', function($q) {
                 $q->where('type', 'passif');
