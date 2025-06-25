@@ -22,8 +22,8 @@
       <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     </head>
     <body class="font-sans antialiased">
-        <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
-            @include('layouts.navigation')
+        <div class="min-h-screen bg-gray-100 ">
+            @include('layouts.navsalle')
 
             <!-- Page Heading -->
             @isset($header)

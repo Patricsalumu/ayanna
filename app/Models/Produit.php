@@ -25,5 +25,9 @@ class Produit extends Model
             ->withPivot('quantite')
             ->withTimestamps();
     }
+    public function stockJournalier()
+    {
+        return $this->hasOne(\App\Models\StockJournalier::class)->latestOfMany();
+    }
 }
 ?>

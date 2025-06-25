@@ -131,6 +131,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/comptes/{compte}/mouvements', [\App\Http\Controllers\CompteController::class, 'mouvements'])->name('comptes.mouvements');
     Route::post('/comptes/{compte}/mouvements', [\App\Http\Controllers\CompteController::class, 'ajouterMouvement'])->name('comptes.mouvements.ajouter');
     Route::delete('/mouvements/{mouvement}', [\App\Http\Controllers\CompteController::class, 'supprimerMouvement'])->name('comptes.mouvements.supprimer');
+    Route::get('/comptes/{compte}/mouvements/exportpdf', [\App\Http\Controllers\CompteController::class, 'exportMouvementsPdf'])->name('comptes.mouvements.exportpdf');
 });
 
 // Mouvements (entrées/sorties) d'un point de vente

@@ -1,8 +1,18 @@
-<x-app-layout>
+@extends('layouts.appsalle')
+@section('content')
+<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-6">
+    <!-- Bouton retour stylisé Ayanna -->
+    <div class="mb-6 flex items-center">
+        <a href="{{ route('salles.show', $entreprise->id) }}"
+           class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-green-400 to-blue-500 text-white font-semibold shadow hover:from-green-500 hover:to-blue-600 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            <span>Retour aux salles</span>
+        </a>
+    </div>
     <div class="container mx-auto">
     <h1 class="text-2xl font-bold mb-4">
-    <a href="{{ route('pointsDeVente.show', [$entreprise->id, isset($pointDeVente) ? $pointDeVente->id : ($salle->pointDeVentes->first()->id ?? ($entreprise->pointsDeVente->first()->id ?? 1))]) }}" class="text-blue-600 hover:underline">&larr;</a>    
-    Salle</h1>
     <!-- Barre d'outils globale et onglets zones -->
     <div class="flex justify-between items-center mb-2">
         <!-- Onglets zones à droite -->
@@ -284,6 +294,20 @@
                 div.style.borderColor = '#22c55e';
                 div.innerHTML = `<span class="table-num text-center w-full select-none flex items-center justify-center" style="pointer-events:none; font-size:1.3rem; font-weight:bold; color:#222;">${table.numero}</span>`;
                 div.addEventListener('mousedown', mouseDownHandler);
+                // Ajout du handler d'édition (click)
+                div.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    deselectTable();
+                    selectedTable = div;
+                    selectedTable.classList.add('selected');
+                    const rect = selectedTable.getBoundingClientRect();
+                    const planRect = document.getElementById('plan').getBoundingClientRect();
+                    menu.style.left = (rect.right - planRect.left + 10) + 'px';
+                    menu.style.top = (rect.top - planRect.top) + 'px';
+                    menu.classList.remove('hidden');
+                    numeroInput.value = selectedTable.dataset.numero;
+                    menuTableId = selectedTable.dataset.id;
+                });
                 plan.appendChild(div);
                 form.reset();
                 window.dispatchEvent(new CustomEvent('close-modal', {detail: 'add-table-modal'}));
@@ -513,7 +537,7 @@
                 if (table.forme === 'cercle') div.style.borderRadius = '50%';
                 div.style.background = '#f3f4f6';
                 div.style.borderColor = '#22c55e';
-                div.innerHTML = `<span class=\"table-num text-center w-full select-none flex items-center justify-center\" style=\"pointer-events:none; font-size:1.3rem; font-weight:bold; color:#222;\">${table.numero}</span>`;
+                div.innerHTML = `<span class="table-num text-center w-full select-none flex items-center justify-center" style="pointer-events:none; font-size:1.3rem; font-weight:bold; color:#222;">${table.numero}</span>`;
                 div.addEventListener('mousedown', mouseDownHandler);
                 plan.appendChild(div);
                 form.reset();
@@ -526,5 +550,35 @@
             });
         });
     })();
+
+    // Edition du numéro de table (valide sur perte de focus ou touche Entrée)
+    numeroInput.addEventListener('blur', saveTableNumero);
+    numeroInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveTableNumero();
+            numeroInput.blur(); // Pour fermer le menu si besoin
+        }
+    });
+    function saveTableNumero() {
+        if (!menuTableId) return;
+        const newNumero = numeroInput.value;
+        fetch(`/tables/${menuTableId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                _token: '{{ csrf_token() }}',
+                numero: newNumero
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (selectedTable) {
+                selectedTable.dataset.numero = newNumero;
+                const numSpan = selectedTable.querySelector('.table-num');
+                if(numSpan) numSpan.textContent = newNumero;
+            }
+        });
+    }
 </script>
-</x-app-layout>
+@endsection

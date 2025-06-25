@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\Compte;
 use App\Models\EntreeSortie;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class CompteController extends Controller
 {
@@ -26,15 +27,19 @@ class CompteController extends Controller
     // Enregistrement d'un compte
     public function store(Request $request)
     {
+        // Debug : log les données reçues
+        \Log::info('Données reçues pour création de compte', $request->all());
         $data = $request->validate([
             'numero' => 'required|unique:comptes',
             'nom' => 'required|string|max:255',
             'type' => 'required|in:actif,passif',
             'description' => 'nullable|string',
-            'entreprise_id' => 'required|exists:entreprises,id',
+            // 'entreprise_id' => 'required|exists:entreprises,id', // on retire la validation ici
         ]);
+        $data['entreprise_id'] = auth()->user()->entreprise_id;
         $data['user_id'] = auth()->id();
-        Compte::create($data);
+        $compte = Compte::create($data);
+        \Log::info('Compte créé', ['compte' => $compte]);
         return redirect()->route('comptes.index')->with('success', 'Compte créé avec succès.');
     }
 
@@ -75,12 +80,16 @@ class CompteController extends Controller
     // Ajout d'une entrée/sortie
     public function ajouterMouvement(Request $request, Compte $compte)
     {
+        \Log::info('Données reçues pour ajout mouvement', $request->all());
         $data = $request->validate([
             'montant' => 'required|numeric',
             'libele' => 'required|string',
+            'type' => 'required|in:credit,debit',
         ]);
+        \Log::info('Données validées mouvement', $data);
         $data['user_id'] = auth()->id();
-        $compte->entreesSorties()->create($data);
+        $mouvement = $compte->entreesSorties()->create($data);
+        \Log::info('Mouvement créé', ['mouvement' => $mouvement]);
         return redirect()->route('comptes.mouvements', $compte)->with('success', 'Mouvement ajouté.');
     }
 
@@ -90,5 +99,31 @@ class CompteController extends Controller
         $compte = $mouvement->compte;
         $mouvement->delete();
         return redirect()->route('comptes.mouvements', $compte)->with('success', 'Mouvement supprimé.');
+    }
+
+    // Export PDF des mouvements filtrés
+    public function exportMouvementsPdf(Request $request, Compte $compte)
+    {
+        $date = $request->get('date');
+        $type = $request->get('type');
+        $search = $request->get('search');
+        $query = $compte->entreesSorties()->orderByDesc('created_at');
+        if ($date) {
+            $query->whereDate('created_at', $date);
+        }
+        if ($type) {
+            $query->where('type', $type);
+        }
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('libele', 'like', "%$search%")
+                  ->orWhereRaw('DATE_FORMAT(created_at, "%d/%m/%Y %H:%i") like ?', ["%$search%"]);
+            });
+        }
+        $mouvements = $query->get();
+        $totalCredit = $mouvements->where('type','credit')->sum('montant');
+        $totalDebit = $mouvements->where('type','debit')->sum('montant');
+        $pdf = Pdf::loadView('comptes.pdf_mouvements', compact('compte', 'mouvements', 'date', 'type', 'search', 'totalCredit', 'totalDebit'));
+        return $pdf->download('mouvements_compte_'.$compte->numero.'.pdf');
     }
 }

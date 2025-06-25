@@ -11,6 +11,7 @@ return new class extends Migration {
             $table->foreignId('compte_id')->constrained('comptes')->onDelete('cascade');
             $table->decimal('montant', 15, 2);
             $table->string('libele');
+            $table->enum('type', ['credit', 'debit'])->default('credit');
             $table->timestamps();
         });
     }
