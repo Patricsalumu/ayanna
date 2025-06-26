@@ -182,7 +182,7 @@ class ComptabiliteService
 
             // Écriture selon le type (crédit/débit)
             if ($mouvement->type === 'credit') {
-                // Recette : Débit du compte concerné
+                // Recette : Débit du compte concerné (entrée d'argent)
                 EcritureComptable::create([
                     'journal_id' => $journal->id,
                     'compte_id' => $compte->id,
@@ -192,7 +192,7 @@ class ComptabiliteService
                     'ordre' => 1
                 ]);
 
-                // Crédit : Compte de contrepartie (à déterminer selon la nature)
+                // Crédit : Compte de contrepartie 
                 $compteContrepartie = $this->obtenirCompteContrepartie($compte, 'recette', $entreprise);
                 EcritureComptable::create([
                     'journal_id' => $journal->id,
@@ -203,22 +203,22 @@ class ComptabiliteService
                     'ordre' => 2
                 ]);
             } else {
-                // Dépense : Débit du compte de charge
-                $compteCharge = $this->obtenirCompteCharge($mouvement->libele, $entreprise);
+                // Dépense : Débit du compte de charge (nature de la dépense)
                 EcritureComptable::create([
                     'journal_id' => $journal->id,
-                    'compte_id' => $compteCharge->id,
+                    'compte_id' => $compte->id,
                     'libelle' => $mouvement->libele,
                     'debit' => $mouvement->montant,
                     'credit' => 0,
                     'ordre' => 1
                 ]);
 
-                // Crédit : Sortie du compte concerné
+                // Crédit : Sortie de la caisse du point de vente (l'argent sort de la caisse)
+                $compteCaisse = $this->obtenirCompteCaissePointDeVente($mouvement->point_de_vente_id, $entreprise);
                 EcritureComptable::create([
                     'journal_id' => $journal->id,
-                    'compte_id' => $compte->id,
-                    'libelle' => $mouvement->libele,
+                    'compte_id' => $compteCaisse->id,
+                    'libelle' => "Sortie caisse - " . $mouvement->libele,
                     'debit' => 0,
                     'credit' => $mouvement->montant,
                     'ordre' => 2
@@ -465,5 +465,34 @@ class ComptabiliteService
                 'description' => 'Compte de charges'
             ]
         );
+    }
+
+    private function obtenirCompteCaissePointDeVente($pointDeVenteId, $entreprise)
+    {
+        // Récupérer le point de vente pour accéder à son compte caisse configuré
+        if ($pointDeVenteId) {
+            $pointDeVente = \App\Models\PointDeVente::find($pointDeVenteId);
+            
+            // Si le point de vente a un compte caisse configuré, l'utiliser
+            if ($pointDeVente && $pointDeVente->compte_caisse_id) {
+                $compteCaisse = Compte::find($pointDeVente->compte_caisse_id);
+                if ($compteCaisse) {
+                    Log::info('Utilisation du compte caisse du point de vente', [
+                        'point_de_vente' => $pointDeVente->nom,
+                        'compte_caisse' => $compteCaisse->nom,
+                        'compte_id' => $compteCaisse->id
+                    ]);
+                    return $compteCaisse;
+                }
+            }
+        }
+        
+        // Sinon, utiliser le compte caisse par défaut
+        $compteDefaut = $this->obtenirCompteCaisseDefaut($entreprise);
+        Log::info('Utilisation du compte caisse par défaut', [
+            'compte_caisse' => $compteDefaut->nom,
+            'compte_id' => $compteDefaut->id
+        ]);
+        return $compteDefaut;
     }
 }
