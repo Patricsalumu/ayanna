@@ -121,6 +121,21 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/creances/{commande}/historique', [App\Http\Controllers\VenteController::class, 'historiqueCreance'])->name('creances.historique');
     Route::get('/creances/{commande}/imprimer', [App\Http\Controllers\VenteController::class, 'imprimerCreance'])->name('creances.imprimer');
     Route::get('/creances', [App\Http\Controllers\VenteController::class, 'creances'])->name('creances.liste');
+
+    // Routes comptabilité
+    Route::prefix('comptabilite')->name('comptabilite.')->group(function () {
+        Route::get('/journal', [\App\Http\Controllers\ComptabiliteController::class, 'journal'])->name('journal');
+        Route::get('/grand-livre/{compteId?}', [\App\Http\Controllers\ComptabiliteController::class, 'grandLivre'])->name('grand-livre');
+        Route::get('/balance', [\App\Http\Controllers\ComptabiliteController::class, 'balance'])->name('balance');
+        Route::get('/bilan', [\App\Http\Controllers\ComptabiliteController::class, 'bilan'])->name('bilan');
+        Route::get('/compte-resultat', [\App\Http\Controllers\ComptabiliteController::class, 'compteResultat'])->name('compte-resultat');
+        Route::get('/configuration-pdv/{pointDeVenteId?}', [\App\Http\Controllers\ComptabiliteController::class, 'configurationPdv'])->name('configuration-pdv');
+        Route::post('/configuration-pdv/{pointDeVenteId}', [\App\Http\Controllers\ComptabiliteController::class, 'sauvegarderConfigurationPdv'])->name('sauvegarder-configuration-pdv');
+        
+        // Exports PDF
+        Route::get('/journal/export-pdf', [\App\Http\Controllers\ComptabiliteController::class, 'exportJournalPdf'])->name('journal.export-pdf');
+        Route::get('/balance/export-pdf', [\App\Http\Controllers\ComptabiliteController::class, 'exportBalancePdf'])->name('balance.export-pdf');
+    });
 });
 
 // Comptes & Entrées-Sorties
@@ -204,3 +219,11 @@ Route::post('/vente/valider', [App\Http\Controllers\VenteController::class, 'val
 Route::get('rapport/jour/{pointDeVenteId}', [\App\Http\Controllers\RapportController::class, 'rapportJour'])->name('rapport.jour');
 // Rapport du jour (point de vente) PDF
 Route::get('rapport/jour/{pointDeVenteId}/export-pdf', [\App\Http\Controllers\RapportController::class, 'exportPdf'])->name('rapport.export_pdf');
+
+// Routes transferts inter-comptes
+Route::prefix('transferts')->name('transferts.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\TransfertController::class, 'index'])->name('index');
+    Route::post('/', [\App\Http\Controllers\TransfertController::class, 'store'])->name('store');
+    Route::get('/historique', [\App\Http\Controllers\TransfertController::class, 'historique'])->name('historique');
+    Route::get('/api/comptes/{compteId}/transferts-rapides', [\App\Http\Controllers\TransfertController::class, 'transfertsRapides'])->name('api.transferts-rapides');
+});

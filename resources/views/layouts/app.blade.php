@@ -18,6 +18,9 @@
          <!-- Tailwind CSS -->
         <script src="https://cdn.tailwindcss.com"></script>
 
+        <!-- FontAwesome -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
         <!-- Interact.js -->
       <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     </head>

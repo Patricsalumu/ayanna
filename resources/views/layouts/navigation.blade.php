@@ -15,6 +15,12 @@
                     <x-nav-link :href="route('pointsDeVente.show', [Auth::user()->entreprise_id])" :active="request()->routeIs('salle.*')">
                         {{ __('Salle') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('creances.liste')" :active="request()->routeIs('creances.*')">
+                        {{ __('Créances') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('comptabilite.journal')" :active="request()->routeIs('comptabilite.*')">
+                        {{ __('Comptabilité') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -69,6 +75,12 @@
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link href="#" :active="request()->routeIs('salle.*')">
                 {{ __('Salle') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('creances.liste')" :active="request()->routeIs('creances.*')">
+                {{ __('Créances') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('comptabilite.journal')" :active="request()->routeIs('comptabilite.*')">
+                {{ __('Comptabilité') }}
             </x-responsive-nav-link>
         </div>
 

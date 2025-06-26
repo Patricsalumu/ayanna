@@ -9,7 +9,20 @@ class PointDeVente extends Model
     use HasFactory;
     protected $table = 'points_de_vente';
 
-    protected $fillable = ['nom', 'module_id', 'entreprise_id', 'etat'];
+    protected $fillable = [
+        'nom', 
+        'module_id', 
+        'entreprise_id', 
+        'etat',
+        'compte_caisse_id',
+        'compte_vente_id', 
+        'compte_client_id',
+        'comptabilite_active'
+    ];
+
+    protected $casts = [
+        'comptabilite_active' => 'boolean'
+    ];
 
     public function categories()
     {
@@ -63,6 +76,27 @@ class PointDeVente extends Model
     {
         $ouverture = $this->historiques()->where('etat', 'ouvert')->latest('opened_at')->first();
         return $ouverture && isset($ouverture->solde) ? $ouverture->solde : 0;
+    }
+
+    // Relations comptables
+    public function compteCaisse()
+    {
+        return $this->belongsTo(Compte::class, 'compte_caisse_id');
+    }
+
+    public function compteVente()
+    {
+        return $this->belongsTo(Compte::class, 'compte_vente_id');
+    }
+
+    public function compteClient()
+    {
+        return $this->belongsTo(Compte::class, 'compte_client_id');
+    }
+
+    public function journaux()
+    {
+        return $this->hasMany(JournalComptable::class);
     }
 }
 ?>

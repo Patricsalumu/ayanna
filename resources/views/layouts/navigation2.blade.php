@@ -2,6 +2,7 @@
     ajoutPdvOpen: false,
     pdvFormHtml: '',
     loading: false,
+    comptabiliteOpen: false,
     loadPdvForm() {
         this.loading = true;
         fetch('{{ route('pointsDeVente.create', [$entreprise->id, 'module_id' => $module->id ?? 0]) }}', {
@@ -59,6 +60,65 @@
                 <a href="{{ route('comptes.index') }}" class="text-gray-600 hover:text-gray-800">Comptes</a>
                 <a href="{{ route('clients.show', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Clients</a>
                 <a href="{{ route('users.show', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Utilisateurs</a>
+                
+                <!-- Menu Comptabilité avec dropdown -->
+                <div class="relative" x-data="{ comptabiliteOpen: false }">
+                    <button @click="comptabiliteOpen = !comptabiliteOpen" class="flex items-center space-x-1 text-gray-600 hover:text-gray-800 focus:outline-none">
+                        <span>Comptabilité</span>
+                        <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20" :class="{'rotate-180': comptabiliteOpen}">
+                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <div x-show="comptabiliteOpen" 
+                         @click.away="comptabiliteOpen = false"
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0 scale-95"
+                         x-transition:enter-end="opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-75"
+                         x-transition:leave-start="opacity-100 scale-100"
+                         x-transition:leave-end="opacity-0 scale-95"
+                         class="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50"
+                         style="display: none;">
+                        <div class="py-1">
+                            <a href="{{ route('comptabilite.journal') }}" 
+                               class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                                <i class="fas fa-book w-4 h-4 mr-3 text-blue-600"></i>
+                                Journal Comptable
+                            </a>
+                            <a href="{{ route('comptabilite.grand-livre') }}" 
+                               class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                                <i class="fas fa-list-alt w-4 h-4 mr-3 text-green-600"></i>
+                                Grand Livre
+                            </a>
+                            <a href="{{ route('comptabilite.balance') }}" 
+                               class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                                <i class="fas fa-balance-scale w-4 h-4 mr-3 text-indigo-600"></i>
+                                Balance
+                            </a>
+                            <a href="{{ route('comptabilite.bilan') }}" 
+                               class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                                <i class="fas fa-chart-pie w-4 h-4 mr-3 text-blue-600"></i>
+                                Bilan
+                            </a>
+                            <a href="{{ route('comptabilite.compte-resultat') }}" 
+                               class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                                <i class="fas fa-chart-line w-4 h-4 mr-3 text-green-600"></i>
+                                Compte de Résultat
+                            </a>
+                            <div class="border-t border-gray-100"></div>
+                            <a href="{{ route('creances.liste') }}" 
+                               class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                                <i class="fas fa-credit-card w-4 h-4 mr-3 text-orange-600"></i>
+                                Créances
+                            </a>
+                            <a href="{{ route('comptabilite.configuration-pdv') }}" 
+                               class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                                <i class="fas fa-cog w-4 h-4 mr-3 text-purple-600"></i>
+                                Configuration
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 

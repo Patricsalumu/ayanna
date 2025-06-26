@@ -8,8 +8,8 @@ use App\Models\Panier;
 use App\Models\Commande;
 use App\Models\Vente;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class VenteController extends Controller
 {
@@ -38,7 +38,6 @@ class VenteController extends Controller
             // Gestion multi-paniers par table (NOUVELLE LOGIQUE)
             $tableCourante = $request->get('table_id');
             $produitsPanier = [];
-            $panier = null;
             Log::debug('[CATALOGUE] table_id reçu', ['table_id' => $tableCourante, 'point_de_vente_id' => $pointDeVenteId]);
             if ($tableCourante) {
                 $panier = Panier::where('table_id', $tableCourante)
@@ -81,38 +80,6 @@ class VenteController extends Controller
                 ->where('actif', true)
                 ->get();
 
-            // Génération des tableaux pour Alpine.js (JS)
-            $produitsArray = $produits->map(function($p){
-                return [
-                    'id' => $p->id,
-                    'nom' => $p->nom,
-                    'prix' => $p->prix_vente,
-                    'image' => $p->image ? asset('storage/'.$p->image) : null,
-                    'cat_id' => $p->categorie_id
-                ];
-            })->toArray();
-
-            $clientsArray = $clients->map(function($c){
-                return [
-                    'id' => $c->id,
-                    'nom' => $c->nom,
-                ];
-            })->toArray();
-
-            $serveusesArray = $serveuses->map(function($s){
-                return [
-                    'id' => $s->id,
-                    'name' => $s->name,
-                ];
-            })->toArray();
-
-            $modesPaiementArray = $modesPaiement->map(function($m){
-                return [
-                    'id' => $m->id,
-                    'nom' => $m->nom,
-                ];
-            })->toArray();
-
             return view('vente.catalogue', [
                 'pointDeVente' => $pointDeVente,
                 'categories' => $categories,
@@ -128,13 +95,9 @@ class VenteController extends Controller
                 'serveuse_id' => $serveuse_id,
                 'panier' => $panier ?? null,
                 'modesPaiement' => $modesPaiement,
-                'produitsArray' => $produitsArray,
-                'clientsArray' => $clientsArray,
-                'serveusesArray' => $serveusesArray,
-                'modesPaiementArray' => $modesPaiementArray,
             ]);
         } catch (\Throwable $e) {
-            Log::error('Erreur catalogue vente: '.$e->getMessage(), ['exception' => $e]);
+            \Log::error('Erreur catalogue vente: '.$e->getMessage(), ['exception' => $e]);
             return back()->with('error', 'Erreur serveur: '.$e->getMessage());
         }
     }
@@ -174,7 +137,7 @@ class VenteController extends Controller
                 'tableCourante' => $tableCourante,
             ]);
         } catch (\Throwable $e) {
-            Log::error('Erreur afficherPanier: '.$e->getMessage(), ['exception' => $e]);
+            \Log::error('Erreur afficherPanier: '.$e->getMessage(), ['exception' => $e]);
             return back()->with('error', 'Erreur serveur: '.$e->getMessage());
         }
     }
@@ -189,7 +152,7 @@ class VenteController extends Controller
             $pointDeVenteId = $request->get('point_de_vente_id');
             $clientId = $request->get('client_id');
             $serveuseId = $request->get('serveuse_id');
-            $openedBy = Auth::id();
+            $openedBy = \Auth::id();
             if (!$tableId || !$pointDeVenteId) {
                 return response()->json(['error' => 'Aucune table ou point de vente sélectionné'], 422);
             }
@@ -241,7 +204,7 @@ class VenteController extends Controller
                 'panier' => $panierArray
             ]);
         } catch (\Throwable $e) {
-            Log::error('Erreur ajout panier: '.$e->getMessage(), ['exception' => $e]);
+            \Log::error('Erreur ajout panier: '.$e->getMessage(), ['exception' => $e]);
             return response()->json([
                 'success' => false,
                 'error' => 'Erreur serveur: '.$e->getMessage()
@@ -268,16 +231,32 @@ class VenteController extends Controller
         return view('vente.continuer', compact('pointDeVente'));
     }
 
-    // Ouvre un point de vente (affiche la fiche d'ouverture du stock, sans changer l'état)
+    // Ouvre un point de vente (changement d'état, traçabilité)
     public function ouvrir($id)
     {
         $pointDeVente = PointDeVente::findOrFail($id);
         if ($pointDeVente->etat === 'ouvert') {
             return redirect()->back()->with('error', 'Le point de vente est déjà ouvert.');
         }
-        // NE PAS changer l'état ici, juste afficher la fiche d'ouverture du stock
-        return redirect()->route('stock_journalier.ouverture', ['pointDeVente' => $pointDeVente->id])
-            ->with('success', 'Veuillez valider la fiche d\'ouverture du stock.');
+        DB::transaction(function () use ($pointDeVente) {
+            $pointDeVente->update(['etat' => 'ouvert']);
+            Historiquepdv::create([
+                'point_de_vente_id' => $pointDeVente->id,
+                'user_id' => Auth::id(),
+                'etat' => 'ouvert',
+            ]);
+        });
+        // Redirection directe vers le plan de la première salle du point de vente
+        $salle = $pointDeVente->salles()->first();
+        if ($salle) {
+            return redirect()->route('salle.plan.vente', [
+                'entreprise' => $pointDeVente->entreprise_id,
+                'salle' => $salle->id,
+                'point_de_vente_id' => $pointDeVente->id
+            ])->with('success', 'Point de vente ouvert. Sélectionnez une table.');
+        }
+        // Si pas de salle, fallback sur la page continuer
+        return redirect()->route('vente.continuer', $pointDeVente->id)->with('success', 'Point de vente ouvert.');
     }
 
     // Ferme un point de vente (changement d'état, traçabilité)
@@ -298,7 +277,6 @@ class VenteController extends Controller
         return redirect()->route('pointsDeVente.show', [$pointDeVente->entreprise_id, $pointDeVente->id])->with('success', 'Point de vente fermé.');
     }
 
-    // Définit le client pour un panier spécifique
     public function setClient(\Illuminate\Http\Request $request)
     {
         $tableId = $request->get('table_id');
@@ -310,8 +288,7 @@ class VenteController extends Controller
         session(['paniers' => $paniers]);
         return response()->json(['ok' => true]);
     }
-   
-    // Définit la serveuse pour un panier spécifique
+
     public function setServeuse(\Illuminate\Http\Request $request)
     {
         $tableId = $request->get('table_id');
@@ -325,255 +302,36 @@ class VenteController extends Controller
         session(['paniers' => $paniers]);
         return response()->json(['ok' => true]);
     }
-     // Valide le paiement d'un panier et crée une commande
+
     public function valider(Request $request)
     {
+        // Récupère les données
         $data = $request->all();
-        Log::info('Payload reçu pour validation', $data);
 
-        if (empty($data['panier_id'])) {
-            return response()->json(['success' => false, 'error' => 'Aucun panier_id fourni.'], 400);
-        }
-        
-        // Vérification spécifique pour le paiement par compte client
-        if (
-            isset($data['mode_paiement']) && strtolower($data['mode_paiement']) === 'compte_client'
-        ) {
-            $panier = \App\Models\Panier::find($data['panier_id']);
-            if (!$panier || !$panier->client_id || !$panier->serveuse_id) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Pour un paiement par compte client, vous devez sélectionner un client et une serveuse.'
-                ], 422);
-            } 
-        }
-        // Déterminer le statut selon le mode de paiement
-        $statut = 'validé';
-        if (isset($data['mode_paiement'])) {
-            $mode = strtolower($data['mode_paiement']);
-            if ($mode === 'espèces' || $mode === 'especes' || $mode === 'cash') {
-                $statut = 'cash';
-            } elseif ($mode === 'compte_client' || $mode === 'compte client' || $mode === 'credit') {
-                $statut = 'credit';
-            } elseif ($mode === 'mobile_money' || $mode === 'mobile money') {
-                $statut = 'mobilemoney';
-            }
-        }
+        // 1. Crée la commande (table Commande)
         $commande = new Commande();
-        $commande->panier_id = $data['panier_id'];
+        $commande->client_id = $data['client_id'];
+        $commande->serveuse_id = $data['serveuse_id'];
+        $commande->point_de_vente_id = $data['point_de_vente_id'];
+        $commande->table_id = $data['table_id'];
+        $commande->total = $data['total'];
         $commande->mode_paiement = $data['mode_paiement'];
-        $commande->statut = $statut;
-        $commande->created_at = now(); // Ajout manuel de la date de création
+        $commande->montant_recu = $data['montant_recu'];
+        $commande->rendu_monnaie = $data['rendu_monnaie'];
+        $commande->statut = 'validé';
         $commande->save();
 
-        // Mettre à jour le statut du panier à 'valide' après paiement
-        $panier = \App\Models\Panier::find($data['panier_id']);
-        if ($panier) {
-            $panier->status = 'validé';
-            $panier->save();
-            // MAJ quantité vendue dans le stock journalier
-            $this->majQuantiteVendueStock($panier);
-            // Créer un nouveau panier vide pour la même table (statut en_cours)
-            $nouveauPanier = \App\Models\Panier::create([
-                'table_id' => $panier->table_id,
-                'status' => 'en_cours',
-                'point_de_vente_id' => $panier->point_de_vente_id,
-                'opened_by' => Auth::id(),
-            ]);
-            return response()->json([
-                'success' => true,
-                'commande_id' => $commande->id,
-                'nouveau_panier_id' => $nouveauPanier->id
-            ]);
+        // 2. Crée les lignes de vente (table Vente ou CommandeProduit)
+        foreach ($data['panier'] as $item) {
+            $vente = new Vente();
+            $vente->commande_id = $commande->id;
+            $vente->produit_id = $item['id'];
+            $vente->quantite = $item['qte'];
+            $vente->prix_unitaire = $item['prix'];
+            $vente->total = $item['qte'] * $item['prix'];
+            $vente->save();
         }
+
         return response()->json(['success' => true, 'commande_id' => $commande->id]);
-    }
-
-    /**
-     * Met à jour la quantité vendue dans le stock journalier à la validation d'un panier
-     */
-    private function majQuantiteVendueStock($panier)
-    {
-        if (!$panier) return;
-        $pointDeVenteId = $panier->point_de_vente_id;
-        $date = now()->toDateString();
-        // Récupérer la session en cours (la plus récente pour ce point de vente et ce jour)
-        $session = \App\Models\StockJournalier::where('point_de_vente_id', $pointDeVenteId)
-            ->where('date', $date)
-            ->orderByDesc('session')
-            ->value('session');
-        if (!$session) return;
-        foreach ($panier->produits as $produit) {
-            $stock = \App\Models\StockJournalier::where('point_de_vente_id', $pointDeVenteId)
-                ->where('date', $date)
-                ->where('session', $session)
-                ->where('produit_id', $produit->id)
-                ->first();
-            if ($stock) {
-                $qteVendue = $produit->pivot->quantite;
-                $stock->quantite_vendue = ($stock->quantite_vendue ?? 0) + $qteVendue;
-                // Mettre à jour la quantité restée
-                $q_total = ($stock->quantite_initiale ?? 0) + ($stock->quantite_ajoutee ?? 0);
-                $stock->quantite_reste = $q_total - $stock->quantite_vendue;
-                $stock->save();
-            }
-        }
-    }
-
-    // Affiche la liste des créances (commandes avec paiement par compte client)
-    public function creances(Request $request)
-    {
-        $user = Auth::user();
-        $entrepriseId = $user->entreprise_id ?? ($user->entreprise->id ?? null);
-        $filtre = $request->get('filtre', 'jour'); // 'jour' ou 'toutes'
-        
-        $query = Commande::with(['panier', 'panier.client', 'panier.serveuse', 'panier.tableResto', 'panier.pointDeVente', 'paiements'])
-            ->where('mode_paiement', 'compte_client')
-            ->whereHas('panier.tableResto.salle', function($q) use ($entrepriseId) {
-                $q->where('entreprise_id', $entrepriseId);
-            });
-            
-        if ($filtre === 'jour') {
-            $query->whereDate('created_at', now()->toDateString());
-        }
-        
-        $creances = $query->orderByDesc('created_at')->get();
-        
-        return view('creances.liste', compact('creances', 'filtre'));
-    }
-
-    public function confirmerCreance($commandeId)
-    {
-        $commande = \App\Models\Commande::findOrFail($commandeId);
-        $commande->statut = 'payé';
-        $commande->save();
-        return redirect()->back()->with('success', 'Créance confirmée comme payée.');
-    }
-
-    public function enregistrerPaiement(Request $request, $commandeId)
-    {
-        try {
-            Log::info('Début enregistrement paiement', [
-                'commande_id' => $commandeId,
-                'request_data' => $request->all()
-            ]);
-
-            $request->validate([
-                'montant' => 'required|numeric|min:0.01',
-                'mode' => 'required|string',
-                'notes' => 'nullable|string|max:500'
-            ]);
-
-            $commande = Commande::with(['panier.produits', 'paiements'])->findOrFail($commandeId);
-            
-            Log::info('Commande trouvée', ['commande' => $commande->toArray()]);
-            
-            // Calculer le montant total de la commande
-            $montantTotal = $commande->montant ?? $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente);
-            
-            // Calculer le montant déjà payé
-            $montantDejaPaye = $commande->paiements->sum('montant');
-            
-            // Calculer le montant restant
-            $montantRestant = $montantTotal - $montantDejaPaye;
-            
-            Log::info('Calculs paiement', [
-                'montant_total' => $montantTotal,
-                'montant_deja_paye' => $montantDejaPaye,
-                'montant_restant' => $montantRestant,
-                'montant_demande' => $request->montant
-            ]);
-            
-            // Vérifier que le montant à payer ne dépasse pas le restant
-            $montantAPayer = min($request->montant, $montantRestant);
-            
-            // Calculer le nouveau montant restant
-            $nouveauMontantRestant = $montantRestant - $montantAPayer;
-            
-            // Déterminer le compte selon le rôle de l'utilisateur
-            $user = Auth::user();
-            $compteId = null;
-            
-            if ($user->role === 'admin') {
-                // Pour admin : compte caisse directement
-                $compte = \App\Models\Compte::where('nom', 'LIKE', '%caisse%')
-                    ->where('entreprise_id', $commande->panier->pointDeVente->entreprise_id)
-                    ->first();
-            } else {
-                // Pour comptable/comptoir : compte comptoir
-                $compte = \App\Models\Compte::where('nom', 'LIKE', '%comptoir%')
-                    ->where('entreprise_id', $commande->panier->pointDeVente->entreprise_id)
-                    ->first();
-            }
-            
-            // Si aucun compte spécifique trouvé, prendre le premier compte de l'entreprise
-            if (!$compte) {
-                $compte = \App\Models\Compte::where('entreprise_id', $commande->panier->pointDeVente->entreprise_id)->first();
-            }
-            
-            $compteId = $compte ? $compte->id : null;
-            
-            Log::info('Compte sélectionné', [
-                'user_role' => $user->role,
-                'compte_id' => $compteId,
-                'compte_nom' => $compte ? $compte->nom : 'Aucun'
-            ]);
-            
-            // Créer le paiement
-            $paiement = \App\Models\Paiement::create([
-                'compte_id' => $compteId,
-                'commande_id' => $commande->id,
-                'montant' => $montantAPayer,
-                'montant_restant' => $nouveauMontantRestant,
-                'mode' => $request->mode,
-                'date_paiement' => now()->toDateString(),
-                'notes' => $request->notes,
-                'est_solde' => $nouveauMontantRestant <= 0,
-                'user_id' => Auth::id(),
-                'statut' => 'validé'
-            ]);
-            
-            Log::info('Paiement créé', ['paiement' => $paiement->toArray()]);
-            
-            // Si complètement payé, marquer la commande comme payée
-            if ($nouveauMontantRestant <= 0) {
-                $commande->statut = 'payé';
-                $commande->save();
-                Log::info('Commande marquée comme payée');
-            }
-            
-            return response()->json([
-                'success' => true,
-                'message' => $nouveauMontantRestant <= 0 ? 'Créance totalement soldée !' : 'Paiement partiel enregistré',
-                'montant_paye' => $montantAPayer,
-                'montant_restant' => $nouveauMontantRestant,
-                'est_solde' => $nouveauMontantRestant <= 0
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de l\'enregistrement du paiement: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de l\'enregistrement du paiement: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function historiqueCreance($commandeId)
-    {
-        $commande = \App\Models\Commande::with(['panier.client', 'panier.serveuse', 'panier.tableResto', 'panier.produits', 'paiements.user'])
-            ->findOrFail($commandeId);
-        
-        return view('creances.historique', compact('commande'));
-    }
-
-    public function imprimerCreance($commandeId)
-    {
-        $commande = \App\Models\Commande::with(['panier.client', 'panier.serveuse', 'panier.tableResto', 'panier.produits', 'panier.pointDeVente.entreprise', 'paiements'])
-            ->findOrFail($commandeId);
-        
-        return view('creances.facture', compact('commande'));
     }
 }
