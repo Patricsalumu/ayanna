@@ -35,6 +35,19 @@ class Compte extends Model
         return $this->hasMany(EcritureComptable::class);
     }
 
+    /**
+     * Relations pour les écritures au débit et au crédit
+     */
+    public function ecrituresDebit()
+    {
+        return $this->hasMany(EcritureComptable::class)->where('debit', '>', 0);
+    }
+
+    public function ecrituresCredit()
+    {
+        return $this->hasMany(EcritureComptable::class)->where('credit', '>', 0);
+    }
+
     public function entreprise()
     {
         return $this->belongsTo(\App\Models\Entreprise::class);

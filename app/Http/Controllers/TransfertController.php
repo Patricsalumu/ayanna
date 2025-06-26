@@ -128,7 +128,7 @@ class TransfertController extends Controller
                 'user_id' => $user->id
             ]);
 
-            return redirect()->route('transferts.index')->with('success', 
+            return redirect()->route('journal')->with('success', 
                 "Transfert de {$request->montant} F effectué avec succès de {$compteSource->nom} vers {$compteDestination->nom}"
             );
 

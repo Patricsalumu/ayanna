@@ -15,6 +15,10 @@
                     <p class="text-blue-100">Suivi chronologique des écritures comptables</p>
                 </div>
                 <div class="flex space-x-2">
+                    <button onclick="ouvrirModaleTransfert()" 
+                            class="bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-emerald-600 transition-colors">
+                        <i class="fas fa-exchange-alt mr-2"></i>Nouveau transfert
+                    </button>
                     <a href="{{ route('comptabilite.journal.export-pdf', request()->query()) }}" 
                        class="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
                         <i class="fas fa-file-pdf mr-2"></i>Export PDF
@@ -181,6 +185,173 @@
     </div>
 </div>
 
+<!-- Modale de transfert inter-comptes -->
+<div id="modaleTransfert" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <!-- En-tête de la modale -->
+            <div class="flex justify-between items-center pb-4 border-b">
+                <h3 class="text-lg font-medium text-gray-900">
+                    <i class="fas fa-exchange-alt text-emerald-500 mr-2"></i>
+                    Nouveau transfert inter-comptes
+                </h3>
+                <button onclick="fermerModaleTransfert()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Formulaire de transfert -->
+            <form id="formTransfert" action="{{ route('transferts.store') }}" method="POST" class="mt-6">
+                @csrf
+                
+                <!-- Sélection du compte source -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-arrow-up text-red-500 mr-1"></i>
+                        Compte source (d'où vient l'argent)
+                    </label>
+                    <select name="compte_source_id" id="compteSource" required 
+                            class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                        <option value="">Sélectionner le compte source...</option>
+                        @php
+                            $user = Auth::user();
+                            $entrepriseId = $user->entreprise_id ?? $user->entreprise->id;
+                            $comptes = \App\Models\Compte::where('entreprise_id', $entrepriseId)
+                                ->orderBy('type')
+                                ->orderBy('nom')
+                                ->get();
+                        @endphp
+                        @foreach($comptes as $compte)
+                            <option value="{{ $compte->id }}" data-solde="{{ $compte->solde ?? 0 }}">
+                                {{ $compte->nom }} ({{ $compte->numero }})
+                                @if($compte->type === 'actif')
+                                    - Solde: {{ number_format($compte->solde ?? 0, 0, ',', ' ') }} F
+                                @endif
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="text-sm text-gray-500 mt-1">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Le compte sera débité (diminué)
+                    </p>
+                </div>
+
+                <!-- Sélection du compte destination -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-arrow-down text-green-500 mr-1"></i>
+                        Compte destination (où va l'argent)
+                    </label>
+                    <select name="compte_destination_id" id="compteDestination" required 
+                            class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                        <option value="">Sélectionner le compte destination...</option>
+                        @foreach($comptes as $compte)
+                            <option value="{{ $compte->id }}">
+                                {{ $compte->nom }} ({{ $compte->numero }})
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="text-sm text-gray-500 mt-1">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Le compte sera crédité (augmenté)
+                    </p>
+                </div>
+
+                <!-- Boutons de transfert rapide -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-bolt text-yellow-500 mr-1"></i>
+                        Transferts rapides
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                        @php
+                            $compteBanque = $comptes->where('nom', 'LIKE', '%banque%')->first() 
+                                ?? $comptes->where('numero', '512')->first();
+                            $caisseGenerale = $comptes->where('nom', 'LIKE', '%caisse générale%')->first()
+                                ?? $comptes->where('nom', 'LIKE', '%caisse%')->where('numero', '531')->first();
+                        @endphp
+                        
+                        @if($compteBanque)
+                        <button type="button" onclick="transfertRapide('banque', {{ $compteBanque->id }})" 
+                                class="flex items-center justify-center px-3 py-2 border border-blue-300 rounded-lg text-blue-700 hover:bg-blue-50 transition-colors">
+                            <i class="fas fa-university mr-2"></i>
+                            Vers banque
+                        </button>
+                        @endif
+                        
+                        @if($caisseGenerale)
+                        <button type="button" onclick="transfertRapide('caisse', {{ $caisseGenerale->id }})" 
+                                class="flex items-center justify-center px-3 py-2 border border-green-300 rounded-lg text-green-700 hover:bg-green-50 transition-colors">
+                            <i class="fas fa-cash-register mr-2"></i>
+                            Vers caisse générale
+                        </button>
+                        @endif
+                    </div>
+                </div>
+
+                <!-- Montant -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-coins text-yellow-600 mr-1"></i>
+                        Montant à transférer (FCFA)
+                    </label>
+                    <input type="number" name="montant" id="montantTransfert" min="1" step="1" required 
+                           placeholder="Ex: 50000"
+                           class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                    <div id="alerteSolde" class="hidden mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-sm">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        <span id="messageSolde"></span>
+                    </div>
+                </div>
+
+                <!-- Libellé -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-edit text-blue-500 mr-1"></i>
+                        Libellé / Motif du transfert
+                    </label>
+                    <input type="text" name="libelle" id="libelleTransfert" required 
+                           placeholder="Ex: Dépôt banque recettes du jour"
+                           class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                </div>
+
+                <!-- Référence (optionnel) -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-hashtag text-gray-500 mr-1"></i>
+                        Référence (optionnel)
+                    </label>
+                    <input type="text" name="reference" placeholder="Ex: VIRT001" 
+                           class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                </div>
+
+                <!-- Résumé du transfert -->
+                <div id="resumeTransfert" class="hidden mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                    <h4 class="font-medium text-emerald-800 mb-2">Résumé du transfert :</h4>
+                    <div class="text-sm text-emerald-700">
+                        <div>• Débit : <span id="resumeSource"></span></div>
+                        <div>• Crédit : <span id="resumeDestination"></span></div>
+                        <div>• Montant : <span id="resumeMontant"></span></div>
+                    </div>
+                </div>
+
+                <!-- Boutons d'action -->
+                <div class="flex justify-end space-x-3 pt-4 border-t">
+                    <button type="button" onclick="fermerModaleTransfert()" 
+                            class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                        Annuler
+                    </button>
+                    <button type="submit" 
+                            class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
+                        <i class="fas fa-check mr-2"></i>
+                        Effectuer le transfert
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 function voirDetail(journalId) {
     const detailRow = document.getElementById(`detail-${journalId}`);
@@ -190,5 +361,144 @@ function voirDetail(journalId) {
         detailRow.classList.add('hidden');
     }
 }
+
+// Fonctions pour la modale de transfert
+function ouvrirModaleTransfert() {
+    document.getElementById('modaleTransfert').classList.remove('hidden');
+    // Reset du formulaire
+    document.getElementById('formTransfert').reset();
+    document.getElementById('resumeTransfert').classList.add('hidden');
+    document.getElementById('alerteSolde').classList.add('hidden');
+}
+
+function fermerModaleTransfert() {
+    document.getElementById('modaleTransfert').classList.add('hidden');
+}
+
+function transfertRapide(type, compteDestinationId) {
+    // Définir le libellé selon le type
+    const compteDestination = document.querySelector(`option[value="${compteDestinationId}"]`);
+    const nomDestination = compteDestination ? compteDestination.textContent.split('(')[0].trim() : '';
+    
+    let libelle = '';
+    if (type === 'banque') {
+        libelle = `Dépôt banque recettes du jour - ${new Date().toLocaleDateString('fr-FR')}`;
+    } else if (type === 'caisse') {
+        libelle = `Transfert vers caisse générale - ${new Date().toLocaleDateString('fr-FR')}`;
+    }
+    
+    // Remplir les champs
+    document.getElementById('compteDestination').value = compteDestinationId;
+    document.getElementById('libelleTransfert').value = libelle;
+    
+    // Mettre à jour le résumé
+    mettreAJourResume();
+}
+
+function mettreAJourResume() {
+    const compteSourceId = document.getElementById('compteSource').value;
+    const compteDestinationId = document.getElementById('compteDestination').value;
+    const montant = document.getElementById('montantTransfert').value;
+    
+    if (compteSourceId && compteDestinationId && montant) {
+        const sourceOption = document.querySelector(`#compteSource option[value="${compteSourceId}"]`);
+        const destinationOption = document.querySelector(`#compteDestination option[value="${compteDestinationId}"]`);
+        
+        if (sourceOption && destinationOption) {
+            document.getElementById('resumeSource').textContent = sourceOption.textContent.split('(')[0].trim();
+            document.getElementById('resumeDestination').textContent = destinationOption.textContent.split('(')[0].trim();
+            document.getElementById('resumeMontant').textContent = new Intl.NumberFormat('fr-FR').format(montant) + ' FCFA';
+            document.getElementById('resumeTransfert').classList.remove('hidden');
+        }
+    } else {
+        document.getElementById('resumeTransfert').classList.add('hidden');
+    }
+}
+
+function verifierSolde() {
+    const compteSourceId = document.getElementById('compteSource').value;
+    const montant = parseFloat(document.getElementById('montantTransfert').value) || 0;
+    
+    if (compteSourceId && montant > 0) {
+        const sourceOption = document.querySelector(`#compteSource option[value="${compteSourceId}"]`);
+        const solde = parseFloat(sourceOption.getAttribute('data-solde')) || 0;
+        
+        if (solde < montant) {
+            document.getElementById('messageSolde').textContent = 
+                `Attention: le solde du compte (${new Intl.NumberFormat('fr-FR').format(solde)} F) est insuffisant pour ce transfert (${new Intl.NumberFormat('fr-FR').format(montant)} F)}`;
+            document.getElementById('alerteSolde').classList.remove('hidden');
+        } else {
+            document.getElementById('alerteSolde').classList.add('hidden');
+        }
+    } else {
+        document.getElementById('alerteSolde').classList.add('hidden');
+    }
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Écouter les changements dans les selects et inputs
+    document.getElementById('compteSource').addEventListener('change', function() {
+        mettreAJourResume();
+        verifierSolde();
+    });
+    
+    document.getElementById('compteDestination').addEventListener('change', mettreAJourResume);
+    
+    document.getElementById('montantTransfert').addEventListener('input', function() {
+        mettreAJourResume();
+        verifierSolde();
+    });
+    
+    // Fermer la modale en cliquant à l'extérieur
+    document.getElementById('modaleTransfert').addEventListener('click', function(e) {
+        if (e.target === this) {
+            fermerModaleTransfert();
+        }
+    });
+    
+    // Empêcher la sélection du même compte source et destination
+    document.getElementById('compteSource').addEventListener('change', function() {
+        const sourceId = this.value;
+        const destinationSelect = document.getElementById('compteDestination');
+        
+        Array.from(destinationSelect.options).forEach(option => {
+            if (option.value === sourceId) {
+                option.disabled = true;
+                option.classList.add('text-gray-400');
+            } else {
+                option.disabled = false;
+                option.classList.remove('text-gray-400');
+            }
+        });
+        
+        // Si le compte de destination était le même que la source, le reset
+        if (destinationSelect.value === sourceId) {
+            destinationSelect.value = '';
+            mettreAJourResume();
+        }
+    });
+    
+    document.getElementById('compteDestination').addEventListener('change', function() {
+        const destinationId = this.value;
+        const sourceSelect = document.getElementById('compteSource');
+        
+        Array.from(sourceSelect.options).forEach(option => {
+            if (option.value === destinationId) {
+                option.disabled = true;
+                option.classList.add('text-gray-400');
+            } else {
+                option.disabled = false;
+                option.classList.remove('text-gray-400');
+            }
+        });
+        
+        // Si le compte source était le même que la destination, le reset
+        if (sourceSelect.value === destinationId) {
+            sourceSelect.value = '';
+            mettreAJourResume();
+        }
+    });
+});
 </script>
 @endsection
