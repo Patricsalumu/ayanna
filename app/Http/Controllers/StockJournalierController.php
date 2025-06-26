@@ -178,14 +178,64 @@ class StockJournalierController extends Controller
         // Filtrer les produits liés à ce point de vente
         $produits = $pointDeVente ? $pointDeVente->produits()->orderBy('nom')->get() : collect();
 
+        // Récupérer les informations d'ouverture et de fermeture de la session
+        $sessionInfo = null;
+        $heureOuverture = null;
+        $heureFermeture = null;
+        $sessionEnCours = false;
+        
+        if ($session) {
+            // Récupérer l'historique correspondant à cette session
+            // L'heure d'ouverture est stockée dans validated_at du stock_journalier
+            $firstStock = StockJournalier::where('point_de_vente_id', $pointDeVenteId)
+                ->where('session', $session)
+                ->orderBy('created_at')
+                ->first();
+            
+            if ($firstStock && $firstStock->validated_at) {
+                $heureOuverture = \Carbon\Carbon::parse($firstStock->validated_at);
+            }
+            
+            // Vérifier s'il y a une fermeture correspondante dans l'historique
+            $fermeture = \App\Models\Historiquepdv::where('point_de_vente_id', $pointDeVenteId)
+                ->where('etat', 'ferme')
+                ->whereDate('closed_at', $date)
+                ->where('opened_at', $firstStock?->validated_at)
+                ->first();
+            
+            if ($fermeture && $fermeture->closed_at) {
+                $heureFermeture = \Carbon\Carbon::parse($fermeture->closed_at);
+            } else {
+                $sessionEnCours = true;
+            }
+        }
+
+        // Créer un nom de fichier unique avec la session
+        $fileName = 'stock_journalier_'.$date;
+        if ($session) {
+            // Format de session plus lisible dans le nom de fichier
+            if (strlen($session) === 14 && ctype_digit($session)) {
+                $sessionFormatted = \Carbon\Carbon::createFromFormat('YmdHis', $session)->format('Y-m-d_H-i-s');
+                $fileName .= '_session_'.$sessionFormatted;
+            } else {
+                $fileName .= '_session_'.$session;
+            }
+        }
+        $fileName .= '.pdf';
+
         return Pdf::loadView('stock_journalier.pdf', [
             'stocks' => $stocks,
             'date' => $date,
+            'session' => $session,
+            'sessions' => $sessions,
             'produits' => $produits,
             'pointDeVenteId' => $pointDeVenteId,
             'nomPointDeVente' => $nomPointDeVente,
             'pointDeVente' => $pointDeVente,
-        ])->download('stock_journalier_'.$date.'.pdf');
+            'heureOuverture' => $heureOuverture,
+            'heureFermeture' => $heureFermeture,
+            'sessionEnCours' => $sessionEnCours,
+        ])->download($fileName);
     }
 
     /**
@@ -256,7 +306,7 @@ class StockJournalierController extends Controller
             $pointDeVente->save();
             \App\Models\Historiquepdv::create([
                 'point_de_vente_id' => $pointDeVente->id,
-                'user_id' => \Auth::id(),
+                'user_id' => Auth::id(),
                 'etat' => 'ouvert',
             ]);
         }
@@ -354,7 +404,7 @@ class StockJournalierController extends Controller
         $pointDeVente->etat = 'ferme';
         $pointDeVente->save();
         // DEBUG : log des infos session fermée
-        \Log::info('[Fermeture Session] Dernière session trouvée', [
+        Log::info('[Fermeture Session] Dernière session trouvée', [
             'point_de_vente_id' => $pointDeVenteId,
             'lastDate' => $lastDate,
             'lastSession' => $lastSession,

@@ -20,6 +20,25 @@
         <div style="margin-bottom:12px; color:#2563eb; background:#e0edff; border-radius:6px; padding:8px 16px; font-weight:bold;">
             Point de vente courant : {{ $nomPointDeVente }}<br>
             Comptoiriste : {{ auth()->user()->name ?? '' }}
+            @if(isset($session) && $session)
+                <br>Session : 
+                @if(strlen($session) === 14 && ctype_digit($session))
+                    {{ \Carbon\Carbon::createFromFormat('YmdHis', $session)->format('d/m/Y H:i:s') }}
+                @else
+                    {{ $session }}
+                @endif
+                
+                <!-- Informations d'ouverture et fermeture -->
+                @if(isset($heureOuverture))
+                    <br>Heure d'ouverture : {{ $heureOuverture->format('H:i:s') }}
+                @endif
+                
+                @if(isset($heureFermeture))
+                    <br>Heure de fermeture : {{ $heureFermeture->format('H:i:s') }}
+                @elseif(isset($sessionEnCours) && $sessionEnCours)
+                    <br>Heure de fermeture : <span style="color:#dc2626; font-weight:bold;">En cours</span>
+                @endif
+            @endif
         </div>
     @endif
     <table style="width:100%; border-collapse:collapse; font-size:14px;">

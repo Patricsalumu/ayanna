@@ -11,11 +11,33 @@ class Commande extends Model
     public $timestamps = false; // Désactive la gestion automatique des timestamps
 
     protected $fillable = [
-        'panier_id', 'mode_paiement', 'statut', 'created_at'
+        'panier_id', 'mode_paiement', 'statut', 'created_at', 'montant'
     ];
 
     public function panier()
     {
         return $this->belongsTo(Panier::class);
+    }
+
+    public function paiements()
+    {
+        return $this->hasMany(Paiement::class);
+    }
+
+    public function getTotalPayeAttribute()
+    {
+        return $this->paiements->sum('montant');
+    }
+
+    public function getMontantRestantAttribute()
+    {
+        $montantTotal = $this->montant ?? ($this->panier && $this->panier->produits ? 
+            $this->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente) : 0);
+        return $montantTotal - $this->total_paye;
+    }
+
+    public function getEstSoldeeAttribute()
+    {
+        return $this->montant_restant <= 0;
     }
 }

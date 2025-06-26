@@ -1,103 +1,188 @@
-@extends('layouts.app')
+@extends('layouts.appvente')
 @section('content')
-<div class="container mx-auto py-8">
-    <h1 class="text-2xl font-bold text-center mb-6">
-        RAPPORT JOURNALIER DE {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }},
-        COMPTORISTE : {{ Auth::user()->name ?? 'John' }}
-    </h1>
 
-    <div class="bg-white rounded-xl shadow p-6">
-        <table class="min-w-full border border-gray-400 rounded">
-            <tbody>
-                {{-- RECAP GENERAL --}}
-                <tr>
-                    <td class="py-3 px-4 font-semibold border border-gray-300">Recette journalière</td>
-                    <td colspan="2" class="py-3 px-4 text-right font-bold text-green-600 border border-gray-300">{{ number_format($recette, 0, ',', ' ') }} F</td>
-                </tr>
-                <tr>
-                    <td class="py-3 px-4 font-semibold border border-gray-300">Total Créances</td>
-                    <td colspan="2" class="py-3 px-4 text-right font-bold text-orange-600 border border-gray-300">-{{ number_format($totalCreance, 0, ',', ' ') }} F</td>                 
-                </tr>
-                {{-- TOTAL DÉPENSES --}}
-                <tr>
-                    <td class="py-3 px-4 font-semibold border border-gray-300">Total Dépenses</td>
-                    <td colspan="2" class="py-3 px-4 text-right font-bold text-red-600 border border-gray-300">-{{ number_format($depenses, 0, ',', ' ') }} F</td>
-                </tr>
-                 {{-- SOLDE FINAL --}}
-                <tr>
-                    <td class="py-3 px-4 font-bold text-blue-900 border border-gray-300">Solde</td>
-                    <td colspan="2" class="py-3 px-4 text-right font-extrabold text-blue-900 text-lg border border-gray-300">
-                        {{ number_format($solde, 0, ',', ' ') }} F
-                    </td>
-                </tr>
-                <tr>
-                    <td colspan="3" class="py-2 px-4 font-bold text-orange-700 border border-gray-300">Détail des Créances</td>
-                </tr>
-                <tr>
-                    <td class="py-2 px-4 font-semibold border border-gray-300">Client</td>
-                    <td class="py-2 px-4 font-semibold border border-gray-300 text-center">Serveuses</td>
-                    <td class="py-2 px-4 font-semibold text-right border border-gray-300">Montant</td>
-                </tr>
-                @forelse($detailsCreance as $detail)
-                    <tr>
-                        <td class="py-2 px-4 border border-gray-300">
-                            {{ $detail['client'] }}
-                        </td>
-                        <td class="py-2 px-4 border border-gray-300">
-                            <div class="flex flex-wrap">
-                                @foreach($detail['serveuses'] as $serv)
-                                    <span class="inline-block bg-blue-100 text-blue-800 rounded px-2 py-1 text-xs mr-1 mt-1">
-                                        {{ $serv }}
-                                    </span>
-                                @endforeach
-                            </div>
-                        </td>
-                        <td class="py-2 px-4 text-right text-orange-600 font-semibold border border-gray-300">
-                            {{ number_format($detail['total'], 0, ',', ' ') }} F
-                        </td>
-                    </tr>
-                @empty
-                    <tr><td colspan="3" class="py-2 px-4 text-gray-400 italic text-right border border-gray-300">Aucune créance ce jour</td></tr>
-                @endforelse
+<div class="max-w-7xl mx-auto px-6 py-6">
+    <!-- Messages de statut -->
+    @if(session('success'))
+        <div class="mb-6 p-4 bg-green-100 border border-green-300 text-green-700 rounded-xl shadow-sm text-center font-semibold">
+            {{ session('success') }}
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="mb-6 p-4 bg-red-100 border border-red-300 text-red-700 rounded-xl shadow-sm text-center font-semibold">
+            {{ session('error') }}
+        </div>
+    @endif
 
+    <!-- Zone consolidée : Titre, Filtre et Export -->
+    <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+        <!-- Titre et informations principales -->
+        <div class="mb-6 text-center border-b border-gray-200 pb-4">
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">
+                Rapport Journalier
+            </h1>
+            <div class="flex justify-center items-center gap-6 text-gray-600">
+                <span>{{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}</span>
+                <span class="text-gray-700 font-medium">Comptoriste : {{ Auth::user()->name ?? 'John' }}</span>
+            </div>
+        </div>
 
-                <tr>
-                    <td colspan="2" class="py-2 px-4 font-bold text-red-700 border border-gray-300">Détail des Dépenses</td>
-                </tr>
-                <tr>
-                    <td class="py-2 px-4 font-semibold border border-gray-300">Compte</td>
-                    <td class="py-2 px-4 font-semibold border border-gray-300">Libellé</td>
-                    <td class="py-2 px-4 font-semibold text-right border border-gray-300">Montant</td>
-                </tr>
-                @php
-                    $depensesList = \App\Models\EntreeSortie::whereDate('created_at', $date)
-                        ->where('point_de_vente_id', request()->route('pointDeVenteId'))
-                        ->whereHas('compte', function($q) {
-                            $q->where('type', 'passif');
-                        })->get();
-                @endphp
-                @forelse($depensesList as $dep)
-                    <tr>
-                        <td class="py-2 px-4 border border-gray-300">
-                            <div class="font-semibold">{{ $dep->compte->nom ?? '' }}</div>
-                        </td>
-                        <td class="py-2 px-4 border border-gray-300">
-                            <div class="text-gray-600 text-sm">{{ $dep->libele ?? $dep->motif ?? '' }}</div>
-                        </td>
-                        <td class="py-2 px-4 text-right text-red-600 font-semibold border border-gray-300">-{{ number_format($dep->montant, 0, ',', ' ') }} F</td>
-                    </tr>
-                @empty
-                <tr>
-                        <td colspan="3" class="py-2 px-4 text-gray-400 italic text-right border border-gray-300">Aucune dépense ce jour</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
+        <!-- Ligne des contrôles : Filtre date et Export -->
+        <div class="flex flex-wrap gap-4 items-end justify-between">
+            <!-- Filtre par date -->
+            <form method="GET" class="flex flex-wrap gap-4 items-end">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Date :</label>
+                    <input type="date" name="date" value="{{ $date }}" 
+                           class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                           onchange="this.form.submit()">
+                </div>
+            </form>
+            
+            <!-- Export PDF -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">&nbsp;</label>
+                <a href="{{ route('rapport.export_pdf', ['pointDeVenteId' => request()->route('pointDeVenteId'), 'date' => $date]) }}" 
+                   target="_blank" 
+                   class="inline-flex items-center px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 shadow transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Exporter PDF
+                </a>
+            </div>
+        </div>
     </div>
 
-    <div class="mt-8 flex justify-center gap-4">
-        <a href="{{ url()->previous() }}" class="inline-block px-6 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold shadow">Retour</a>
-        <a href="{{ route('rapport.export_pdf', ['pointDeVenteId' => request()->route('pointDeVenteId'), 'date' => $date]) }}" target="_blank" class="inline-block px-6 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow">Exporter PDF</a>
+    <!-- Tableau moderne du rapport -->
+    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+        <!-- Résumé financier principal -->
+        <!-- Résumé financier principal -->
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border-b border-gray-200">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <!-- Recette -->
+                <div class="text-center">
+                    <div class="text-sm font-medium text-gray-600 mb-1">Recette journalière</div>
+                    <div class="text-2xl font-bold text-green-600">{{ number_format($recette, 0, ',', ' ') }} F</div>
+                </div>
+                
+                <!-- Créances -->
+                <div class="text-center">
+                    <div class="text-sm font-medium text-gray-600 mb-1">Total Créances</div>
+                    <div class="text-2xl font-bold text-orange-600">-{{ number_format($totalCreance, 0, ',', ' ') }} F</div>
+                </div>
+                
+                <!-- Dépenses -->
+                <div class="text-center">
+                    <div class="text-sm font-medium text-gray-600 mb-1">Total Dépenses</div>
+                    <div class="text-2xl font-bold text-red-600">-{{ number_format($depenses, 0, ',', ' ') }} F</div>
+                </div>
+                
+                <!-- Solde -->
+                <div class="text-center bg-blue-100 rounded-lg p-4">
+                    <div class="text-sm font-medium text-blue-700 mb-1">Solde Final</div>
+                    <div class="text-3xl font-extrabold text-blue-900">{{ number_format($solde, 0, ',', ' ') }} F</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Détails des créances -->
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-lg font-bold text-orange-700 mb-4">Détail des Créances</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-orange-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-sm font-bold text-gray-700">Client</th>
+                            <th class="px-4 py-3 text-center text-sm font-bold text-gray-700">Serveuses</th>
+                            <th class="px-4 py-3 text-right text-sm font-bold text-gray-700">Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        @forelse($detailsCreance as $detail)
+                            <tr class="hover:bg-orange-25 transition-colors">
+                                <td class="px-4 py-3 font-medium text-gray-900">
+                                    {{ $detail['client'] }}
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex flex-wrap justify-center gap-1">
+                                        @foreach($detail['serveuses'] as $serv)
+                                            <span class="inline-block bg-blue-100 text-blue-800 rounded-full px-2 py-1 text-xs font-medium">
+                                                {{ $serv }}
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 text-right font-bold text-orange-600">
+                                    {{ number_format($detail['total'], 0, ',', ' ') }} F
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="3" class="px-4 py-8 text-center text-gray-500 italic">
+                                    Aucune créance ce jour
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Détails des dépenses -->
+        <div class="p-6">
+            <h3 class="text-lg font-bold text-red-700 mb-4">Détail des Dépenses</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-red-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-sm font-bold text-gray-700">Compte</th>
+                            <th class="px-4 py-3 text-left text-sm font-bold text-gray-700">Libellé</th>
+                            <th class="px-4 py-3 text-right text-sm font-bold text-gray-700">Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        @php
+                            $depensesList = \App\Models\EntreeSortie::whereDate('created_at', $date)
+                                ->where('point_de_vente_id', request()->route('pointDeVenteId'))
+                                ->whereHas('compte', function($q) {
+                                    $q->where('type', 'passif');
+                                })->get();
+                        @endphp
+                        @forelse($depensesList as $dep)
+                            <tr class="hover:bg-red-25 transition-colors">
+                                <td class="px-4 py-3 font-medium text-gray-900">
+                                    {{ $dep->compte->nom ?? '' }}
+                                </td>
+                                <td class="px-4 py-3 text-gray-600">
+                                    {{ $dep->libele ?? $dep->motif ?? '' }}
+                                </td>
+                                <td class="px-4 py-3 text-right font-bold text-red-600">
+                                    -{{ number_format($dep->montant, 0, ',', ' ') }} F
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="3" class="px-4 py-8 text-center text-gray-500 italic">
+                                    Aucune dépense ce jour
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Boutons d'action -->
+    <div class="mt-6 flex justify-center gap-4">
+        <a href="{{ url()->previous() }}" 
+           class="inline-flex items-center px-6 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 shadow transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            Retour
+        </a>
     </div>
 </div>
 @endsection

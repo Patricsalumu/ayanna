@@ -95,6 +95,13 @@ class SalleController extends Controller
      */
     public function planVente(Entreprise $entreprise, Salle $salle)
     {
+        // Sauvegarder le contexte en session pour la navigation
+        session([
+            'entreprise_id' => $entreprise->id,
+            'salle_id' => $salle->id,
+            'point_de_vente_id' => request('point_de_vente_id')
+        ]);
+
         // On charge les tables de la salle
         $salle->load('tables');
         $pointDeVenteId = request('point_de_vente_id');

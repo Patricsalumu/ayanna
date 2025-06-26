@@ -8,8 +8,8 @@ use App\Models\Panier;
 use App\Models\Commande;
 use App\Models\Vente;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class VenteController extends Controller
 {
@@ -421,25 +421,159 @@ class VenteController extends Controller
     }
 
     // Affiche la liste des créances (commandes avec paiement par compte client)
-    public function creances()
+    public function creances(Request $request)
     {
         $user = Auth::user();
         $entrepriseId = $user->entreprise_id ?? ($user->entreprise->id ?? null);
-        $creances = \App\Models\Commande::with(['panier', 'panier.client'])
+        $filtre = $request->get('filtre', 'jour'); // 'jour' ou 'toutes'
+        
+        $query = Commande::with(['panier', 'panier.client', 'panier.serveuse', 'panier.tableResto', 'panier.pointDeVente', 'paiements'])
             ->where('mode_paiement', 'compte_client')
-            ->whereDate('created_at', now()->toDateString())
             ->whereHas('panier.tableResto.salle', function($q) use ($entrepriseId) {
                 $q->where('entreprise_id', $entrepriseId);
-            })
-            ->orderByDesc('created_at')
-            ->get();
-        return view('creances.liste', compact('creances'));
+            });
+            
+        if ($filtre === 'jour') {
+            $query->whereDate('created_at', now()->toDateString());
+        }
+        
+        $creances = $query->orderByDesc('created_at')->get();
+        
+        return view('creances.liste', compact('creances', 'filtre'));
     }
+
     public function confirmerCreance($commandeId)
     {
         $commande = \App\Models\Commande::findOrFail($commandeId);
-        $commande->statut = 'payé'; // ou 'validé' selon ta logique
+        $commande->statut = 'payé';
         $commande->save();
         return redirect()->back()->with('success', 'Créance confirmée comme payée.');
+    }
+
+    public function enregistrerPaiement(Request $request, $commandeId)
+    {
+        try {
+            Log::info('Début enregistrement paiement', [
+                'commande_id' => $commandeId,
+                'request_data' => $request->all()
+            ]);
+
+            $request->validate([
+                'montant' => 'required|numeric|min:0.01',
+                'mode' => 'required|string',
+                'notes' => 'nullable|string|max:500'
+            ]);
+
+            $commande = Commande::with(['panier.produits', 'paiements'])->findOrFail($commandeId);
+            
+            Log::info('Commande trouvée', ['commande' => $commande->toArray()]);
+            
+            // Calculer le montant total de la commande
+            $montantTotal = $commande->montant ?? $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente);
+            
+            // Calculer le montant déjà payé
+            $montantDejaPaye = $commande->paiements->sum('montant');
+            
+            // Calculer le montant restant
+            $montantRestant = $montantTotal - $montantDejaPaye;
+            
+            Log::info('Calculs paiement', [
+                'montant_total' => $montantTotal,
+                'montant_deja_paye' => $montantDejaPaye,
+                'montant_restant' => $montantRestant,
+                'montant_demande' => $request->montant
+            ]);
+            
+            // Vérifier que le montant à payer ne dépasse pas le restant
+            $montantAPayer = min($request->montant, $montantRestant);
+            
+            // Calculer le nouveau montant restant
+            $nouveauMontantRestant = $montantRestant - $montantAPayer;
+            
+            // Déterminer le compte selon le rôle de l'utilisateur
+            $user = Auth::user();
+            $compteId = null;
+            
+            if ($user->role === 'admin') {
+                // Pour admin : compte caisse directement
+                $compte = \App\Models\Compte::where('nom', 'LIKE', '%caisse%')
+                    ->where('entreprise_id', $commande->panier->pointDeVente->entreprise_id)
+                    ->first();
+            } else {
+                // Pour comptable/comptoir : compte comptoir
+                $compte = \App\Models\Compte::where('nom', 'LIKE', '%comptoir%')
+                    ->where('entreprise_id', $commande->panier->pointDeVente->entreprise_id)
+                    ->first();
+            }
+            
+            // Si aucun compte spécifique trouvé, prendre le premier compte de l'entreprise
+            if (!$compte) {
+                $compte = \App\Models\Compte::where('entreprise_id', $commande->panier->pointDeVente->entreprise_id)->first();
+            }
+            
+            $compteId = $compte ? $compte->id : null;
+            
+            Log::info('Compte sélectionné', [
+                'user_role' => $user->role,
+                'compte_id' => $compteId,
+                'compte_nom' => $compte ? $compte->nom : 'Aucun'
+            ]);
+            
+            // Créer le paiement
+            $paiement = \App\Models\Paiement::create([
+                'compte_id' => $compteId,
+                'commande_id' => $commande->id,
+                'montant' => $montantAPayer,
+                'montant_restant' => $nouveauMontantRestant,
+                'mode' => $request->mode,
+                'date_paiement' => now()->toDateString(),
+                'notes' => $request->notes,
+                'est_solde' => $nouveauMontantRestant <= 0,
+                'user_id' => Auth::id(),
+                'statut' => 'validé'
+            ]);
+            
+            Log::info('Paiement créé', ['paiement' => $paiement->toArray()]);
+            
+            // Si complètement payé, marquer la commande comme payée
+            if ($nouveauMontantRestant <= 0) {
+                $commande->statut = 'payé';
+                $commande->save();
+                Log::info('Commande marquée comme payée');
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => $nouveauMontantRestant <= 0 ? 'Créance totalement soldée !' : 'Paiement partiel enregistré',
+                'montant_paye' => $montantAPayer,
+                'montant_restant' => $nouveauMontantRestant,
+                'est_solde' => $nouveauMontantRestant <= 0
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de l\'enregistrement du paiement: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'enregistrement du paiement: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function historiqueCreance($commandeId)
+    {
+        $commande = \App\Models\Commande::with(['panier.client', 'panier.serveuse', 'panier.tableResto', 'panier.produits', 'paiements.user'])
+            ->findOrFail($commandeId);
+        
+        return view('creances.historique', compact('commande'));
+    }
+
+    public function imprimerCreance($commandeId)
+    {
+        $commande = \App\Models\Commande::with(['panier.client', 'panier.serveuse', 'panier.tableResto', 'panier.produits', 'panier.pointDeVente.entreprise', 'paiements'])
+            ->findOrFail($commandeId);
+        
+        return view('creances.facture', compact('commande'));
     }
 }

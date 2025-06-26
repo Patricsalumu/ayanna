@@ -10,11 +10,37 @@
                     </a>
                 </div>
 
+                <!-- Bouton retour vers point de vente -->
+                <div class="flex items-center ml-4">
+                    @php
+                        $entrepriseId = session('entreprise_id') ?? Auth::user()->entreprise_id;
+                        $pointDeVenteId = session('point_de_vente_id') ?? (isset($pointDeVente) && is_object($pointDeVente) && method_exists($pointDeVente, 'getAttribute') ? $pointDeVente->id : null);
+                    @endphp
+                    @if($entrepriseId && $pointDeVenteId)
+                    <a href="{{ route('pointsDeVente.show', ['entreprise' => $entrepriseId]) }}" 
+                       class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold shadow transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Retour
+                    </a>
+                    @endif
+                </div>
+
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    @php
+                        $salleId = session('salle_id') ?? (isset($salle) && is_object($salle) && method_exists($salle, 'getAttribute') ? $salle->id : null);
+                    @endphp
+                    @if($entrepriseId && $salleId && $pointDeVenteId)
+                    <x-nav-link href="{{ route('salle.plan.vente', ['entreprise' => $entrepriseId, 'salle' => $salleId]) }}?point_de_vente_id={{ $pointDeVenteId }}" :active="request()->routeIs('salle.*')">
+                        {{ __('Salle') }}
+                    </x-nav-link>
+                    @else
                     <x-nav-link href="#" :active="request()->routeIs('salle.*')">
                         {{ __('Salle') }}
                     </x-nav-link>
+                    @endif
                 </div>
             </div>
 

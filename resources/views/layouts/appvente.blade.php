@@ -22,6 +22,12 @@
       <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     </head>
     <body class="font-sans antialiased" x-data="{ showNavMenu: false }">
+        @php
+            // Contexte global pour la navigation
+            $pointDeVenteId = request('point_de_vente_id') ?? session('point_de_vente_id');
+            $pointDeVente = isset($pointDeVente) ? $pointDeVente : ($pointDeVenteId ? \App\Models\PointDeVente::find($pointDeVenteId) : null);
+            $salle = isset($salle) ? $salle : (request()->route('salle') ? \App\Models\Salle::find(request()->route('salle')) : null);
+        @endphp
         <div class="min-h-screen bg-gray-100 ">
             @include('layouts.navvente')
 

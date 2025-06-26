@@ -117,6 +117,9 @@ Route::middleware(['auth'])->group(function ()
 
     //Routes créances
     Route::post('/creances/{commande}/confirmer', [App\Http\Controllers\VenteController::class, 'confirmerCreance'])->name('creances.confirmer');
+    Route::post('/creances/{commande}/paiement', [App\Http\Controllers\VenteController::class, 'enregistrerPaiement'])->name('creances.paiement');
+    Route::get('/creances/{commande}/historique', [App\Http\Controllers\VenteController::class, 'historiqueCreance'])->name('creances.historique');
+    Route::get('/creances/{commande}/imprimer', [App\Http\Controllers\VenteController::class, 'imprimerCreance'])->name('creances.imprimer');
     Route::get('/creances', [App\Http\Controllers\VenteController::class, 'creances'])->name('creances.liste');
 });
 
