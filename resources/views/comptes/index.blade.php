@@ -7,11 +7,11 @@
         showDeleteModal: false,
         loading: false,
         errors: {},
-        form: { numero: '', entreprise_id:'', nom: '', type: '', description: '' },
-        editForm: { id: null, numero: '', nom: '', type: '', description: '' },
+        form: { numero: '', entreprise_id:'', nom: '', type: '', classe_comptable_id: '', description: '' },
+        editForm: { id: null, numero: '', nom: '', type: '', classe_comptable_id: '', description: '' },
         deleteId: null,
-        openAdd() { this.form = { numero: '', entreprise_id:'', nom: '', type: '', description: '' }; this.errors = {}; this.showAddModal = true; },
-        openEdit(compte) { this.editForm = { id: compte.id, numero: compte.numero, entreprise_id:'', nom: compte.nom, type: compte.type, description: compte.description }; this.errors = {}; this.showEditModal = true; },
+        openAdd() { this.form = { numero: '', entreprise_id:'', nom: '', type: '', classe_comptable_id: '', description: '' }; this.errors = {}; this.showAddModal = true; },
+        openEdit(compte) { this.editForm = { id: compte.id, numero: compte.numero, entreprise_id:'', nom: compte.nom, type: compte.type, classe_comptable_id: compte.classe_comptable_id, description: compte.description }; this.errors = {}; this.showEditModal = true; },
         openDelete(id) { this.deleteId = id; this.showDeleteModal = true; },
         submitCompte() {
             this.loading = true;
@@ -136,14 +136,32 @@
                         <div class="text-red-600 text-xs mt-1" x-text="errors.nom[0]"></div>
                     </template>
                 </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Classe Comptable</label>
+                    <select x-model="form.classe_comptable_id" class="mt-1 block w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500" required>
+                        <option value="">-- Sélectionner une classe --</option>
+                        @if(isset($classesComptables))
+                            @foreach($classesComptables as $classe)
+                                <option value="{{ $classe->id }}">{{ $classe->numero }} - {{ $classe->nom }}</option>
+                            @endforeach
+                        @endif
+                    </select>
+                    <template x-if="errors.classe_comptable_id">
+                        <div class="text-red-600 text-xs mt-1" x-text="errors.classe_comptable_id[0]"></div>
+                    </template>
+                </div>
             <div class="mb-4">
                 <label class="block mb-1 font-semibold">Type</label>
                 <select  x-model="form.type" class="w-full border rounded px-3 py-2" required>
                     <option value="">-- Sélectionner --</option>
-                    <option value="actif" @if(old('type')=='actif') selected @endif>Actif</option>
-                    <option value="passif" @if(old('type')=='passif') selected @endif>Passif</option>
+                    <option value="actif">Actif</option>
+                    <option value="passif">Passif</option>
+                    <option value="charge">Charge</option>
+                    <option value="produit">Produit</option>
                 </select>
-                @error('type')<div class="text-red-600 text-sm">{{ $message }}</div>@enderror
+                <template x-if="errors.type">
+                    <div class="text-red-600 text-xs mt-1" x-text="errors.type[0]"></div>
+                </template>
             </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700">Description</label>
@@ -186,17 +204,28 @@
                     </template>
                 </div>
                 <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Classe Comptable</label>
+                    <select x-model="editForm.classe_comptable_id" class="mt-1 block w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500" required>
+                        <option value="">-- Sélectionner une classe --</option>
+                        @if(isset($classesComptables))
+                            @foreach($classesComptables as $classe)
+                                <option value="{{ $classe->id }}">{{ $classe->numero }} - {{ $classe->nom }}</option>
+                            @endforeach
+                        @endif
+                    </select>
+                    <template x-if="errors.classe_comptable_id">
+                        <div class="text-red-600 text-xs mt-1" x-text="errors.classe_comptable_id[0]"></div>
+                    </template>
+                </div>
+                <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700">Type</label>
-                    <div class="flex gap-4 mt-1">
-                        <label class="inline-flex items-center">
-                            <input type="radio" x-model="editForm.type" value="actif" class="form-radio text-blue-600" required>
-                            <span class="ml-2">Actif</span>
-                        </label>
-                        <label class="inline-flex items-center">
-                            <input type="radio" x-model="editForm.type" value="passif" class="form-radio text-blue-600" required>
-                            <span class="ml-2">Passif</span>
-                        </label>
-                    </div>
+                    <select x-model="editForm.type" class="mt-1 block w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500" required>
+                        <option value="">-- Sélectionner --</option>
+                        <option value="actif">Actif</option>
+                        <option value="passif">Passif</option>
+                        <option value="charge">Charge</option>
+                        <option value="produit">Produit</option>
+                    </select>
                     <template x-if="errors.type">
                         <div class="text-red-600 text-xs mt-1" x-text="errors.type[0]"></div>
                     </template>
@@ -247,7 +276,7 @@
                         <span class="block w-1 h-1 bg-gray-700 rounded-full"></span>
                     </button>
                     <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-40 bg-white border rounded shadow-lg z-10">
-                        <a href="#" @click.prevent="openEdit({id: {{ $compte->id }}, numero: '{{ addslashes($compte->numero) }}', nom: '{{ addslashes($compte->nom) }}', type: '{{ addslashes($compte->type) }}', description: '{{ addslashes($compte->description) }}'})" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        <a href="#" @click.prevent="openEdit({id: {{ $compte->id }}, numero: '{{ addslashes($compte->numero) }}', nom: '{{ addslashes($compte->nom) }}', type: '{{ addslashes($compte->type) }}', classe_comptable_id: {{ $compte->classe_comptable_id ?? 'null' }}, description: '{{ addslashes($compte->description) }}'})" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z" /></svg>
                             Modifier
                         </a>
@@ -296,7 +325,7 @@
                             <td class="p-3">{{ ucfirst($compte->type) }}</td>
                             <td class="p-3">{{ $compte->description }}</td>
                             <td class="p-3 flex gap-2">
-                                <a href="#" @click.prevent="openEdit({id: {{ $compte->id }}, numero: '{{ addslashes($compte->numero) }}', nom: '{{ addslashes($compte->nom) }}', type: '{{ addslashes($compte->type) }}', description: '{{ addslashes($compte->description) }}'})" class="inline-flex items-center gap-1 bg-indigo-600 text-white px-3 py-1 rounded-md text-sm hover:bg-indigo-700">
+                                <a href="#" @click.prevent="openEdit({id: {{ $compte->id }}, numero: '{{ addslashes($compte->numero) }}', nom: '{{ addslashes($compte->nom) }}', type: '{{ addslashes($compte->type) }}', classe_comptable_id: {{ $compte->classe_comptable_id ?? 'null' }}, description: '{{ addslashes($compte->description) }}'})" class="inline-flex items-center gap-1 bg-indigo-600 text-white px-3 py-1 rounded-md text-sm hover:bg-indigo-700">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z" /></svg>
                                     Modifier
                                 </a>

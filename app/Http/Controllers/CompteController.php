@@ -16,7 +16,8 @@ class CompteController extends Controller
         $entreprise_id = $request->get('entreprise_id') ?? (Auth::user()->entreprise_id ?? null);
         $comptes = Compte::where('entreprise_id', $entreprise_id)->orderBy('numero')->get();
         $entreprise = \App\Models\Entreprise::find($entreprise_id);
-        return view('comptes.index', compact('comptes', 'entreprise'));
+        $classesComptables = \App\Models\ClasseComptable::where('entreprise_id', $entreprise_id)->orderBy('numero')->get();
+        return view('comptes.index', compact('comptes', 'entreprise', 'classesComptables'));
     }
 
     // Formulaire création
@@ -32,15 +33,15 @@ class CompteController extends Controller
     {
         // Debug : log les données reçues
         Log::info('Données reçues pour création de compte', $request->all());
+        $entreprise_id = Auth::user()->entreprise_id;
         $data = $request->validate([
-            'numero' => 'required|unique:comptes',
+            'numero' => "required|unique:comptes,numero,NULL,id,entreprise_id,{$entreprise_id}",
             'nom' => 'required|string|max:255',
             'type' => 'required|in:actif,passif,charge,produit',
             'description' => 'nullable|string',
             'classe_comptable_id' => 'required|exists:classes_comptables,id',
-            // 'entreprise_id' => 'required|exists:entreprises,id', // on retire la validation ici
         ]);
-        $data['entreprise_id'] = Auth::user()->entreprise_id;
+        $data['entreprise_id'] = $entreprise_id;
         $data['user_id'] = Auth::id();
         $compte = Compte::create($data);
         Log::info('Compte créé', ['compte' => $compte]);
@@ -66,13 +67,11 @@ class CompteController extends Controller
 
         try {
             $data = $request->validate([
-                'numero' => 'required|unique:comptes,numero,' . $compte->id,
+                'numero' => "required|unique:comptes,numero,{$compte->id},id,entreprise_id,{$compte->entreprise_id}",
                 'nom' => 'required|string|max:255',
                 'type' => 'required|in:actif,passif,charge,produit',
                 'description' => 'nullable|string',
                 'classe_comptable_id' => 'required|exists:classes_comptables,id',
-                // Suppression de la validation entreprise_id car le compte appartient déjà à une entreprise
-                // 'entreprise_id' => 'required|exists:entreprises,id',
             ]);
             
             // Ne pas modifier l'entreprise_id lors de la mise à jour

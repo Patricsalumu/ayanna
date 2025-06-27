@@ -6,6 +6,7 @@ use App\Models\PointDeVente;
 use App\Models\Historiquepdv;
 use App\Models\Panier;
 use App\Models\Commande;
+use App\Services\ComptabiliteService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -337,13 +338,32 @@ class VenteController extends Controller
             Log::info('[VALIDATION PAIEMENT] Données reçues', $data);
             Log::info('[VALIDATION PAIEMENT] Clés disponibles', ['keys' => array_keys($data)]);
 
-            // Validation des données requises
-            $requiredFields = ['client_id', 'point_de_vente_id', 'table_id', 'mode_paiement'];
+            // Validation des données requises de base
+            $requiredFields = ['point_de_vente_id', 'table_id', 'mode_paiement'];
             foreach ($requiredFields as $field) {
                 if (!isset($data[$field])) {
                     Log::error('[VALIDATION PAIEMENT] Champ manquant', ['field' => $field]);
                     return response()->json(['error' => "Champ manquant: $field"], 400);
                 }
+            }
+
+            // Validation conditionnelle pour le paiement par compte client
+            if ($data['mode_paiement'] === 'compte_client') {
+                $requiredForCompteClient = ['client_id', 'serveuse_id'];
+                foreach ($requiredForCompteClient as $field) {
+                    if (!isset($data[$field]) || empty($data[$field])) {
+                        Log::error('[VALIDATION PAIEMENT] Champ obligatoire pour paiement compte client', ['field' => $field]);
+                        return response()->json(['error' => "Pour un paiement par compte client, le champ '$field' est obligatoire"], 400);
+                    }
+                }
+                Log::info('[VALIDATION PAIEMENT] Validation réussie pour paiement par compte client', [
+                    'client_id' => $data['client_id'],
+                    'serveuse_id' => $data['serveuse_id']
+                ]);
+            } else {
+                Log::info('[VALIDATION PAIEMENT] Paiement en espèces ou mobile money - client et serveuse optionnels', [
+                    'mode_paiement' => $data['mode_paiement']
+                ]);
             }
 
             // Validation du montant (accepter 'total' ou 'montant')
@@ -376,6 +396,26 @@ class VenteController extends Controller
 
             Log::info('[VALIDATION PAIEMENT] Panier trouvé', ['panier_id' => $panier->id]);
 
+            // Mettre à jour les informations du panier si nécessaires (pour paiement par compte client)
+            if ($data['mode_paiement'] === 'compte_client') {
+                $panierUpdated = false;
+                if (!$panier->client_id && !empty($data['client_id'])) {
+                    $panier->client_id = $data['client_id'];
+                    $panierUpdated = true;
+                }
+                if (!$panier->serveuse_id && !empty($data['serveuse_id'])) {
+                    $panier->serveuse_id = $data['serveuse_id'];
+                    $panierUpdated = true;
+                }
+                if ($panierUpdated) {
+                    $panier->save();
+                    Log::info('[VALIDATION PAIEMENT] Panier mis à jour avec client et serveuse', [
+                        'client_id' => $panier->client_id,
+                        'serveuse_id' => $panier->serveuse_id
+                    ]);
+                }
+            }
+
             // Calculer le montant depuis le panier si pas fourni
             if (!$montant) {
                 $panier->load('produits');
@@ -402,6 +442,36 @@ class VenteController extends Controller
 
             $commande->save();
             Log::info('[VALIDATION PAIEMENT] Commande créée', ['commande_id' => $commande->id]);
+
+            // 3. ENREGISTREMENT COMPTABLE AUTOMATIQUE
+            try {
+                // Vérifier si la comptabilité est active pour ce point de vente
+                $pointDeVente = $panier->pointDeVente;
+                if ($pointDeVente && $pointDeVente->comptabilite_active) {
+                    $comptabiliteService = new \App\Services\ComptabiliteService();
+                    $journalComptable = $comptabiliteService->enregistrerVente($commande);
+                    
+                    if ($journalComptable) {
+                        Log::info('[VALIDATION PAIEMENT] Écriture comptable créée', [
+                            'journal_id' => $journalComptable->id,
+                            'commande_id' => $commande->id,
+                            'montant' => $montant,
+                            'mode_paiement' => $data['mode_paiement']
+                        ]);
+                    } else {
+                        Log::info('[VALIDATION PAIEMENT] Comptabilité désactivée pour ce point de vente');
+                    }
+                } else {
+                    Log::info('[VALIDATION PAIEMENT] Point de vente sans comptabilité active');
+                }
+            } catch (\Exception $e) {
+                Log::error('[VALIDATION PAIEMENT] Erreur lors de l\'enregistrement comptable', [
+                    'error' => $e->getMessage(),
+                    'commande_id' => $commande->id
+                ]);
+                // Ne pas faire échouer la transaction pour une erreur comptable
+                // L'écriture pourra être faite manuellement plus tard
+            }
 
             // 4. Marquer le panier comme terminé
             $panier->status = 'validé';

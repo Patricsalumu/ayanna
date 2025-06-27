@@ -233,3 +233,9 @@ Route::prefix('transferts')->name('transferts.')->group(function () {
     Route::get('/historique', [\App\Http\Controllers\TransfertController::class, 'historique'])->name('historique');
     Route::get('/api/comptes/{compteId}/transferts-rapides', [\App\Http\Controllers\TransfertController::class, 'transfertsRapides'])->name('api.transferts-rapides');
 });
+
+// Route de test pour la comptabilité
+require __DIR__.'/test_comptabilite.php';
+
+// Route de test pour la validation des paiements
+require __DIR__.'/test_validation_paiement.php';
