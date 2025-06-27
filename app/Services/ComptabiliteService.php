@@ -295,15 +295,34 @@ class ComptabiliteService
      */
     private function calculerMontantCommande(Commande $commande)
     {
-        if ($commande->montant) {
-            return $commande->montant;
+        // Charger les produits du panier si pas déjà fait
+        if (!$commande->panier) {
+            $commande->load('panier');
+        }
+        
+        if (!$commande->panier->produits) {
+            $commande->panier->load('produits');
         }
 
         if ($commande->panier && $commande->panier->produits) {
-            return $commande->panier->produits->sum(function($produit) {
+            $montant = $commande->panier->produits->sum(function($produit) {
                 return $produit->pivot->quantite * $produit->prix_vente;
             });
+            
+            Log::debug('Montant calculé pour commande', [
+                'commande_id' => $commande->id,
+                'panier_id' => $commande->panier_id,
+                'nb_produits' => $commande->panier->produits->count(),
+                'montant_calcule' => $montant
+            ]);
+            
+            return $montant;
         }
+
+        Log::warning('Impossible de calculer le montant de la commande', [
+            'commande_id' => $commande->id,
+            'panier_id' => $commande->panier_id
+        ]);
 
         return 0;
     }
