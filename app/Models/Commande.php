@@ -11,7 +11,10 @@ class Commande extends Model
     public $timestamps = false; // Désactive la gestion automatique des timestamps
 
     protected $fillable = [
-        'panier_id', 'mode_paiement', 'statut', 'created_at', 'montant'
+        'panier_id', 
+        'mode_paiement', 
+        'statut', 
+        'created_at'
     ];
 
     public function panier()
