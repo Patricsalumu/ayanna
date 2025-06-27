@@ -1,24 +1,14 @@
-<x-app-layout>
+@extends('layouts.appvente')
+
+@section('content')
 <div x-data="posApp()" class="flex flex-col md:flex-row gap-4 p-4 min-h-[80vh]">
   <!-- COLONNE GAUCHE : Panier + Options + Pavé numérique -->
   <div class="w-full md:w-1/3 flex flex-col gap-2">
     <!-- Panier -->
     <div class="bg-white rounded-2xl shadow p-1 min-h-0 h-auto" style="padding-top:0.25rem;padding-bottom:0.25rem;">
       <div class="flex justify-between items-center mb-2">
-        <a href="{{ route('salle.plan.vente', [
-            'entreprise' => $pointDeVente->entreprise_id,
-            'salle' => optional($tables->firstWhere('id', $tableCourante))->salle_id ?? ($tables->first()?->salle_id ?? 1),
-            'point_de_vente_id' => $pointDeVente->id
-        ]) }}"
-           class="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 hover:bg-blue-100 text-blue-700 font-semibold text-sm shadow transition"
-           title="Retour au plan des tables">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
-          <span>Plan des tables</span>
-        </a>
         <h2 class="text-xl font-semibold flex items-center gap-2">
-          <a href="{{ route('paniers.jour') }}" class="ml-2 px-3 py-1 rounded bg-blue-600 text-white text-sm font-semibold shadow hover:bg-blue-700 transition" title="Voir tous les paniers du jour">
           🛒 Panier
-          </a>
         </h2>
         <button @click="toggleOptions" class="text-gray-500 hover:text-gray-700">
           <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M6 10a2 2..."/></svg>
@@ -166,71 +156,47 @@
   <div class="w-full md:w-2/3 flex flex-col gap-4">
     <template x-if="mode === 'commande'">
       <div>
-        {{-- Barre de recherche + bouton menu navigation --}}
-        <div class="hidden md:flex justify-between items-center mb-4">
-          <div class="flex w-full gap-2">
-            <div class="flex-1 flex">
-              <input x-model="search" type="text" placeholder="Rechercher un produit..."
-                     class="flex-1 px-4 py-2 border rounded-l-lg focus:outline-none focus:ring"/>
-              <button class="bg-blue-600 text-white px-4 py-2 rounded-r-lg">🔍</button>
-            </div>
-            <div class="flex items-center ml-2">
-              <!-- Bouton menu navigation (burger) -->
-              <div class="relative">
-                <button @click="showNavMenu = !showNavMenu" class="flex items-center justify-center w-12 h-12 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 focus:outline-none" title="Menu navigation">
-                  <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M4 12h16M4 17h16" />
-                  </svg>
-                </button>
-                <!-- Menu navigation déroulant -->
-                <div x-show="showNavMenu" @click.away="showNavMenu = false" x-transition
-                     class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl z-30 flex flex-col p-2 border border-gray-100">
-                  <a href="{{ route('stock_journalier.index', ['pointDeVente' => $pointDeVente->id]) }}" class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4 block" title="Fiche Produit">Fiche Produit</a>
-                  <a href="{{ route('rapport.jour', ['pointDeVenteId' => $pointDeVente->id]) }}"
-                     class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4"
-                     title="Rapport du jour">
-                     Rapport
-                  </a>
-                  <a href="{{ route('creances.liste') }}"
-                     class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4"
-                     title="Créances">
-                     Créances
-                  </a>
-                  <a href="{{ route('mouvements.pdv', $pointDeVente->id) }}"
-                     class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4"
-                     title="Entrées-sorties">
-                     Entrées-sorties
-                  </a>
-                  @php
-                      $hasPanierEnCours = \App\Models\Panier::where('point_de_vente_id', $pointDeVente->id)
-                          ->where('status', 'en_cours')
-                          ->exists();
-                  @endphp
-                  @if(!$hasPanierEnCours)
-                  <form action="{{ route('stock_journalier.fermer_session', ['pointDeVente' => $pointDeVente->id]) }}" method="POST" onsubmit="return confirm('Confirmer la fermeture de la session ?');" style="margin:0;">
-                      @csrf
-                      <button type="submit"
-                          class="w-full py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4"
-                          title="Fermer la session">
-                          Fermer
-                      </button>
-                  </form>
-                  @else
-                  <button class="w-full py-3 rounded-lg bg-gray-200 text-gray-400 font-bold text-base shadow transition text-left px-4 cursor-not-allowed" title="Impossible de fermer : paniers en cours" disabled>
-                      Fermer (paniers en cours)
-                  </button>
-                  @endif
-                </div>
-              </div>
-            </div>
+        {{-- Barre de recherche centrée --}}
+        <div class="flex justify-center items-center mb-4">
+          <div class="flex w-full max-w-md">
+            <input x-model="search" type="text" placeholder="Rechercher un produit..."
+                   class="flex-1 px-4 py-3 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"/>
+            <button class="bg-blue-600 text-white px-6 py-3 rounded-r-lg hover:bg-blue-700 transition">
+              🔍
+            </button>
           </div>
         </div>
-        {{-- Catégories --}}
+        {{-- Catégories avec couleurs --}}
         <div class="flex flex-wrap gap-2 mb-4">
-          <button @click="selectCat(null)" :class="!currentCat ? activeCatClass : inactiveCatClass">Toutes</button>
-          @foreach($categories as $cat)
+          <button @click="selectCat(null)" 
+                  :class="!currentCat ? 'bg-gray-600 text-white font-bold ring-2 ring-gray-300' : 'bg-gray-200 text-gray-700'"
+                  class="px-4 py-2 rounded-lg transition shadow">
+            Toutes
+          </button>
+          @php
+            $colors = [
+              'red' => ['bg-red-500', 'text-white', 'ring-red-300', 'bg-red-100', 'text-red-700', 'border-red-400'],
+              'blue' => ['bg-blue-500', 'text-white', 'ring-blue-300', 'bg-blue-100', 'text-blue-700', 'border-blue-400'],
+              'green' => ['bg-green-500', 'text-white', 'ring-green-300', 'bg-green-100', 'text-green-700', 'border-green-400'],
+              'purple' => ['bg-purple-500', 'text-white', 'ring-purple-300', 'bg-purple-100', 'text-purple-700', 'border-purple-400'],
+              'yellow' => ['bg-yellow-500', 'text-white', 'ring-yellow-300', 'bg-yellow-100', 'text-yellow-700', 'border-yellow-400'],
+              'pink' => ['bg-pink-500', 'text-white', 'ring-pink-300', 'bg-pink-100', 'text-pink-700', 'border-pink-400'],
+              'indigo' => ['bg-indigo-500', 'text-white', 'ring-indigo-300', 'bg-indigo-100', 'text-indigo-700', 'border-indigo-400'],
+              'teal' => ['bg-teal-500', 'text-white', 'ring-teal-300', 'bg-teal-100', 'text-teal-700', 'border-teal-400'],
+              'orange' => ['bg-orange-500', 'text-white', 'ring-orange-300', 'bg-orange-100', 'text-orange-700', 'border-orange-400'],
+              'cyan' => ['bg-cyan-500', 'text-white', 'ring-cyan-300', 'bg-cyan-100', 'text-cyan-700', 'border-cyan-400'],
+            ];
+            $colorKeys = array_keys($colors);
+          @endphp
+          @foreach($categories as $index => $cat)
+            @php
+              $colorKey = $colorKeys[$index % count($colorKeys)];
+              $colorClasses = $colors[$colorKey];
+            @endphp
             <button @click="selectCat({{ $cat->id }})"
-                    :class="currentCat==={{ $cat->id }} ? activeCatClass : inactiveCatClass">
+                    :class="currentCat==={{ $cat->id }} ? '{{ $colorClasses[0] }} {{ $colorClasses[1] }} font-bold ring-2 {{ $colorClasses[2] }}' : '{{ $colorClasses[3] }} {{ $colorClasses[4] }}'"
+                    class="px-4 py-2 rounded-lg transition shadow"
+                    data-cat-color="{{ $colorKey }}">
               {{ $cat->nom }}
             </button>
           @endforeach
@@ -245,9 +211,45 @@
         >
           <template x-for="prod in filteredProduits" :key="prod.id">
             <div @click="ajouterProduit(prod)"
-                 class="relative bg-white p-2 rounded-xl shadow cursor-pointer hover:ring-2 hover:ring-blue-500 transition h-[102px] min-h-[102px] max-h-[102px] flex flex-col items-center justify-end">
+                 class="relative bg-white p-2 rounded-xl shadow cursor-pointer hover:ring-2 hover:ring-blue-500 transition h-[102px] min-h-[102px] max-h-[102px] flex flex-col items-center justify-end overflow-hidden">
+              
+              <!-- Bande colorée en bas selon la catégorie -->
+              <div class="absolute bottom-0 left-0 right-0 h-1 z-10"
+                   :class="getCategoryColor(prod.categorie_id)"></div>
+              
               <div class="relative w-full flex-1 flex flex-col justify-end items-center">
-                <img :src="prod.image" class="w-[92px] h-[92px] object-cover rounded" style="flex-shrink:0;" />
+                <template x-if="prod.image">
+                  <img :src="prod.image" class="w-[92px] h-[92px] object-cover rounded" style="flex-shrink:0;" />
+                </template>
+                <template x-if="!prod.image">
+                  <div class="w-[92px] h-[92px] rounded flex items-center justify-center" style="flex-shrink:0;">
+                    <!-- Icône produit minimaliste noir et blanc -->
+                    <svg width="50" height="55" viewBox="0 0 100 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <!-- Corps principal de la bouteille -->
+                      <path d="M35 30 L35 95 Q35 102 42 102 L58 102 Q65 102 65 95 L65 30 Q65 27 62 27 L38 27 Q35 27 35 30 Z" 
+                            fill="none" stroke="#374151" stroke-width="2.5" stroke-linejoin="round"/>
+                      
+                      <!-- Goulot -->
+                      <rect x="45" y="12" width="10" height="18" fill="none" stroke="#374151" stroke-width="2.5" rx="2" stroke-linejoin="round"/>
+                      
+                      <!-- Bouchon simple -->
+                      <rect x="42" y="8" width="16" height="6" fill="#374151" rx="3"/>
+                      
+                      <!-- Étiquette épurée -->
+                      <rect x="40" y="45" width="20" height="16" fill="none" stroke="#374151" stroke-width="1.5" rx="2"/>
+                      
+                      <!-- Lignes de texte sur l'étiquette -->
+                      <rect x="43" y="49" width="14" height="1.2" fill="#374151" rx="0.6"/>
+                      <rect x="45" y="52" width="10" height="1" fill="#6B7280" rx="0.5"/>
+                      <rect x="46" y="55" width="8" height="1" fill="#6B7280" rx="0.5"/>
+                      <rect x="47" y="57.5" width="6" height="1" fill="#9CA3AF" rx="0.5"/>
+                      
+                      <!-- Niveau de liquide suggéré -->
+                      <path d="M37 32 L37 93 Q37 99 42 99 L58 99 Q63 99 63 93 L63 32" 
+                            fill="none" stroke="#9CA3AF" stroke-width="1" stroke-dasharray="2,2" opacity="0.6"/>
+                    </svg>
+                  </div>
+                </template>
                 <span class="absolute bottom-0 left-0 right-0 bg-white text-gray-700 text-xs font-semibold truncate px-1 text-center" style="transform:translateY(40%);" x-text="prod.nom"></span>
               </div>
               <template x-if="inqte(prod.id)">
@@ -299,11 +301,41 @@ window.SET_CLIENT_URL = "{{ url('/panier/set-client') }}";
 window.SET_SERVEUSE_URL = "{{ url('/panier/set-serveuse') }}";
 window.PANIER_ID = @json($panier->id ?? ($panier['id'] ?? null));
 window.ENTREPRISE = @json($pointDeVente->entreprise);
-window.CLIENTS = @json($clients);
-window.SERVEUSES = @json($serveuses);
+window.CLIENTS = @json($clientsArray ?? []);
+window.SERVEUSES = @json($serveusesArray ?? []);
+window.MODES_PAIEMENT = @json($modesPaiementArray ?? []);
 window.TABLE_COURANTE_LABEL = "{{ $tables->firstWhere('id', $tableCourante)->numero ?? $tables->firstWhere('id', $tableCourante)->nom ?? $tableCourante }}";
 window.POINT_DE_VENTE_NOM = "{{ $pointDeVente->nom ?? '' }}";
+
+// Mapping des couleurs des catégories
+window.CATEGORY_COLORS = {
+  @foreach($categories as $index => $cat)
+    @php
+      $colors = [
+        'red' => 'bg-red-500',
+        'blue' => 'bg-blue-500', 
+        'green' => 'bg-green-500',
+        'purple' => 'bg-purple-500',
+        'yellow' => 'bg-yellow-500',
+        'pink' => 'bg-pink-500',
+        'indigo' => 'bg-indigo-500',
+        'teal' => 'bg-teal-500',
+        'orange' => 'bg-orange-500',
+        'cyan' => 'bg-cyan-500'
+      ];
+      $colorKeys = array_keys($colors);
+      $colorKey = $colorKeys[$index % count($colorKeys)];
+      $colorClass = $colors[$colorKey];
+    @endphp
+    {{ $cat->id }}: '{{ $colorClass }}',
+  @endforeach
+};
+
+// Fonction pour obtenir la couleur d'une catégorie
+window.getCategoryColor = function(categoryId) {
+  return window.CATEGORY_COLORS[categoryId] || 'bg-gray-400';
+};
+
 // Ajoute ici toutes les autres variables nécessaires à posApp
 </script>
-</div>
-</x-app-layout>
+@endsection

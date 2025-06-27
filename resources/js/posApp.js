@@ -46,12 +46,23 @@ function posApp() {
     ],
     activeCatClass: 'px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-semibold shadow ring-2 ring-blue-300 transition',
     inactiveCatClass: 'px-4 py-2 rounded-full bg-gray-100 hover:bg-blue-100 text-sm font-semibold shadow text-blue-600 transition',
+    
+    // Fonction pour obtenir la couleur d'une catégorie
+    getCategoryColor(categoryId) {
+      if (window.getCategoryColor) {
+        return window.getCategoryColor(categoryId);
+      }
+      // Couleurs par défaut si la fonction globale n'est pas disponible
+      const colors = ['bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500', 'bg-orange-500', 'bg-cyan-500'];
+      return colors[(categoryId || 0) % colors.length];
+    },
+    
     get total(){
       return this.panier.filter(item => item.qte > 0).reduce((a,b)=> a+ b.qte*b.prix,0);
     },
     get filteredProduits(){
       return this.produits.filter(p => {
-        return (!this.currentCat || p.cat_id===this.currentCat)
+        return (!this.currentCat || p.categorie_id===this.currentCat)
           && (!this.search || p.nom.toLowerCase().includes(this.search.toLowerCase()));
       });
     },

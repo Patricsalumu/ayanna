@@ -304,11 +304,53 @@
             
             {{-- Image du produit à gauche --}}
             <div class="w-20 flex-shrink-0 flex items-center justify-center rounded-lg overflow-hidden">
-                <img 
-                    src="{{ $produit->image ? asset('storage/' . $produit->image) : asset('images/default-bottle.svg') }}" 
-                    alt="Image de {{ $produit->nom }}" 
-                    class="w-20 h-20 object-contain rounded-lg"
-                >
+                @if($produit->image)
+                    <img 
+                        src="{{ asset('storage/' . $produit->image) }}" 
+                        alt="Image de {{ $produit->nom }}" 
+                        class="w-20 h-20 object-contain rounded-lg"
+                    >
+                @else
+                    <div class="w-20 h-20 bg-white rounded-lg flex items-center justify-center border border-gray-200">
+                        <!-- Belle bouteille en noir et blanc -->
+                        <svg width="45" height="55" viewBox="0 0 120 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <!-- Corps principal de la bouteille -->
+                            <path d="M40 40 L40 110 Q40 120 50 120 L70 120 Q80 120 80 110 L80 40 Q80 35 75 35 L45 35 Q40 35 40 40 Z" 
+                                  fill="#F8F9FA" stroke="#374151" stroke-width="1.5"/>
+                            
+                            <!-- Goulot -->
+                            <rect x="52" y="18" width="16" height="22" fill="#F8F9FA" stroke="#374151" stroke-width="1.5" rx="3"/>
+                            
+                            <!-- Bouchon -->
+                            <ellipse cx="60" cy="16" rx="10" ry="4" fill="#6B7280" stroke="#374151" stroke-width="1"/>
+                            <rect x="50" y="12" width="20" height="8" fill="#6B7280" stroke="#374151" stroke-width="1" rx="4"/>
+                            
+                            <!-- Étiquette -->
+                            <rect x="45" y="55" width="30" height="25" fill="#FFFFFF" stroke="#374151" stroke-width="1" rx="4"/>
+                            
+                            <!-- Design sur l'étiquette -->
+                            <circle cx="52" cy="63" r="2" fill="#374151"/>
+                            <circle cx="68" cy="63" r="2" fill="#374151"/>
+                            <path d="M52 65 Q60 70 68 65" stroke="#374151" stroke-width="1.5" fill="none"/>
+                            <rect x="48" y="70" width="24" height="1" fill="#374151" rx="0.5"/>
+                            <rect x="50" y="73" width="20" height="0.8" fill="#6B7280" rx="0.4"/>
+                            <rect x="52" y="75.5" width="16" height="0.8" fill="#6B7280" rx="0.4"/>
+                            
+                            <!-- Liquide à l'intérieur -->
+                            <path d="M42 42 L42 108 Q42 116 50 116 L70 116 Q78 116 78 108 L78 42" 
+                                  fill="#E5E7EB"/>
+                            
+                            <!-- Reflets et brillance -->
+                            <path d="M44 40 L44 105 Q44 110 47 110 L49 110 Q46 110 46 105 L46 40" 
+                                  fill="#FFFFFF" opacity="0.6"/>
+                            <ellipse cx="47" cy="50" rx="2" ry="8" fill="#FFFFFF" opacity="0.4"/>
+                            
+                            <!-- Bulle d'air -->
+                            <circle cx="72" cy="48" r="1.5" fill="#FFFFFF" opacity="0.8"/>
+                            <circle cx="69" cy="52" r="1" fill="#FFFFFF" opacity="0.6"/>
+                        </svg>
+                    </div>
+                @endif
             </div>
 
             {{-- Détails du produit à droite --}}
