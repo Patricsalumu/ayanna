@@ -99,6 +99,21 @@
                                 @endif
                             @endforeach
                             
+                            <!-- Résultat de l'exercice -->
+                            @if(isset($resultatExercice) && $resultatExercice != 0)
+                                <div class="flex justify-between items-center py-2 border-b border-gray-100 bg-yellow-50">
+                                    <div>
+                                        <div class="font-medium text-gray-900">
+                                            {{ $resultatExercice > 0 ? 'Résultat bénéficiaire' : 'Résultat déficitaire' }}
+                                        </div>
+                                        <div class="text-sm text-gray-600">Exercice en cours</div>
+                                    </div>
+                                    <div class="font-semibold {{ $resultatExercice > 0 ? 'text-green-600' : 'text-red-600' }}">
+                                        {{ number_format(abs($resultatExercice), 0, ',', ' ') }}
+                                    </div>
+                                </div>
+                            @endif
+                            
                             <!-- Total Passif -->
                             <div class="flex justify-between items-center py-3 border-t-2 border-purple-200 bg-purple-50 rounded-lg px-4 mt-4">
                                 <div class="font-bold text-purple-900">TOTAL PASSIF</div>

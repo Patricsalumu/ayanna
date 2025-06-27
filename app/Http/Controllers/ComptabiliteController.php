@@ -172,7 +172,7 @@ class ComptabiliteController extends Controller
             ->orderBy('numero')
             ->get();
 
-        // Passifs (classes 1, 2, 4, 7)
+        // Passifs (classes 1, 2, 4, mais PAS 6 et 7)
         $passifs = Compte::where('entreprise_id', $entrepriseId)
             ->where('type', 'passif')
             ->with(['ecritures' => function($q) use ($date) {
@@ -202,7 +202,65 @@ class ComptabiliteController extends Controller
             $totalPassif += $compte->solde_bilan;
         }
 
-        return view('comptabilite.bilan', compact('actifs', 'passifs', 'totalActif', 'totalPassif', 'date'));
+        // Calcul du résultat de l'exercice (à ajouter au passif)
+        $resultatExercice = $this->calculerResultatExercice($entrepriseId, $date);
+        
+        // Si bénéfice, on l'ajoute au passif
+        if ($resultatExercice > 0) {
+            $totalPassif += $resultatExercice;
+        } else if ($resultatExercice < 0) {
+            // Si perte, on l'ajoute à l'actif (en valeur absolue)
+            $totalActif += abs($resultatExercice);
+        }
+
+        return view('comptabilite.bilan', compact('actifs', 'passifs', 'totalActif', 'totalPassif', 'date', 'resultatExercice'));
+    }
+
+    /**
+     * Calcule le résultat de l'exercice pour le bilan
+     */
+    private function calculerResultatExercice($entrepriseId, $date)
+    {
+        // Produits (classe 7)
+        $produits = Compte::where('entreprise_id', $entrepriseId)
+            ->whereHas('classeComptable', function($q) {
+                $q->where('numero', '7');
+            })
+            ->with(['ecritures' => function($q) use ($date) {
+                $q->whereHas('journal', function($j) use ($date) {
+                    $j->where('date_ecriture', '<=', $date);
+                });
+            }])
+            ->get();
+
+        // Charges (classe 6)
+        $charges = Compte::where('entreprise_id', $entrepriseId)
+            ->whereHas('classeComptable', function($q) {
+                $q->where('numero', '6');
+            })
+            ->with(['ecritures' => function($q) use ($date) {
+                $q->whereHas('journal', function($j) use ($date) {
+                    $j->where('date_ecriture', '<=', $date);
+                });
+            }])
+            ->get();
+
+        $totalProduits = 0;
+        $totalCharges = 0;
+
+        foreach ($produits as $compte) {
+            $credit = $compte->ecritures->sum('credit');
+            $debit = $compte->ecritures->sum('debit');
+            $totalProduits += ($credit - $debit);
+        }
+
+        foreach ($charges as $compte) {
+            $debit = $compte->ecritures->sum('debit');
+            $credit = $compte->ecritures->sum('credit');
+            $totalCharges += ($debit - $credit);
+        }
+
+        return $totalProduits - $totalCharges;
     }
 
     /**
