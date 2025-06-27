@@ -80,12 +80,24 @@ class VenteController extends Controller
                 ->where('actif', true)
                 ->get();
 
+            // Formater les produits pour JavaScript
+            $produitsArray = $produits->map(function($produit) {
+                return [
+                    'id' => $produit->id,
+                    'nom' => $produit->nom,
+                    'prix' => $produit->prix_vente,
+                    'image' => $produit->image ? asset('storage/'.$produit->image) : null,
+                    'categorie_id' => $produit->categorie_id,
+                ];
+            })->values()->toArray();
+
             return view('vente.catalogue', [
                 'pointDeVente' => $pointDeVente,
                 'categories' => $categories,
                 'categorieActive' => $categorieActive,
                 'search' => $search,
                 'produits' => $produits,
+                'produitsArray' => $produitsArray,
                 'produitsPanier' => $produitsPanier,
                 'clients' => $clients,
                 'serveuses' => $serveuses,
