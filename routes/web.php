@@ -132,6 +132,12 @@ Route::middleware(['auth'])->group(function ()
         Route::get('/configuration-pdv/{pointDeVenteId?}', [\App\Http\Controllers\ComptabiliteController::class, 'configurationPdv'])->name('configuration-pdv');
         Route::post('/configuration-pdv/{pointDeVenteId}', [\App\Http\Controllers\ComptabiliteController::class, 'sauvegarderConfigurationPdv'])->name('sauvegarder-configuration-pdv');
         
+        // Routes classes comptables
+        Route::get('/classes-comptables', [\App\Http\Controllers\ClasseComptableController::class, 'index'])->name('classes-comptables.index');
+        Route::get('/classes-comptables/{classeComptable}', [\App\Http\Controllers\ClasseComptableController::class, 'show'])->name('classes-comptables.show');
+        Route::get('/plan-comptable/bilan', [\App\Http\Controllers\ClasseComptableController::class, 'bilan'])->name('plan-comptable.bilan');
+        Route::get('/plan-comptable/compte-resultat', [\App\Http\Controllers\ClasseComptableController::class, 'compteResultat'])->name('plan-comptable.compte-resultat');
+        
         // Exports PDF
         Route::get('/journal/export-pdf', [\App\Http\Controllers\ComptabiliteController::class, 'exportJournalPdf'])->name('journal.export-pdf');
         Route::get('/balance/export-pdf', [\App\Http\Controllers\ComptabiliteController::class, 'exportBalancePdf'])->name('balance.export-pdf');

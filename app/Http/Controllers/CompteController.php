@@ -5,13 +5,15 @@ use App\Models\Compte;
 use App\Models\EntreeSortie;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class CompteController extends Controller
 {
     // Liste des comptes
     public function index(Request $request)
     {
-        $entreprise_id = $request->get('entreprise_id') ?? (auth()->user()->entreprise_id ?? null);
+        $entreprise_id = $request->get('entreprise_id') ?? (Auth::user()->entreprise_id ?? null);
         $comptes = Compte::where('entreprise_id', $entreprise_id)->orderBy('numero')->get();
         $entreprise = \App\Models\Entreprise::find($entreprise_id);
         return view('comptes.index', compact('comptes', 'entreprise'));
@@ -20,47 +22,96 @@ class CompteController extends Controller
     // Formulaire création
     public function create(Request $request)
     {
-        $entreprise_id = $request->get('entreprise_id') ?? (auth()->user()->entreprise_id ?? null);
-        return view('comptes.create', compact('entreprise_id'));
+        $entreprise_id = $request->get('entreprise_id') ?? (Auth::user()->entreprise_id ?? null);
+        $classesComptables = \App\Models\ClasseComptable::where('entreprise_id', $entreprise_id)->orderBy('numero')->get();
+        return view('comptes.create', compact('entreprise_id', 'classesComptables'));
     }
 
     // Enregistrement d'un compte
     public function store(Request $request)
     {
         // Debug : log les données reçues
-        \Log::info('Données reçues pour création de compte', $request->all());
+        Log::info('Données reçues pour création de compte', $request->all());
         $data = $request->validate([
             'numero' => 'required|unique:comptes',
             'nom' => 'required|string|max:255',
-            'type' => 'required|in:actif,passif',
+            'type' => 'required|in:actif,passif,charge,produit',
             'description' => 'nullable|string',
+            'classe_comptable_id' => 'required|exists:classes_comptables,id',
             // 'entreprise_id' => 'required|exists:entreprises,id', // on retire la validation ici
         ]);
-        $data['entreprise_id'] = auth()->user()->entreprise_id;
-        $data['user_id'] = auth()->id();
+        $data['entreprise_id'] = Auth::user()->entreprise_id;
+        $data['user_id'] = Auth::id();
         $compte = Compte::create($data);
-        \Log::info('Compte créé', ['compte' => $compte]);
+        Log::info('Compte créé', ['compte' => $compte]);
         return redirect()->route('comptes.index')->with('success', 'Compte créé avec succès.');
     }
 
     // Formulaire édition
     public function edit(Compte $compte)
     {
-        return view('comptes.edit', compact('compte'));
+        $classesComptables = \App\Models\ClasseComptable::where('entreprise_id', $compte->entreprise_id)->orderBy('numero')->get();
+        return view('comptes.edit', compact('compte', 'classesComptables'));
     }
 
     // Mise à jour
     public function update(Request $request, Compte $compte)
     {
-        $data = $request->validate([
-            'numero' => 'required|unique:comptes,numero,' . $compte->id,
-            'nom' => 'required|string|max:255',
-            'type' => 'required|in:actif,passif',
-            'description' => 'nullable|string',
-            'entreprise_id' => 'required|exists:entreprises,id',
+        // Debug : log les données reçues pour modification
+        Log::info('Début modification compte', [
+            'compte_id' => $compte->id,
+            'compte_actuel' => $compte->toArray(),
+            'donnees_recues' => $request->all()
         ]);
-        $compte->update($data);
-        return redirect()->route('comptes.index')->with('success', 'Compte modifié.');
+
+        try {
+            $data = $request->validate([
+                'numero' => 'required|unique:comptes,numero,' . $compte->id,
+                'nom' => 'required|string|max:255',
+                'type' => 'required|in:actif,passif,charge,produit',
+                'description' => 'nullable|string',
+                'classe_comptable_id' => 'required|exists:classes_comptables,id',
+                // Suppression de la validation entreprise_id car le compte appartient déjà à une entreprise
+                // 'entreprise_id' => 'required|exists:entreprises,id',
+            ]);
+            
+            // Ne pas modifier l'entreprise_id lors de la mise à jour
+            // Le compte reste attaché à son entreprise d'origine
+            
+            Log::info('Données validées pour modification compte', [
+                'compte_id' => $compte->id,
+                'donnees_validees' => $data
+            ]);
+
+            $compte->update($data);
+            
+            Log::info('Compte modifié avec succès', [
+                'compte_id' => $compte->id,
+                'compte_apres_modification' => $compte->fresh()->toArray()
+            ]);
+
+            return redirect()->route('comptes.index')->with('success', 'Compte modifié avec succès.');
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Erreur de validation lors de la modification du compte', [
+                'compte_id' => $compte->id,
+                'erreurs_validation' => $e->errors(),
+                'donnees_recues' => $request->all()
+            ]);
+            throw $e;
+            
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la modification du compte', [
+                'compte_id' => $compte->id,
+                'message_erreur' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'donnees_recues' => $request->all()
+            ]);
+            
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['general' => 'Une erreur est survenue lors de la modification du compte.']);
+        }
     }
 
     // Suppression
@@ -80,16 +131,16 @@ class CompteController extends Controller
     // Ajout d'une entrée/sortie
     public function ajouterMouvement(Request $request, Compte $compte)
     {
-        \Log::info('Données reçues pour ajout mouvement', $request->all());
+        Log::info('Données reçues pour ajout mouvement', $request->all());
         $data = $request->validate([
             'montant' => 'required|numeric',
             'libele' => 'required|string',
             'type' => 'required|in:credit,debit',
         ]);
-        \Log::info('Données validées mouvement', $data);
-        $data['user_id'] = auth()->id();
+        Log::info('Données validées mouvement', $data);
+        $data['user_id'] = Auth::id();
         $mouvement = $compte->entreesSorties()->create($data);
-        \Log::info('Mouvement créé', ['mouvement' => $mouvement]);
+        Log::info('Mouvement créé', ['mouvement' => $mouvement]);
         return redirect()->route('comptes.mouvements', $compte)->with('success', 'Mouvement ajouté.');
     }
 

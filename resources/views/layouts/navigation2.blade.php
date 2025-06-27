@@ -80,6 +80,19 @@
                          class="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50"
                          style="display: none;">
                         <div class="py-1">
+                            <!-- Plan comptable -->
+                            <a href="{{ route('comptabilite.classes-comptables.index') }}" 
+                               class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                                <i class="fas fa-sitemap w-4 h-4 mr-3 text-indigo-600"></i>
+                                Classes Comptables
+                            </a>
+                            <a href="{{ route('comptes.index') }}" 
+                               class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                                <i class="fas fa-list w-4 h-4 mr-3 text-blue-600"></i>
+                                Plan Comptable
+                            </a>
+                            <div class="border-t border-gray-100"></div>
+                            <!-- Rapports comptables -->
                             <a href="{{ route('comptabilite.journal') }}" 
                                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
                                 <i class="fas fa-book w-4 h-4 mr-3 text-blue-600"></i>
@@ -95,17 +108,18 @@
                                 <i class="fas fa-balance-scale w-4 h-4 mr-3 text-indigo-600"></i>
                                 Balance
                             </a>
-                            <a href="{{ route('comptabilite.bilan') }}" 
+                            <a href="{{ route('comptabilite.plan-comptable.bilan') }}" 
                                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
                                 <i class="fas fa-chart-pie w-4 h-4 mr-3 text-blue-600"></i>
                                 Bilan
                             </a>
-                            <a href="{{ route('comptabilite.compte-resultat') }}" 
+                            <a href="{{ route('comptabilite.plan-comptable.compte-resultat') }}" 
                                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
                                 <i class="fas fa-chart-line w-4 h-4 mr-3 text-green-600"></i>
                                 Compte de Résultat
                             </a>
                             <div class="border-t border-gray-100"></div>
+                            <!-- Gestion -->
                             <a href="{{ route('creances.liste') }}" 
                                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
                                 <i class="fas fa-credit-card w-4 h-4 mr-3 text-orange-600"></i>

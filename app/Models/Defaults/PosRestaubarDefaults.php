@@ -6,17 +6,25 @@ use App\Models\Salle;
 use App\Models\TableResto;
 use App\Models\Categorie;
 use App\Models\Produit;
+use App\Models\ClasseComptable;
+use App\Models\Compte;
 
 class PosRestaubarDefaults
 {
     public static function initialiserPour($module, $entreprise)
     {
-        // Créer un point de vente par défaut
+        // 1. INITIALISER LE PLAN COMPTABLE DE BASE
+        self::initialiserComptabilite($entreprise);
+        
+        // 2. Créer un point de vente par défaut
         $pdv = PointDeVente::create([
             'nom' => 'Restaurant',
             'module_id' => $module->id,
             'entreprise_id' => $entreprise->id,
         ]);
+
+        // 3. CONFIGURER LES COMPTES COMPTABLES DU POINT DE VENTE
+        self::configurerComptesPointDeVente($pdv, $entreprise);
 
         // Créer 2 catégories
         $cat1 = Categorie::create(['nom' => 'Bières', 'entreprise_id' => $entreprise->id]);
@@ -219,6 +227,252 @@ class PosRestaubarDefaults
         }
         return $pdv;
     }
+
+    /**
+     * Initialiser le plan comptable de base pour l'entreprise
+     */
+    public static function initialiserComptabilite($entreprise)
+    {
+        // Créer les 7 classes comptables de base si elles n'existent pas
+        $classesComptables = [
+            [
+                'numero' => 1, 
+                'nom' => 'Comptes de capitaux', 
+                'description' => 'Capital, réserves, résultat',
+                'type_document' => 'bilan', 
+                'type_nature' => 'passif',
+                'est_principale' => true,
+                'ordre_affichage' => 1
+            ],
+            [
+                'numero' => 2, 
+                'nom' => 'Comptes d\'immobilisations', 
+                'description' => 'Immobilisations corporelles et incorporelles',
+                'type_document' => 'bilan', 
+                'type_nature' => 'actif',
+                'est_principale' => true,
+                'ordre_affichage' => 2
+            ],
+            [
+                'numero' => 3, 
+                'nom' => 'Comptes de stocks et en-cours', 
+                'description' => 'Stocks de marchandises, matières premières',
+                'type_document' => 'bilan', 
+                'type_nature' => 'actif',
+                'est_principale' => true,
+                'ordre_affichage' => 3
+            ],
+            [
+                'numero' => 4, 
+                'nom' => 'Comptes de tiers', 
+                'description' => 'Clients, fournisseurs, personnel',
+                'type_document' => 'bilan', 
+                'type_nature' => 'mixte',
+                'est_principale' => true,
+                'ordre_affichage' => 4
+            ],
+            [
+                'numero' => 5, 
+                'nom' => 'Comptes financiers', 
+                'description' => 'Banques, caisses, valeurs mobilières',
+                'type_document' => 'bilan', 
+                'type_nature' => 'actif',
+                'est_principale' => true,
+                'ordre_affichage' => 5
+            ],
+            [
+                'numero' => 6, 
+                'nom' => 'Comptes de charges', 
+                'description' => 'Achats, services extérieurs, personnel',
+                'type_document' => 'resultat', 
+                'type_nature' => 'charge',
+                'est_principale' => true,
+                'ordre_affichage' => 6
+            ],
+            [
+                'numero' => 7, 
+                'nom' => 'Comptes de produits', 
+                'description' => 'Ventes, prestations de services',
+                'type_document' => 'resultat', 
+                'type_nature' => 'produit',
+                'est_principale' => true,
+                'ordre_affichage' => 7
+            ]
+        ];
+
+        foreach ($classesComptables as $classeData) {
+            ClasseComptable::firstOrCreate(
+                [
+                    'numero' => $classeData['numero'],
+                    'entreprise_id' => $entreprise->id
+                ],
+                array_merge($classeData, ['entreprise_id' => $entreprise->id])
+            );
+        }
+
+        // Créer les comptes de base essentiels
+        self::creerComptesDeBBase($entreprise);
+    }
+
+    /**
+     * Créer les comptes comptables de base pour l'entreprise
+     */
+    public static function creerComptesDeBBase($entreprise)
+    {
+        // Récupérer les classes comptables de l'entreprise
+        $classe4 = ClasseComptable::where('numero', 4)->where('entreprise_id', $entreprise->id)->first();
+        $classe5 = ClasseComptable::where('numero', 5)->where('entreprise_id', $entreprise->id)->first();
+        $classe6 = ClasseComptable::where('numero', 6)->where('entreprise_id', $entreprise->id)->first();
+        $classe7 = ClasseComptable::where('numero', 7)->where('entreprise_id', $entreprise->id)->first();
+
+        // Vérifier que toutes les classes existent
+        if (!$classe4 || !$classe5 || !$classe6 || !$classe7) {
+            throw new \Exception('Les classes comptables de base doivent être créées avant les comptes. Classes manquantes.');
+        }
+
+        $comptesDeBBase = [
+            // COMPTES DE TIERS (Classe 4)
+            [
+                'numero' => '411000',
+                'nom' => 'Clients',
+                'description' => 'Créances clients',
+                'type' => 'actif',
+                'classe_comptable_id' => $classe4->id,
+                'entreprise_id' => $entreprise->id,
+                'solde_actuel' => 0.00
+            ],
+            [
+                'numero' => '401000',
+                'nom' => 'Fournisseurs',
+                'description' => 'Dettes fournisseurs',
+                'type' => 'passif',
+                'classe_comptable_id' => $classe4->id,
+                'entreprise_id' => $entreprise->id,
+                'solde_actuel' => 0.00
+            ],
+            
+            // COMPTES FINANCIERS (Classe 5)
+            [
+                'numero' => '512000',
+                'nom' => 'Banque',
+                'description' => 'Compte bancaire principal',
+                'type' => 'actif',
+                'classe_comptable_id' => $classe5->id,
+                'entreprise_id' => $entreprise->id,
+                'solde_actuel' => 0.00
+            ],
+            [
+                'numero' => '530000',
+                'nom' => 'Caisse principale',
+                'description' => 'Caisse principale de l\'entreprise',
+                'type' => 'actif',
+                'classe_comptable_id' => $classe5->id,
+                'entreprise_id' => $entreprise->id,
+                'solde_actuel' => 0.00
+            ],
+            
+            // COMPTES DE CHARGES (Classe 6)
+            [
+                'numero' => '607000',
+                'nom' => 'Achats de marchandises',
+                'description' => 'Achats de marchandises destinées à la revente',
+                'type' => 'charge',
+                'classe_comptable_id' => $classe6->id,
+                'entreprise_id' => $entreprise->id,
+                'solde_actuel' => 0.00
+            ],
+            
+            // COMPTES DE PRODUITS (Classe 7)
+            [
+                'numero' => '701000',
+                'nom' => 'Ventes de marchandises',
+                'description' => 'Chiffre d\'affaires sur ventes de marchandises',
+                'type' => 'produit',
+                'classe_comptable_id' => $classe7->id,
+                'entreprise_id' => $entreprise->id,
+                'solde_actuel' => 0.00
+            ],
+            [
+                'numero' => '706000',
+                'nom' => 'Prestations de services',
+                'description' => 'Chiffre d\'affaires sur prestations de services',
+                'type' => 'produit',
+                'classe_comptable_id' => $classe7->id,
+                'entreprise_id' => $entreprise->id,
+                'solde_actuel' => 0.00
+            ]
+        ];
+
+        foreach ($comptesDeBBase as $compteData) {
+            Compte::firstOrCreate(
+                [
+                    'numero' => $compteData['numero'],
+                    'entreprise_id' => $entreprise->id
+                ],
+                $compteData
+            );
+        }
+    }
+
+    /**
+     * Configurer les comptes comptables spécifiques au point de vente
+     */
+    public static function configurerComptesPointDeVente($pointDeVente, $entreprise)
+    {
+        // Récupérer les classes comptables
+        $classe5 = ClasseComptable::where('numero', 5)->where('entreprise_id', $entreprise->id)->first();
+        $classe7 = ClasseComptable::where('numero', 7)->where('entreprise_id', $entreprise->id)->first();
+
+        // Vérifier que les classes existent
+        if (!$classe5 || !$classe7) {
+            throw new \Exception('Les classes comptables 5 et 7 doivent exister pour configurer les comptes du point de vente.');
+        }
+
+        // Créer une caisse spécifique au point de vente
+        $compteCaisse = Compte::firstOrCreate(
+            [
+                'numero' => '530' . str_pad($pointDeVente->id, 3, '0', STR_PAD_LEFT),
+                'entreprise_id' => $entreprise->id
+            ],
+            [
+                'nom' => 'Caisse ' . $pointDeVente->nom,
+                'description' => 'Caisse du point de vente ' . $pointDeVente->nom,
+                'type' => 'actif',
+                'classe_comptable_id' => $classe5->id,
+                'entreprise_id' => $entreprise->id,
+                'solde_actuel' => 0.00
+            ]
+        );
+
+        // Créer un compte de vente spécifique au point de vente (optionnel)
+        $compteVente = Compte::firstOrCreate(
+            [
+                'numero' => '701' . str_pad($pointDeVente->id, 3, '0', STR_PAD_LEFT),
+                'entreprise_id' => $entreprise->id
+            ],
+            [
+                'nom' => 'Ventes ' . $pointDeVente->nom,
+                'description' => 'Ventes du point de vente ' . $pointDeVente->nom,
+                'type' => 'produit',
+                'classe_comptable_id' => $classe7->id,
+                'entreprise_id' => $entreprise->id,
+                'solde_actuel' => 0.00
+            ]
+        );
+
+        // Récupérer les comptes existants pour les configurer sur le point de vente
+        $compteClients = Compte::where('numero', '411000')->where('entreprise_id', $entreprise->id)->first();
+
+        // Optionnel : Stocker les références des comptes sur le point de vente
+        // (vous pouvez ajouter des champs dans la table points_de_vente si nécessaire)
+        
+        return [
+            'caisse' => $compteCaisse,
+            'vente' => $compteVente,
+            'clients' => $compteClients
+        ];
+    }
 }
+
 // Usage example:
 // PosRestaubarDefaults::initialiserPour($module, $entreprise);

@@ -12,18 +12,24 @@ class Compte extends Model
         'description', 
         'entreprise_id', 
         'user_id',
-        'classe_comptable',
-        'sous_classe',
-        'est_collectif',
-        'solde_initial',
-        'date_solde_initial'
+        'classe_comptable_id',
+        'solde_debit',
+        'solde_credit'
     ];
 
     protected $casts = [
-        'est_collectif' => 'boolean',
-        'solde_initial' => 'decimal:2',
-        'date_solde_initial' => 'date'
+        'solde_debit' => 'decimal:2',
+        'solde_credit' => 'decimal:2',
+        'solde' => 'decimal:2'
     ];
+
+    /**
+     * Relation avec la classe comptable
+     */
+    public function classeComptable()
+    {
+        return $this->belongsTo(ClasseComptable::class);
+    }
 
     public function entreesSorties()
     {
