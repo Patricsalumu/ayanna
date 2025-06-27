@@ -28,7 +28,7 @@
                 </div>
                 <div class="bg-white p-3 rounded-lg">
                     <div class="text-sm text-gray-600">Classe comptable</div>
-                    <div class="font-semibold text-gray-900">{{ $compte->classe_comptable ?? 'N/A' }}</div>
+                    <div class="font-semibold text-gray-900">{{ $compte->classeComptable->nom ?? 'N/A' }}</div>
                 </div>
                 <div class="bg-white p-3 rounded-lg">
                     <div class="text-sm text-gray-600">Solde initial</div>

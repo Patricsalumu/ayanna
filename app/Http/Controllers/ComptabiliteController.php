@@ -67,7 +67,7 @@ class ComptabiliteController extends Controller
         $comptes = Compte::where('entreprise_id', $entrepriseId)->orderBy('numero')->get();
         
         if ($compteId) {
-            $compte = Compte::findOrFail($compteId);
+            $compte = Compte::with('classeComptable')->findOrFail($compteId);
             
             $ecritures = EcritureComptable::with(['journal', 'client', 'produit'])
                 ->parCompte($compteId)
@@ -218,7 +218,9 @@ class ComptabiliteController extends Controller
 
         // Produits (classe 7)
         $produits = Compte::where('entreprise_id', $entrepriseId)
-            ->where('classe_comptable', '7')
+            ->whereHas('classeComptable', function($q) {
+                $q->where('numero', '7');
+            })
             ->with(['ecritures' => function($q) use ($dateDebut, $dateFin) {
                 $q->whereHas('journal', function($j) use ($dateDebut, $dateFin) {
                     $j->whereBetween('date_ecriture', [$dateDebut, $dateFin]);
@@ -229,7 +231,9 @@ class ComptabiliteController extends Controller
 
         // Charges (classe 6)
         $charges = Compte::where('entreprise_id', $entrepriseId)
-            ->where('classe_comptable', '6')
+            ->whereHas('classeComptable', function($q) {
+                $q->where('numero', '6');
+            })
             ->with(['ecritures' => function($q) use ($dateDebut, $dateFin) {
                 $q->whereHas('journal', function($j) use ($dateDebut, $dateFin) {
                     $j->whereBetween('date_ecriture', [$dateDebut, $dateFin]);
