@@ -239,3 +239,6 @@ require __DIR__.'/test_comptabilite.php';
 
 // Route de test pour la validation des paiements
 require __DIR__.'/test_validation_paiement.php';
+
+// Route de diagnostic comptabilité
+Route::get('/test-comptabilite-diagnostic', [VenteController::class, 'testComptabilite'])->name('test.comptabilite.diagnostic');

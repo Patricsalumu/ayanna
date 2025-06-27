@@ -73,9 +73,10 @@ class JournalComptable extends Model
     public static function genererNumeroPiece($typeOperation, $entrepriseId, $date = null)
     {
         $date = $date ?? now();
-        $prefix = strtoupper(substr($typeOperation, 0, 3)); // VTE, PAI, DEP, etc.
+        $prefix = strtoupper(substr($typeOperation, 0, 3)); // VEN, PAI, MOU, etc.
         $dateStr = $date->format('Ymd');
         
+        // Rechercher le dernier numéro pour ce préfixe, cette date et cette entreprise
         $dernier = self::where('entreprise_id', $entrepriseId)
             ->where('numero_piece', 'LIKE', "{$prefix}-{$dateStr}-%")
             ->orderByDesc('numero_piece')
@@ -84,10 +85,24 @@ class JournalComptable extends Model
         $numero = 1;
         if ($dernier) {
             $parts = explode('-', $dernier->numero_piece);
-            $numero = intval(end($parts)) + 1;
+            $dernierNumero = intval(end($parts));
+            $numero = $dernierNumero + 1;
         }
         
-        return sprintf('%s-%s-%03d', $prefix, $dateStr, $numero);
+        // Boucle de sécurité pour éviter les doublons en cas de concurrence
+        $tentatives = 0;
+        do {
+            $numeroPiece = sprintf('%s-%s-%03d', $prefix, $dateStr, $numero);
+            $existe = self::where('numero_piece', $numeroPiece)->exists();
+            if (!$existe) {
+                return $numeroPiece;
+            }
+            $numero++;
+            $tentatives++;
+        } while ($tentatives < 100); // Limite de sécurité
+        
+        // Si on arrive ici, il y a un problème
+        throw new \Exception("Impossible de générer un numéro de pièce unique après 100 tentatives");
     }
 
     // Scopes

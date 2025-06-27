@@ -33,10 +33,15 @@ class ComptabiliteService
         $montantTotal = $this->calculerMontantCommande($commande);
 
         return DB::transaction(function () use ($commande, $pointDeVente, $entreprise, $montantTotal) {
+            // Convertir created_at en Carbon si nécessaire
+            $dateCreation = $commande->created_at instanceof \Carbon\Carbon ? 
+                          $commande->created_at : 
+                          \Carbon\Carbon::parse($commande->created_at);
+            
             // Créer l'entrée journal
             $journal = JournalComptable::create([
-                'date_ecriture' => $commande->created_at->toDateString(),
-                'numero_piece' => JournalComptable::genererNumeroPiece('vente', $entreprise->id, $commande->created_at),
+                'date_ecriture' => $dateCreation->toDateString(),
+                'numero_piece' => JournalComptable::genererNumeroPiece('vente', $entreprise->id, $dateCreation),
                 'libelle' => "Vente {$pointDeVente->nom} - Table " . ($commande->panier->tableResto->numero ?? 'N/A'),
                 'montant_total' => $montantTotal,
                 'entreprise_id' => $entreprise->id,
