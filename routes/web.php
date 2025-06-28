@@ -142,6 +142,7 @@ Route::middleware(['auth'])->group(function ()
     Route::middleware(['auth'])->group(function () {
     Route::get('/comptes', [\App\Http\Controllers\CompteController::class, 'index'])->name('comptes.index');
     Route::get('/classes-comptables', [\App\Http\Controllers\ClasseComptableController::class, 'index'])->name('classes-comptables.index');
+    Route::get('/classes-comptables/{classeComptable}', [\App\Http\Controllers\ClasseComptableController::class, 'show'])->name('classes-comptables.show');
     Route::get('/comptes/create', [\App\Http\Controllers\CompteController::class, 'create'])->name('comptes.create');
     Route::post('/comptes', [\App\Http\Controllers\CompteController::class, 'store'])->name('comptes.store');
     Route::get('/comptes/{compte}/edit', [\App\Http\Controllers\CompteController::class, 'edit'])->name('comptes.edit');

@@ -9,11 +9,11 @@
             <p class="text-gray-600 mt-2">Gestion des classes comptables selon le plan comptable général</p>
         </div>
         <div class="flex gap-3">
-            <a href="{{ route('comptabilite.plan-comptable.bilan') }}" 
+            <a href="#" 
                class="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 shadow">
                 📊 Bilan
             </a>
-            <a href="{{ route('comptabilite.plan-comptable.compte-resultat') }}" 
+            <a href="#" 
                class="inline-flex items-center px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 shadow">
                 📈 Compte de résultat
             </a>
@@ -55,7 +55,7 @@
                             {{ $classe->type_document === 'bilan' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">
                             {{ ucfirst($classe->type_document) }}
                         </span>
-                        <a href="{{ route('comptabilite.classes-comptables.show', $classe) }}" 
+                        <a href="{{ route('classes-comptables.show', $classe) }}" 
                            class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                             Voir détails →
                         </a>
@@ -104,7 +104,7 @@
                             {{ $sousClasse->comptes_count ?? 0 }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <a href="{{ route('comptabilite.classes-comptables.show', $sousClasse) }}" 
+                            <a href="{{ route('classes-comptables.show', $sousClasse) }}" 
                                class="text-blue-600 hover:text-blue-900">Voir</a>
                         </td>
                     </tr>

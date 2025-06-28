@@ -81,7 +81,7 @@
                          style="display: none;">
                         <div class="py-1">
                             <!-- Plan comptable -->
-                            <a href="{{('classes-comptables.index') }}" 
+                            <a href="{{ route('classes-comptables.index') }}" 
                                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
                                 <i class="fas fa-sitemap w-4 h-4 mr-3 text-indigo-600"></i>
                                 Classes Comptables
