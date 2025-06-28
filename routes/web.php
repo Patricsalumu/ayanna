@@ -123,7 +123,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/creances', [App\Http\Controllers\VenteController::class, 'creances'])->name('creances.liste');
 
     // Routes comptabilité
-    Route::prefix('comptabilite')->name('comptabilite.')->group(function () {
+        Route::prefix('comptabilite')->name('comptabilite.')->group(function () {
         Route::get('/journal', [\App\Http\Controllers\ComptabiliteController::class, 'journal'])->name('journal');
         Route::get('/grand-livre/{compteId?}', [\App\Http\Controllers\ComptabiliteController::class, 'grandLivre'])->name('grand-livre');
         Route::get('/balance', [\App\Http\Controllers\ComptabiliteController::class, 'balance'])->name('balance');
@@ -132,12 +132,6 @@ Route::middleware(['auth'])->group(function ()
         Route::get('/configuration-pdv/{pointDeVenteId?}', [\App\Http\Controllers\ComptabiliteController::class, 'configurationPdv'])->name('configuration-pdv');
         Route::post('/configuration-pdv/{pointDeVenteId}', [\App\Http\Controllers\ComptabiliteController::class, 'sauvegarderConfigurationPdv'])->name('sauvegarder-configuration-pdv');
         
-        // Routes classes comptables
-        Route::get('/classes-comptables', [\App\Http\Controllers\ClasseComptableController::class, 'index'])->name('classes-comptables.index');
-        Route::get('/classes-comptables/{classeComptable}', [\App\Http\Controllers\ClasseComptableController::class, 'show'])->name('classes-comptables.show');
-        Route::get('/plan-comptable/bilan', [\App\Http\Controllers\ClasseComptableController::class, 'bilan'])->name('plan-comptable.bilan');
-        Route::get('/plan-comptable/compte-resultat', [\App\Http\Controllers\ClasseComptableController::class, 'compteResultat'])->name('plan-comptable.compte-resultat');
-        
         // Exports PDF
         Route::get('/journal/export-pdf', [\App\Http\Controllers\ComptabiliteController::class, 'exportJournalPdf'])->name('journal.export-pdf');
         Route::get('/balance/export-pdf', [\App\Http\Controllers\ComptabiliteController::class, 'exportBalancePdf'])->name('balance.export-pdf');
@@ -145,8 +139,9 @@ Route::middleware(['auth'])->group(function ()
 });
 
 // Comptes & Entrées-Sorties
-Route::middleware(['auth'])->group(function () {
+    Route::middleware(['auth'])->group(function () {
     Route::get('/comptes', [\App\Http\Controllers\CompteController::class, 'index'])->name('comptes.index');
+    Route::get('/classes-comptables', [\App\Http\Controllers\ClasseComptableController::class, 'index'])->name('classes-comptables.index');
     Route::get('/comptes/create', [\App\Http\Controllers\CompteController::class, 'create'])->name('comptes.create');
     Route::post('/comptes', [\App\Http\Controllers\CompteController::class, 'store'])->name('comptes.store');
     Route::get('/comptes/{compte}/edit', [\App\Http\Controllers\CompteController::class, 'edit'])->name('comptes.edit');
@@ -195,7 +190,7 @@ Route::middleware('auth')->group(function () {
 require __DIR__.'/auth.php';
 
 // Routes AJAX panier (hors préfixe entreprise)
-Route::middleware(['auth'])->group(function () {
+    Route::middleware(['auth'])->group(function () {
     Route::post('/panier/set-client', [\App\Http\Controllers\PanierController::class, 'setClient'])->name('panier.setClient');
     Route::post('/panier/set-serveuse', [\App\Http\Controllers\PanierController::class, 'setServeuse'])->name('panier.setServeuse');
     Route::post('/panier/liberer', [\App\Http\Controllers\PanierController::class, 'libererTable'])->name('panier.libererTable');
@@ -233,12 +228,3 @@ Route::prefix('transferts')->name('transferts.')->group(function () {
     Route::get('/historique', [\App\Http\Controllers\TransfertController::class, 'historique'])->name('historique');
     Route::get('/api/comptes/{compteId}/transferts-rapides', [\App\Http\Controllers\TransfertController::class, 'transfertsRapides'])->name('api.transferts-rapides');
 });
-
-// Route de test pour la comptabilité
-require __DIR__.'/test_comptabilite.php';
-
-// Route de test pour la validation des paiements
-require __DIR__.'/test_validation_paiement.php';
-
-// Route de diagnostic comptabilité
-Route::get('/test-comptabilite-diagnostic', [VenteController::class, 'testComptabilite'])->name('test.comptabilite.diagnostic');

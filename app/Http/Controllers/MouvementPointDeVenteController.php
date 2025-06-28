@@ -23,12 +23,11 @@ class MouvementPointDeVenteController extends Controller
             })
             ->orderByDesc('created_at')
             ->get();
-        $totalEntree = $mouvements->filter(fn($mvt) => $mvt->compte && $mvt->compte->type === 'actif')->sum('montant');
-        $totalSortie = $mouvements->filter(fn($mvt) => $mvt->compte && $mvt->compte->type === 'passif')->sum('montant');
+        $totalEntree = $mouvements->filter(fn($mvt) => $mvt->type === 'entree')->sum('montant');
+        $totalSortie = $mouvements->filter(fn($mvt) => $mvt->type === 'sortie')->sum('montant');
         return view('mouvements.mvmpdv', compact('pointDeVente', 'comptes', 'mouvements', 'totalEntree', 'totalSortie'));
     }
 
-    // Ajoute un mouvement pour le point de vente
     public function store(Request $request, $pointDeVenteId)
     {
         $pointDeVente = PointDeVente::findOrFail($pointDeVenteId);
@@ -37,6 +36,7 @@ class MouvementPointDeVenteController extends Controller
             'compte_id' => 'required|exists:comptes,id',
             'montant' => 'required|numeric|min:0',
             'libele' => 'required|string|max:255',
+            'type_mouvement' => 'required|in:entree,sortie', // Ajout du type explicite
         ]);
 
         try {
@@ -45,8 +45,8 @@ class MouvementPointDeVenteController extends Controller
             // Récupérer le compte sélectionné
             $compte = Compte::findOrFail($data['compte_id']);
             
-            // Déterminer le type basé sur le type de compte
-            $type = $compte->type === 'actif' ? 'credit' : 'debit';
+            // Utiliser le type spécifié dans le formulaire
+            $type = $data['type_mouvement']; // 'entree' ou 'sortie'
             
             // Données pour l'entrée/sortie
             $entreeData = [

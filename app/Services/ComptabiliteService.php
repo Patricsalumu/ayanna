@@ -181,13 +181,13 @@ class ComptabiliteService
                 'entreprise_id' => $entreprise->id,
                 'point_de_vente_id' => $mouvement->point_de_vente_id,
                 'user_id' => $mouvement->user_id,
-                'type_operation' => $mouvement->type === 'credit' ? 'recette' : 'depense',
+                'type_operation' => $mouvement->type === 'entree' ? 'recette' : 'depense',
                 'statut' => 'valide'
             ]);
 
-            // Écriture selon le type (crédit/débit)
-            if ($mouvement->type === 'credit') {
-                // Recette : Débit du compte concerné (entrée d'argent)
+            // Écriture selon le type (entrée/sortie)
+            if ($mouvement->type === 'entree') {
+                // Entrée : Débit du compte concerné (entrée d'argent)
                 EcritureComptable::create([
                     'journal_id' => $journal->id,
                     'compte_id' => $compte->id,
@@ -208,7 +208,7 @@ class ComptabiliteService
                     'ordre' => 2
                 ]);
             } else {
-                // Dépense : Débit du compte de charge (nature de la dépense)
+                // Sortie : Débit du compte de charge (nature de la dépense)
                 EcritureComptable::create([
                     'journal_id' => $journal->id,
                     'compte_id' => $compte->id,

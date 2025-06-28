@@ -140,7 +140,7 @@
                                         <span class="text-sm text-gray-900 font-medium">{{ $mvt->libele }}</span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right">
-                                        <span class="text-lg font-bold {{ $mvt->compte && $mvt->compte->type === 'actif' ? 'text-emerald-600' : 'text-red-500' }}">
+                                        <span class="text-lg font-bold {{ $mvt->type === 'entree' ? 'text-emerald-600' : 'text-red-500' }}">
                                             {{ number_format($mvt->montant, 2, ',', ' ') }} F
                                         </span>
                                     </td>
@@ -150,7 +150,7 @@
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-center">
-                                        @if($mvt->compte && $mvt->compte->type === 'actif')
+                                        @if($mvt->type === 'entree')
                                             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
                                                 <i data-lucide="arrow-down-circle" class="w-4 h-4 mr-1"></i>
                                                 Entrée
@@ -203,10 +203,10 @@
                 <div class="flex items-start gap-3">
                     <i data-lucide="info" class="w-5 h-5 text-blue-500 mt-0.5"></i>
                     <div class="text-sm text-blue-700">
-                        <p class="font-medium mb-2">Comment ça fonctionne :</p>
+                        <p class="font-medium mb-2">Types de mouvements :</p>
                         <ul class="space-y-1 text-xs">
-                            <li><strong>Compte Actif</strong> (ex: Banque, Caisse) → Entrée d'argent</li>
-                            <li><strong>Compte Passif</strong> (ex: Charges, Dépenses) → Sortie d'argent de la caisse</li>
+                            <li><strong>Entrée</strong> → Argent qui rentre (ex: vente, encaissement)</li>
+                            <li><strong>Sortie</strong> → Argent qui sort (ex: achat, frais, dépense)</li>
                         </ul>
                     </div>
                 </div>
@@ -223,9 +223,24 @@
                             <option value="">-- Sélectionner un compte --</option>
                             @foreach($comptes as $compte)
                                 <option value="{{ $compte->id }}">
-                                    {{ $compte->nom }} ({{ $compte->numero }}) - {{ ucfirst($compte->type) }}
+                                    {{ $compte->nom }} ({{ $compte->numero }})
                                 </option>
                             @endforeach
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Type de mouvement</label>
+                        <select name="type_mouvement" 
+                                required
+                                class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                            <option value="">-- Choisir le type --</option>
+                            <option value="entree" class="text-emerald-600">
+                                ✅ Entrée - Argent qui rentre
+                            </option>
+                            <option value="sortie" class="text-red-600">
+                                ❌ Sortie - Argent qui sort
+                            </option>
                         </select>
                     </div>
                     

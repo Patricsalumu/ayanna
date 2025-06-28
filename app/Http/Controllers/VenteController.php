@@ -591,9 +591,45 @@ class VenteController extends Controller
                 'notes' => 'nullable|string|max:500'
             ]);
 
-            $commande = Commande::with(['panier.produits', 'paiements'])->findOrFail($commandeId);
+            $commande = Commande::with(['panier.produits', 'panier.pointDeVente', 'panier.client', 'paiements'])->findOrFail($commandeId);
             
             Log::info('Commande trouvée', ['commande' => $commande->toArray()]);
+            
+            // Vérifier que les relations nécessaires existent
+            if (!$commande->panier) {
+                throw new \Exception('Panier non trouvé pour cette commande');
+            }
+            
+            if (!$commande->panier->pointDeVente) {
+                // Essayer de récupérer un point de vente de fallback pour l'utilisateur actuel
+                $user = Auth::user();
+                $pointDeVenteFallback = null;
+                
+                if ($user && $user->entreprise_id) {
+                    $pointDeVenteFallback = \App\Models\PointDeVente::where('entreprise_id', $user->entreprise_id)->first();
+                }
+                
+                if (!$pointDeVenteFallback) {
+                    throw new \Exception('Point de vente non trouvé pour cette commande. Cette créance semble avoir des données corrompues et aucun point de vente de fallback disponible.');
+                }
+                
+                // Utiliser le point de vente de fallback
+                $entrepriseId = $pointDeVenteFallback->entreprise_id;
+                $pointDeVenteId = $pointDeVenteFallback->id;
+                
+                Log::warning('Utilisation d\'un point de vente de fallback pour la commande', [
+                    'commande_id' => $commandeId,
+                    'point_de_vente_fallback' => $pointDeVenteFallback->id,
+                    'entreprise_fallback' => $entrepriseId
+                ]);
+            } else {
+                $entrepriseId = $commande->panier->pointDeVente->entreprise_id;
+                $pointDeVenteId = $commande->panier->pointDeVente->id;
+            }
+            
+            if (!$entrepriseId) {
+                throw new \Exception('Entreprise non trouvée pour le point de vente de cette commande.');
+            }
             
             // Calculer le montant total de la commande
             $montantTotal = $commande->montant ?? $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente);
@@ -624,18 +660,18 @@ class VenteController extends Controller
             if ($user->role === 'admin') {
                 // Pour admin : compte caisse directement
                 $compte = \App\Models\Compte::where('nom', 'LIKE', '%caisse%')
-                    ->where('entreprise_id', $commande->panier->pointDeVente->entreprise_id)
+                    ->where('entreprise_id', $entrepriseId)
                     ->first();
             } else {
                 // Pour comptable/comptoir : compte comptoir
                 $compte = \App\Models\Compte::where('nom', 'LIKE', '%comptoir%')
-                    ->where('entreprise_id', $commande->panier->pointDeVente->entreprise_id)
+                    ->where('entreprise_id', $entrepriseId)
                     ->first();
             }
             
             // Si aucun compte spécifique trouvé, prendre le premier compte de l'entreprise
             if (!$compte) {
-                $compte = \App\Models\Compte::where('entreprise_id', $commande->panier->pointDeVente->entreprise_id)->first();
+                $compte = \App\Models\Compte::where('entreprise_id', $entrepriseId)->first();
             }
             
             $compteId = $compte ? $compte->id : null;
@@ -661,6 +697,30 @@ class VenteController extends Controller
             ]);
             
             Log::info('Paiement créé', ['paiement' => $paiement->toArray()]);
+            
+            // Enregistrer en comptabilité (écritures comptables et journal)
+            $comptabiliteService = new \App\Services\ComptabiliteService();
+            $journal = $comptabiliteService->enregistrerPaiementCreance($paiement);
+            
+            if ($journal) {
+                Log::info('Paiement créance enregistré en comptabilité', ['journal_id' => $journal->id]);
+            }
+            
+            // Créer une entrée dans entrees_sorties pour le rapport journalier
+            \App\Models\EntreeSortie::create([
+                'compte_id' => $compteId,
+                'montant' => $montantAPayer,
+                'libele' => "Règlement créance - " . ($commande->panier->client->nom ?? 'Client'),
+                'type' => 'entree',
+                'user_id' => Auth::id(),
+                'point_de_vente_id' => $pointDeVenteId,
+                'comptabilise' => true // Déjà comptabilisé par le service ci-dessus
+            ]);
+            
+            Log::info('Entrée créée pour rapport journalier', [
+                'montant' => $montantAPayer, 
+                'point_de_vente_id' => $pointDeVenteId
+            ]);
             
             // Si complètement payé, marquer la commande comme payée
             if ($nouveauMontantRestant <= 0) {

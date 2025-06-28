@@ -57,31 +57,95 @@
     <!-- Tableau moderne du rapport -->
     <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
         <!-- Résumé financier principal -->
-        <!-- Résumé financier principal -->
         <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 border-b border-gray-200">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <!-- Recette -->
+                <!-- Total Recettes -->
                 <div class="text-center">
-                    <div class="text-sm font-medium text-gray-600 mb-1">Recette journalière</div>
-                    <div class="text-2xl font-bold text-green-600">{{ number_format($recette, 0, ',', ' ') }} F</div>
+                    <div class="text-sm font-medium text-gray-600 mb-1">Total Recettes</div>
+                    <div class="text-2xl font-bold text-green-600">{{ number_format($totalRecettes, 0, ',', ' ') }} F</div>
+                    <div class="text-xs text-gray-500 mt-1">Ventes + Créances + Entrées</div>
                 </div>
                 
-                <!-- Créances -->
+                <!-- Créances en cours -->
                 <div class="text-center">
-                    <div class="text-sm font-medium text-gray-600 mb-1">Total Créances</div>
-                    <div class="text-2xl font-bold text-orange-600">-{{ number_format($totalCreance, 0, ',', ' ') }} F</div>
+                    <div class="text-sm font-medium text-gray-600 mb-1">Créances en cours</div>
+                    <div class="text-2xl font-bold text-orange-600">{{ number_format($totalCreance, 0, ',', ' ') }} F</div>
+                    <div class="text-xs text-gray-500 mt-1">À recouvrer</div>
                 </div>
                 
                 <!-- Dépenses -->
                 <div class="text-center">
                     <div class="text-sm font-medium text-gray-600 mb-1">Total Dépenses</div>
-                    <div class="text-2xl font-bold text-red-600">-{{ number_format($depenses, 0, ',', ' ') }} F</div>
+                    <div class="text-2xl font-bold text-red-600">{{ number_format($depenses, 0, ',', ' ') }} F</div>
+                    <div class="text-xs text-gray-500 mt-1">Sorties de caisse</div>
                 </div>
                 
                 <!-- Solde -->
                 <div class="text-center bg-blue-100 rounded-lg p-4">
                     <div class="text-sm font-medium text-blue-700 mb-1">Solde Final</div>
                     <div class="text-3xl font-extrabold text-blue-900">{{ number_format($solde, 0, ',', ' ') }} F</div>
+                    <div class="text-xs text-blue-600 mt-1">Recettes - Créances - Dépenses</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Détail des RECETTES -->
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-lg font-bold text-green-700 mb-4">💰 Détail des Recettes</h3>
+            
+            <!-- Tableau des types de recettes -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <!-- 1. Ventes -->
+                <div class="bg-green-50 rounded-lg p-4 border border-green-200">
+                    <h4 class="font-bold text-green-700 mb-3">🛒 Ventes du jour</h4>
+                    <div class="text-2xl font-bold text-green-600 mb-2">{{ number_format($recettesVentes, 0, ',', ' ') }} F</div>
+                    
+                    @if($ventesParMode->isNotEmpty())
+                        <div class="space-y-1">
+                            @foreach($ventesParMode as $mode => $data)
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-600">{{ $data['mode'] }} ({{ $data['count'] }})</span>
+                                    <span class="font-medium">{{ number_format($data['total'], 0, ',', ' ') }} F</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+                
+                <!-- 2. Paiements créances -->
+                <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                    <h4 class="font-bold text-blue-700 mb-3">🏦 Paiements créances</h4>
+                    <div class="text-2xl font-bold text-blue-600 mb-2">{{ number_format($recettesPaiementsCreances, 0, ',', ' ') }} F</div>
+                    
+                    @if($paiementsCreances->isNotEmpty())
+                        <div class="space-y-1 max-h-20 overflow-y-auto">
+                            @foreach($paiementsCreances as $paiement)
+                                <div class="text-sm text-gray-600">
+                                    {{ \Carbon\Carbon::parse($paiement->created_at)->format('H:i') }} - {{ number_format($paiement->montant, 0, ',', ' ') }} F
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-sm text-gray-500 italic">Aucun paiement de créance</div>
+                    @endif
+                </div>
+                
+                <!-- 3. Entrées diverses -->
+                <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                    <h4 class="font-bold text-purple-700 mb-3">📥 Entrées diverses</h4>
+                    <div class="text-2xl font-bold text-purple-600 mb-2">{{ number_format($recettesEntreesDiverses, 0, ',', ' ') }} F</div>
+                    
+                    @if($entresDiverses->isNotEmpty())
+                        <div class="space-y-1 max-h-20 overflow-y-auto">
+                            @foreach($entresDiverses as $entree)
+                                <div class="text-sm text-gray-600">
+                                    {{ substr($entree->libele, 0, 20) }}{{ strlen($entree->libele) > 20 ? '...' : '' }} - {{ number_format($entree->montant, 0, ',', ' ') }} F
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-sm text-gray-500 italic">Aucune entrée diverse</div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -145,9 +209,8 @@
                         @php
                             $depensesList = \App\Models\EntreeSortie::whereDate('created_at', $date)
                                 ->where('point_de_vente_id', request()->route('pointDeVenteId'))
-                                ->whereHas('compte', function($q) {
-                                    $q->where('type', 'passif');
-                                })->get();
+                                ->where('type', 'sortie')
+                                ->get();
                         @endphp
                         @forelse($depensesList as $dep)
                             <tr class="hover:bg-red-25 transition-colors">

@@ -81,7 +81,7 @@
                          style="display: none;">
                         <div class="py-1">
                             <!-- Plan comptable -->
-                            <a href="{{ route('comptabilite.classes-comptables.index') }}" 
+                            <a href="{{('classes-comptables.index') }}" 
                                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
                                 <i class="fas fa-sitemap w-4 h-4 mr-3 text-indigo-600"></i>
                                 Classes Comptables
@@ -108,12 +108,12 @@
                                 <i class="fas fa-balance-scale w-4 h-4 mr-3 text-indigo-600"></i>
                                 Balance
                             </a>
-                            <a href="{{ route('comptabilite.plan-comptable.bilan') }}" 
+                            <a href="{{ route('comptabilite.bilan') }}" 
                                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
                                 <i class="fas fa-chart-pie w-4 h-4 mr-3 text-blue-600"></i>
                                 Bilan
                             </a>
-                            <a href="{{ route('comptabilite.plan-comptable.compte-resultat') }}" 
+                            <a href="{{ route('comptabilite.compte-resultat') }}" 
                                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
                                 <i class="fas fa-chart-line w-4 h-4 mr-3 text-green-600"></i>
                                 Compte de Résultat

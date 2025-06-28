@@ -42,9 +42,7 @@ class RapportController extends Controller
         });
         $depenses = EntreeSortie::whereDate('created_at', $date)
             ->where('point_de_vente_id', $pointDeVenteId)
-            ->whereHas('compte', function($q) {
-                $q->where('type', 'passif');
-            })
+            ->where('type', 'sortie')
             ->sum('montant');
         $solde = $recette - $totalCreance - $depenses;
         $pdf = PDF::loadView('rapport.pdf', compact('recette', 'totalCreance', 'detailsCreance', 'depenses', 'solde', 'date'));

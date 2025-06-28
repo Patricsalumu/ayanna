@@ -26,19 +26,31 @@
                 <tbody>
                     {{-- RECAP GENERAL --}}
                     <tr>
-                        <td style="padding: 12px 16px; font-weight: 600; border: 1px solid #d1d5db;">Recette journalière</td>
-                        <td colspan="2" style="padding: 12px 16px; text-align: right; font-weight: bold; color: #059669; border: 1px solid #d1d5db;">{{ number_format($recette, 0, ',', ' ') }} F</td>
+                        <td style="padding: 12px 16px; font-weight: 600; border: 1px solid #d1d5db;">Total Recettes</td>
+                        <td colspan="2" style="padding: 12px 16px; text-align: right; font-weight: bold; color: #059669; border: 1px solid #d1d5db;">{{ number_format($totalRecettes, 0, ',', ' ') }} F</td>
                     </tr>
                     <tr>
-                        <td style="padding: 12px 16px; font-weight: 600; border: 1px solid #d1d5db;">Total Créances</td>
-                        <td colspan="2" style="padding: 12px 16px; text-align: right; font-weight: bold; color: #ea580c; border: 1px solid #d1d5db;">-{{ number_format($totalCreance, 0, ',', ' ') }} F</td>
+                        <td style="padding: 8px 24px; font-size: 0.9em; border: 1px solid #d1d5db;">• Ventes du jour</td>
+                        <td colspan="2" style="padding: 8px 16px; text-align: right; font-size: 0.9em; color: #059669; border: 1px solid #d1d5db;">{{ number_format($recettesVentes, 0, ',', ' ') }} F</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 24px; font-size: 0.9em; border: 1px solid #d1d5db;">• Paiements créances</td>
+                        <td colspan="2" style="padding: 8px 16px; text-align: right; font-size: 0.9em; color: #2563eb; border: 1px solid #d1d5db;">{{ number_format($recettesPaiementsCreances, 0, ',', ' ') }} F</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 24px; font-size: 0.9em; border: 1px solid #d1d5db;">• Entrées diverses</td>
+                        <td colspan="2" style="padding: 8px 16px; text-align: right; font-size: 0.9em; color: #7c3aed; border: 1px solid #d1d5db;">{{ number_format($recettesEntreesDiverses, 0, ',', ' ') }} F</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 16px; font-weight: 600; border: 1px solid #d1d5db;">Créances en cours</td>
+                        <td colspan="2" style="padding: 12px 16px; text-align: right; font-weight: bold; color: #ea580c; border: 1px solid #d1d5db;">{{ number_format($totalCreance, 0, ',', ' ') }} F</td>
                     </tr>
                     <tr>
                         <td style="padding: 12px 16px; font-weight: 600; border: 1px solid #d1d5db;">Total Dépenses</td>
-                        <td colspan="2" style="padding: 12px 16px; text-align: right; font-weight: bold; color: #b91c1c; border: 1px solid #d1d5db;">-{{ number_format($depenses, 0, ',', ' ') }} F</td>
+                        <td colspan="2" style="padding: 12px 16px; text-align: right; font-weight: bold; color: #b91c1c; border: 1px solid #d1d5db;">{{ number_format($depenses, 0, ',', ' ') }} F</td>
                     </tr>
                     <tr>
-                        <td colspan="2" style="padding: 12px 16px; font-weight: bold; color: #1e3a8a; border: 1px solid #d1d5db; background: #e0e7ff;">Solde</td>
+                        <td colspan="2" style="padding: 12px 16px; font-weight: bold; color: #1e3a8a; border: 1px solid #d1d5db; background: #e0e7ff;">Solde Final</td>
                         <td style="padding: 12px 16px; text-align: right; font-weight: bold; color: #1e3a8a; font-size: 1.2em; border: 1px solid #d1d5db; background: #e0e7ff;">{{ number_format($solde, 0, ',', ' ') }} F</td>
                     </tr>
                     <tr>
@@ -73,9 +85,8 @@
                     @php
                         $depensesList = \App\Models\EntreeSortie::whereDate('created_at', $date)
                             ->where('point_de_vente_id', request()->route('pointDeVenteId'))
-                            ->whereHas('compte', function($q) {
-                                $q->where('type', 'passif');
-                            })->get();
+                            ->where('type', 'sortie')
+                            ->get();
                     @endphp
                     @forelse($depensesList as $dep)
                         <tr>
