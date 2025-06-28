@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.appsalle')
 
 @section('title', 'Journal Comptable')
 
@@ -111,7 +111,7 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                                {{ number_format($journal->montant_total, 0, ',', ' ') }} FCFA
+                                {{ number_format($journal->montant_total, 0, ',', ' ') }} FC
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <button onclick="voirDetail({{ $journal->id }})" 
@@ -293,7 +293,7 @@
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-coins text-yellow-600 mr-1"></i>
-                        Montant à transférer (FCFA)
+                        Montant à transférer (FC)
                     </label>
                     <input type="number" name="montant" id="montantTransfert" min="1" step="1" required 
                            placeholder="Ex: 50000"
@@ -407,7 +407,7 @@ function mettreAJourResume() {
         if (sourceOption && destinationOption) {
             document.getElementById('resumeSource').textContent = sourceOption.textContent.split('(')[0].trim();
             document.getElementById('resumeDestination').textContent = destinationOption.textContent.split('(')[0].trim();
-            document.getElementById('resumeMontant').textContent = new Intl.NumberFormat('fr-FR').format(montant) + ' FCFA';
+            document.getElementById('resumeMontant').textContent = new Intl.NumberFormat('fr-FR').format(montant) + ' FC';
             document.getElementById('resumeTransfert').classList.remove('hidden');
         }
     } else {

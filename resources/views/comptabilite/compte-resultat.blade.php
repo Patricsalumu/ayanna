@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.appsalle')
 
 @section('title', 'Compte de Résultat')
 
@@ -69,7 +69,7 @@
                             <div class="flex justify-between items-center py-3 border-t-2 border-red-200 bg-red-50 rounded-lg px-4 mt-4">
                                 <div class="font-bold text-red-900">TOTAL CHARGES</div>
                                 <div class="font-bold text-xl text-red-600">
-                                    {{ number_format($totalCharges, 0, ',', ' ') }} FCFA
+                                    {{ number_format($totalCharges, 0, ',', ' ') }} FC
                                 </div>
                             </div>
                         </div>
@@ -108,7 +108,7 @@
                             <div class="flex justify-between items-center py-3 border-t-2 border-green-200 bg-green-50 rounded-lg px-4 mt-4">
                                 <div class="font-bold text-green-900">TOTAL PRODUITS</div>
                                 <div class="font-bold text-xl text-green-600">
-                                    {{ number_format($totalProduits, 0, ',', ' ') }} FCFA
+                                    {{ number_format($totalProduits, 0, ',', ' ') }} FC
                                 </div>
                             </div>
                         </div>
@@ -130,17 +130,17 @@
                     <div class="space-y-3">
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600">Total Produits :</span>
-                            <span class="font-medium text-green-600">{{ number_format($totalProduits, 0, ',', ' ') }} FCFA</span>
+                            <span class="font-medium text-green-600">{{ number_format($totalProduits, 0, ',', ' ') }} FC</span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600">Total Charges :</span>
-                            <span class="font-medium text-red-600">{{ number_format($totalCharges, 0, ',', ' ') }} FCFA</span>
+                            <span class="font-medium text-red-600">{{ number_format($totalCharges, 0, ',', ' ') }} FC</span>
                         </div>
                         <div class="border-t pt-3">
                             <div class="flex justify-between items-center">
                                 <span class="font-bold text-gray-900">Résultat Net :</span>
                                 <span class="font-bold text-2xl {{ $resultat >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ $resultat >= 0 ? '+' : '' }}{{ number_format($resultat, 0, ',', ' ') }} FCFA
+                                    {{ $resultat >= 0 ? '+' : '' }}{{ number_format($resultat, 0, ',', ' ') }} FC
                                 </span>
                             </div>
                             <div class="mt-2">
@@ -199,7 +199,7 @@
                     Compte de résultat généré automatiquement - Période du {{ \Carbon\Carbon::parse($dateDebut)->format('d/m/Y') }} au {{ \Carbon\Carbon::parse($dateFin)->format('d/m/Y') }}
                 </p>
                 <p class="text-xs text-gray-500 mt-1">
-                    Les montants sont exprimés en FCFA. Seuls les comptes avec des mouvements sont affichés.
+                    Les montants sont exprimés en FC. Seuls les comptes avec des mouvements sont affichés.
                 </p>
             </div>
         </div>

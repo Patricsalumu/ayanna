@@ -13,7 +13,7 @@
     <!-- Scripts & Styles Laravel/Vite -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="font-sans antialiased flex items-center justify-center min-h-screen bg-gradient-to-br from-[#faf8f5] to-[#f3eee9]">
+<body class="font-sans antialiased flex items-center justify-center min-h-screen bg-gray-100">
     <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm mx-auto">
         <div class="flex justify-center">
             <a href="/">

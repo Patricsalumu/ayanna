@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.appsalle')
 
 @section('title', 'Balance Comptable')
 
@@ -42,17 +42,17 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-white p-4 rounded-lg shadow-sm">
                     <div class="text-sm text-gray-600">Total Débit</div>
-                    <div class="text-2xl font-bold text-red-600">{{ number_format($totalDebit, 0, ',', ' ') }} FCFA</div>
+                    <div class="text-2xl font-bold text-red-600">{{ number_format($totalDebit, 0, ',', ' ') }} FC</div>
                 </div>
                 <div class="bg-white p-4 rounded-lg shadow-sm">
                     <div class="text-sm text-gray-600">Total Crédit</div>
-                    <div class="text-2xl font-bold text-green-600">{{ number_format($totalCredit, 0, ',', ' ') }} FCFA</div>
+                    <div class="text-2xl font-bold text-green-600">{{ number_format($totalCredit, 0, ',', ' ') }} FC</div>
                 </div>
                 <div class="bg-white p-4 rounded-lg shadow-sm">
                     <div class="text-sm text-gray-600">Équilibre</div>
                     @php $equilibre = $totalDebit - $totalCredit; @endphp
                     <div class="text-2xl font-bold {{ abs($equilibre) < 0.01 ? 'text-green-600' : 'text-red-600' }}">
-                        {{ abs($equilibre) < 0.01 ? '✓ Équilibré' : '⚠ ' . number_format(abs($equilibre), 0, ',', ' ') . ' FCFA' }}
+                        {{ abs($equilibre) < 0.01 ? '✓ Équilibré' : '⚠ ' . number_format(abs($equilibre), 0, ',', ' ') . ' FC' }}
                     </div>
                 </div>
             </div>

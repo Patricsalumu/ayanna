@@ -33,7 +33,7 @@
                 <div class="bg-white p-3 rounded-lg">
                     <div class="text-sm text-gray-600">Solde initial</div>
                     <div class="font-semibold {{ $soldeInitial >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                        {{ number_format($soldeInitial, 0, ',', ' ') }} FCFA
+                        {{ number_format($soldeInitial, 0, ',', ' ') }} FC
                     </div>
                 </div>
                 <div class="bg-white p-3 rounded-lg">
@@ -48,7 +48,7 @@
                     @endphp
                     <div class="text-sm text-gray-600">Solde final</div>
                     <div class="font-semibold {{ $soldeFinal >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                        {{ number_format($soldeFinal, 0, ',', ' ') }} FCFA
+                        {{ number_format($soldeFinal, 0, ',', ' ') }} FC
                     </div>
                 </div>
             </div>

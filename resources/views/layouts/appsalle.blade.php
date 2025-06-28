@@ -18,6 +18,9 @@
          <!-- Tailwind CSS -->
         <script src="https://cdn.tailwindcss.com"></script>
 
+        <!-- Alpine.js CDN (fallback si Vite ne charge pas correctement) -->
+        <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
         <!-- Interact.js -->
       <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     </head>

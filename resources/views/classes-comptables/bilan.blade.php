@@ -9,7 +9,7 @@
             <p class="text-gray-600 mt-2">État de la situation financière au {{ date('d/m/Y') }}</p>
         </div>
         <div class="flex gap-3">
-            <a href="{{ route('comptabilite.classes-comptables.index') }}" 
+            <a href="{{ route('classes-comptables.index') }}" 
                class="inline-flex items-center px-4 py-2 rounded-lg bg-gray-600 text-white hover:bg-gray-700 shadow">
                 ← Retour au plan comptable
             </a>

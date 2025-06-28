@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.appsalle')
 
 @section('title', 'Classe ' . $classeComptable->numero . ' - ' . $classeComptable->nom)
 
@@ -16,7 +16,7 @@
                 @endif
             </div>
             <div class="flex space-x-3">
-                <a href="{{ route('comptabilite.classes-comptables.index') }}" 
+                <a href="{{ route('classes-comptables.index') }}" 
                    class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors">
                     ← Retour aux classes
                 </a>

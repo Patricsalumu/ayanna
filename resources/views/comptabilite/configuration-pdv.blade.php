@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.appsalle')
 
 @section('title', 'Configuration Comptable POS')
 

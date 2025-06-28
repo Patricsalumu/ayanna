@@ -13,7 +13,8 @@ class ClasseComptableController extends Controller
      */
     public function index()
     {
-        $classesComptables = ClasseComptable::with('comptes')
+        $classesComptables = ClasseComptable::withCount('comptes')
+            ->with('comptes')
             ->where('entreprise_id', Auth::user()->entreprise_id)
             ->orderBy('numero')
             ->get();

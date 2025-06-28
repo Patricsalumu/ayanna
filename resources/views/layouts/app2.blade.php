@@ -22,7 +22,7 @@
     <!-- Interact.js (optionnel) -->
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
 </head>
-<body class="font-sans antialiased text-[#3e2f24] bg-[#f9f6f3]">
+<body class="font-sans antialiased text-gray-800 bg-gray-100">
 
     <div class="min-h-screen flex flex-col">
         <!-- Navigation uniquement si demandé -->
@@ -32,9 +32,9 @@
 
         <!-- En-tête de page éventuel -->
         @isset($header)
-            <header class="bg-[#d8c1a8] shadow">
+            <header class="bg-white shadow">
                 <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-                    <h1 class="text-lg font-bold text-[#3e2f24]">
+                    <h1 class="text-lg font-bold text-gray-800">
                         {{ $header }}
                     </h1>
                 </div>

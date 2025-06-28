@@ -5,7 +5,11 @@
     comptabiliteOpen: false,
     loadPdvForm() {
         this.loading = true;
+        @if(isset($entreprise) && $entreprise)
         fetch('{{ route('pointsDeVente.create', [$entreprise->id, 'module_id' => $module->id ?? 0]) }}', {
+        @else
+        fetch('{{ route('pointsDeVente.create', [Auth::user()->entreprise_id ?? 1, 'module_id' => $module->id ?? 0]) }}', {
+        @endif
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(r => r.text())
@@ -37,7 +41,7 @@
                         </svg>
                     </a>
                     <!-- Lien Dashboard -->
-                    <a href="{{ url()->previous() }}" class="text-gray-600 hover:text-gray-800">Point de vente</a>
+                    <a href="{{ url()->previous() }}" class="text-gray-600 hover:text-gray-800">Tableau de board</a>
                     @if(isset($module) && $module)
                     <!-- Bouton Ajout (modale AJAX) -->
                     <button @click="ajoutPdvOpen = true; loadPdvForm()" type="button" title="Ajouter" class="text-gray-600 hover:text-gray-800 focus:outline-none">
@@ -55,9 +59,8 @@
                 <a href="{{ route('salles.show', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Salles</a>
                 <a href="{{ route('categories.show', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Catégories</a>
                 <a href="{{ route('produits.entreprise', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Produits</a>
-                {{-- Commandes : à ajuster si une route existe --}}
-                <a href="#" class="text-gray-400 cursor-not-allowed">Commandes</a>
-                <a href="{{ route('comptes.index') }}" class="text-gray-600 hover:text-gray-800">Comptes</a>
+                <a href="{{ route('classes-comptables.index') }}" class="text-gray-600 hover:text-gray-800">Classes Comptables</a>
+                <a href="{{ route('comptes.index') }}" class="text-gray-600 hover:text-gray-800"> Plan Comptable</a>
                 <a href="{{ route('clients.show', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Clients</a>
                 <a href="{{ route('users.show', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Utilisateurs</a>
                 
@@ -80,18 +83,6 @@
                          class="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50"
                          style="display: none;">
                         <div class="py-1">
-                            <!-- Plan comptable -->
-                            <a href="{{ route('classes-comptables.index') }}" 
-                               class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
-                                <i class="fas fa-sitemap w-4 h-4 mr-3 text-indigo-600"></i>
-                                Classes Comptables
-                            </a>
-                            <a href="{{ route('comptes.index') }}" 
-                               class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
-                                <i class="fas fa-list w-4 h-4 mr-3 text-blue-600"></i>
-                                Plan Comptable
-                            </a>
-                            <div class="border-t border-gray-100"></div>
                             <!-- Rapports comptables -->
                             <a href="{{ route('comptabilite.journal') }}" 
                                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900">
