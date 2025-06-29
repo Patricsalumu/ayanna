@@ -15,9 +15,10 @@
                     <p class="text-green-100">Performance de l'entreprise du {{ \Carbon\Carbon::parse($dateDebut)->format('d/m/Y') }} au {{ \Carbon\Carbon::parse($dateFin)->format('d/m/Y') }}</p>
                 </div>
                 <div class="flex space-x-2">
-                    <button onclick="window.print()" class="bg-white text-green-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
-                        <i class="fas fa-print mr-2"></i>Imprimer
-                    </button>
+                    <a href="{{ route('comptabilite.compte-resultat.export-pdf', ['date_debut' => $dateDebut, 'date_fin' => $dateFin]) }}" 
+                       class="bg-white text-green-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-file-pdf mr-2"></i>Export PDF
+                    </a>
                 </div>
             </div>
         </div>

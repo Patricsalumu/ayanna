@@ -509,4 +509,135 @@ class ComptabiliteController extends Controller
         
         return $pdf->download("grand-livre-general-{$dateDebut}-{$dateFin}.pdf");
     }
+
+    /**
+     * Export PDF du bilan
+     */
+    public function exportBilanPdf(Request $request)
+    {
+        $user = Auth::user();
+        $entrepriseId = $user->entreprise_id;
+        
+        $date = $request->get('date', now()->toDateString());
+        
+        // Actifs (classes 1, 2, 3, 4, 5)
+        $actifs = Compte::where('entreprise_id', $entrepriseId)
+            ->where('type', 'actif')
+            ->with(['ecritures' => function($q) use ($date) {
+                $q->whereHas('journal', function($j) use ($date) {
+                    $j->where('date_ecriture', '<=', $date);
+                });
+            }])
+            ->orderBy('numero')
+            ->get();
+
+        // Passifs (classes 1, 2, 4, mais PAS 6 et 7)
+        $passifs = Compte::where('entreprise_id', $entrepriseId)
+            ->where('type', 'passif')
+            ->with(['ecritures' => function($q) use ($date) {
+                $q->whereHas('journal', function($j) use ($date) {
+                    $j->where('date_ecriture', '<=', $date);
+                });
+            }])
+            ->orderBy('numero')
+            ->get();
+
+        $totalActif = 0;
+        $totalPassif = 0;
+
+        foreach ($actifs as $compte) {
+            $debit = $compte->ecritures->sum('debit');
+            $credit = $compte->ecritures->sum('credit');
+            $solde = $compte->solde_initial + $debit - $credit;
+            $compte->solde_bilan = max(0, $solde);
+            $totalActif += $compte->solde_bilan;
+        }
+
+        foreach ($passifs as $compte) {
+            $debit = $compte->ecritures->sum('debit');
+            $credit = $compte->ecritures->sum('credit');
+            $solde = $compte->solde_initial + $credit - $debit;
+            $compte->solde_bilan = max(0, $solde);
+            $totalPassif += $compte->solde_bilan;
+        }
+
+        // Calcul du résultat de l'exercice (à ajouter au passif)
+        $resultatExercice = $this->calculerResultatExercice($entrepriseId, $date);
+        
+        // Si bénéfice, on l'ajoute au passif
+        if ($resultatExercice > 0) {
+            $totalPassif += $resultatExercice;
+        } else if ($resultatExercice < 0) {
+            // Si perte, on l'ajoute à l'actif (en valeur absolue)
+            $totalActif += abs($resultatExercice);
+        }
+
+        $entreprise = \App\Models\Entreprise::find($entrepriseId);
+
+        $pdf = Pdf::loadView('comptabilite.bilan-pdf', compact('actifs', 'passifs', 'totalActif', 'totalPassif', 'date', 'resultatExercice', 'entreprise'));
+        
+        return $pdf->download("bilan-comptable-{$date}.pdf");
+    }
+
+    /**
+     * Export PDF du compte de résultat
+     */
+    public function exportCompteResultatPdf(Request $request)
+    {
+        $user = Auth::user();
+        $entrepriseId = $user->entreprise_id;
+        
+        $dateDebut = $request->get('date_debut', now()->startOfYear()->toDateString());
+        $dateFin = $request->get('date_fin', now()->toDateString());
+
+        // Produits (classe 7)
+        $produits = Compte::where('entreprise_id', $entrepriseId)
+            ->whereHas('classeComptable', function($q) {
+                $q->where('numero', '7');
+            })
+            ->with(['ecritures' => function($q) use ($dateDebut, $dateFin) {
+                $q->whereHas('journal', function($j) use ($dateDebut, $dateFin) {
+                    $j->whereBetween('date_ecriture', [$dateDebut, $dateFin]);
+                });
+            }])
+            ->orderBy('numero')
+            ->get();
+
+        // Charges (classe 6)
+        $charges = Compte::where('entreprise_id', $entrepriseId)
+            ->whereHas('classeComptable', function($q) {
+                $q->where('numero', '6');
+            })
+            ->with(['ecritures' => function($q) use ($dateDebut, $dateFin) {
+                $q->whereHas('journal', function($j) use ($dateDebut, $dateFin) {
+                    $j->whereBetween('date_ecriture', [$dateDebut, $dateFin]);
+                });
+            }])
+            ->orderBy('numero')
+            ->get();
+
+        $totalProduits = 0;
+        $totalCharges = 0;
+
+        foreach ($produits as $compte) {
+            $credit = $compte->ecritures->sum('credit');
+            $debit = $compte->ecritures->sum('debit');
+            $compte->montant = $credit - $debit; // Normalement créditeur
+            $totalProduits += $compte->montant;
+        }
+
+        foreach ($charges as $compte) {
+            $debit = $compte->ecritures->sum('debit');
+            $credit = $compte->ecritures->sum('credit');
+            $compte->montant = $debit - $credit; // Normalement débiteur
+            $totalCharges += $compte->montant;
+        }
+
+        $resultat = $totalProduits - $totalCharges;
+        $entreprise = \App\Models\Entreprise::find($entrepriseId);
+
+        $pdf = Pdf::loadView('comptabilite.compte-resultat-pdf', compact('produits', 'charges', 'totalProduits', 'totalCharges', 'resultat', 'dateDebut', 'dateFin', 'entreprise'));
+        
+        return $pdf->download("compte-resultat-{$dateDebut}-{$dateFin}.pdf");
+    }
 }

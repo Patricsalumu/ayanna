@@ -135,6 +135,8 @@ Route::middleware(['auth'])->group(function ()
         // Exports PDF
         Route::get('/journal/export-pdf', [\App\Http\Controllers\ComptabiliteController::class, 'exportJournalPdf'])->name('journal.export-pdf');
         Route::get('/balance/export-pdf', [\App\Http\Controllers\ComptabiliteController::class, 'exportBalancePdf'])->name('balance.export-pdf');
+        Route::get('/bilan/export-pdf', [\App\Http\Controllers\ComptabiliteController::class, 'exportBilanPdf'])->name('bilan.export-pdf');
+        Route::get('/compte-resultat/export-pdf', [\App\Http\Controllers\ComptabiliteController::class, 'exportCompteResultatPdf'])->name('compte-resultat.export-pdf');
         Route::get('/grand-livre/{compteId}/export-pdf', [\App\Http\Controllers\ComptabiliteController::class, 'exportGrandLivrePdf'])->name('grand-livre.export-pdf');
         Route::get('/grand-livre/export-pdf', [\App\Http\Controllers\ComptabiliteController::class, 'exportGrandLivreGeneralPdf'])->name('grand-livre.export-general-pdf');
     });

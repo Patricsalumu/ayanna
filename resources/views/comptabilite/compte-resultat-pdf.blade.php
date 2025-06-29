@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bilan Comptable - {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}</title>
+    <title>Compte de Résultat - {{ \Carbon\Carbon::parse($dateDebut)->format('d/m/Y') }} au {{ \Carbon\Carbon::parse($dateFin)->format('d/m/Y') }}</title>
     <style>
         @page {
             margin: 1cm;
@@ -25,7 +25,7 @@
             align-items: flex-start;
             margin-bottom: 20px;
             padding-bottom: 15px;
-            border-bottom: 2px solid #4F46E5;
+            border-bottom: 2px solid #059669;
         }
         
         .company-info {
@@ -42,7 +42,7 @@
         .company-name {
             font-size: 14px;
             font-weight: bold;
-            color: #4F46E5;
+            color: #059669;
             margin-bottom: 5px;
         }
         
@@ -58,16 +58,16 @@
         }
         
         .report-title {
-            color: #4F46E5;
             font-size: 24px;
-            margin: 0 0 5px 0;
             font-weight: bold;
+            color: #059669;
+            margin: 0 0 5px 0;
         }
         
         .subtitle {
             color: #666;
             font-size: 14px;
-            margin: 0 0 15px 0;
+            margin: 0 0 10px 0;
         }
         
         .generated-by {
@@ -75,17 +75,19 @@
             padding: 8px 12px;
             border-radius: 5px;
             border: 1px solid #e9ecef;
+            margin-top: 15px;
             font-size: 10px;
             color: #666;
+            text-align: center;
         }
         
-        .bilan-container {
+        .resultat-container {
             display: flex;
             gap: 20px;
             margin-bottom: 20px;
         }
         
-        .bilan-section {
+        .resultat-section {
             flex: 1;
             background: #fff;
             border: 1px solid #dee2e6;
@@ -102,14 +104,14 @@
             font-size: 14px;
         }
         
-        .actif-header {
-            background: #e3f2fd;
-            color: #1976d2;
+        .charges-header {
+            background: #fef2f2;
+            color: #dc2626;
         }
         
-        .passif-header {
-            background: #f3e5f5;
-            color: #7b1fa2;
+        .produits-header {
+            background: #f0fdf4;
+            color: #16a34a;
         }
         
         table {
@@ -143,6 +145,14 @@
             font-weight: bold;
         }
         
+        .montant.charges {
+            color: #dc2626;
+        }
+        
+        .montant.produits {
+            color: #16a34a;
+        }
+        
         .total-row {
             background-color: #e9ecef !important;
             font-weight: bold;
@@ -155,6 +165,38 @@
             font-size: 11px;
         }
         
+        .resultat-final {
+            background: #f8f9fa;
+            border: 2px solid #059669;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .resultat-final.benefice {
+            background: #f0fdf4;
+            border-color: #16a34a;
+            color: #16a34a;
+        }
+        
+        .resultat-final.perte {
+            background: #fef2f2;
+            border-color: #dc2626;
+            color: #dc2626;
+        }
+        
+        .resultat-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .resultat-montant {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
         .footer {
             margin-top: 30px;
             padding-top: 15px;
@@ -164,21 +206,15 @@
             color: #6c757d;
         }
         
-        .equilibre-check {
-            background: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
-            padding: 10px;
-            border-radius: 5px;
-            text-align: center;
-            font-weight: bold;
-            margin: 20px 0;
+        .page-break {
+            page-break-before: always;
         }
         
-        .equilibre-warning {
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
         }
     </style>
 </head>
@@ -211,10 +247,10 @@
             </div>
         </div>
         
-        <!-- Titre et date au centre -->
+        <!-- Titre et période au centre -->
         <div class="title-section">
-            <h1 class="report-title">BILAN COMPTABLE</h1>
-            <p class="subtitle">Situation au {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}</p>
+            <h1 class="report-title">COMPTE DE RÉSULTAT</h1>
+            <p class="subtitle">Du {{ \Carbon\Carbon::parse($dateDebut)->format('d/m/Y') }} au {{ \Carbon\Carbon::parse($dateFin)->format('d/m/Y') }}</p>
             
             <!-- Mention générée par Ayanna -->
             <div class="generated-by">
@@ -224,90 +260,74 @@
         </div>
     </div>
 
-    <!-- Contenu du bilan -->
-    <div class="bilan-container">
-        <!-- ACTIF -->
-        <div class="bilan-section">
-            <div class="section-header actif-header">
-                ACTIF
+    <!-- Contenu du compte de résultat -->
+    <div class="resultat-container">
+        <!-- CHARGES -->
+        <div class="resultat-section">
+            <div class="section-header charges-header">
+                CHARGES (Classe 6)
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 60%">Poste</th>
+                        <th style="width: 60%">Compte</th>
                         <th style="width: 40%">Montant</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($actifs as $compte)
-                        @if($compte->solde_bilan > 0)
+                    @foreach($charges as $compte)
+                        @if($compte->montant > 0)
                         <tr>
                             <td>
                                 <strong>{{ $compte->numero }}</strong><br>
                                 <small>{{ $compte->nom }}</small>
                             </td>
-                            <td class="montant">
-                                {{ number_format($compte->solde_bilan, 0, ',', ' ') }} FC
+                            <td class="montant charges">
+                                {{ number_format($compte->montant, 0, ',', ' ') }} FC
                             </td>
                         </tr>
                         @endif
                     @endforeach
                     <tr class="total-row">
-                        <td><strong>TOTAL ACTIF</strong></td>
-                        <td class="montant">
-                            {{ number_format($totalActif, 0, ',', ' ') }} FC
+                        <td><strong>TOTAL CHARGES</strong></td>
+                        <td class="montant charges">
+                            {{ number_format($totalCharges, 0, ',', ' ') }} FC
                         </td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
-        <!-- PASSIF -->
-        <div class="bilan-section">
-            <div class="section-header passif-header">
-                PASSIF
+        <!-- PRODUITS -->
+        <div class="resultat-section">
+            <div class="section-header produits-header">
+                PRODUITS (Classe 7)
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 60%">Poste</th>
+                        <th style="width: 60%">Compte</th>
                         <th style="width: 40%">Montant</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($passifs as $compte)
-                        @if($compte->solde_bilan > 0)
+                    @foreach($produits as $compte)
+                        @if($compte->montant > 0)
                         <tr>
                             <td>
                                 <strong>{{ $compte->numero }}</strong><br>
                                 <small>{{ $compte->nom }}</small>
                             </td>
-                            <td class="montant">
-                                {{ number_format($compte->solde_bilan, 0, ',', ' ') }} FC
+                            <td class="montant produits">
+                                {{ number_format($compte->montant, 0, ',', ' ') }} FC
                             </td>
                         </tr>
                         @endif
                     @endforeach
-                    
-                    <!-- Résultat de l'exercice -->
-                    @if(isset($resultatExercice) && $resultatExercice != 0)
-                        <tr style="background-color: #fff3cd;">
-                            <td>
-                                <strong>{{ $resultatExercice > 0 ? 'Résultat bénéficiaire' : 'Résultat déficitaire' }}</strong><br>
-                                <small>Exercice en cours</small>
-                            </td>
-                            <td class="montant">
-                                <span class="{{ $resultatExercice > 0 ? 'credit' : 'debit' }}">
-                                    {{ number_format(abs($resultatExercice), 0, ',', ' ') }} FC
-                                </span>
-                            </td>
-                        </tr>
-                    @endif
-                    
                     <tr class="total-row">
-                        <td><strong>TOTAL PASSIF</strong></td>
-                        <td class="montant">
-                            {{ number_format($totalPassif, 0, ',', ' ') }} FC
+                        <td><strong>TOTAL PRODUITS</strong></td>
+                        <td class="montant produits">
+                            {{ number_format($totalProduits, 0, ',', ' ') }} FC
                         </td>
                     </tr>
                 </tbody>
@@ -315,23 +335,56 @@
         </div>
     </div>
 
-    <!-- Vérification d'équilibre -->
-    <div class="equilibre-check {{ abs($totalActif - $totalPassif) >= 0.01 ? 'equilibre-warning' : '' }}">
-        @if(abs($totalActif - $totalPassif) < 0.01)
-            ✓ BILAN ÉQUILIBRÉ - Actif = Passif ({{ number_format($totalActif, 0, ',', ' ') }} FC)
-        @else
-            ⚠ DÉSÉQUILIBRE DÉTECTÉ - Écart de {{ number_format(abs($totalActif - $totalPassif), 0, ',', ' ') }} FC
-            <br>Actif: {{ number_format($totalActif, 0, ',', ' ') }} FC - Passif: {{ number_format($totalPassif, 0, ',', ' ') }} FC
+    <!-- Résultat final -->
+    <div class="resultat-final {{ $resultat >= 0 ? 'benefice' : 'perte' }}">
+        <div class="resultat-title">
+            {{ $resultat >= 0 ? '🎉 RÉSULTAT BÉNÉFICIAIRE' : '⚠ RÉSULTAT DÉFICITAIRE' }}
+        </div>
+        <div class="resultat-montant">
+            {{ number_format(abs($resultat), 0, ',', ' ') }} FC
+        </div>
+        <div style="font-size: 12px; margin-top: 8px;">
+            @if($resultat >= 0)
+                L'entreprise dégage un bénéfice sur la période
+            @else
+                L'entreprise enregistre une perte sur la période
+            @endif
+        </div>
+    </div>
+
+    <!-- Analyse rapide -->
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
+        <h3 style="color: #059669; margin: 0 0 10px 0; font-size: 14px;">📊 Analyse de performance</h3>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span>Total des produits :</span>
+            <strong style="color: #16a34a;">{{ number_format($totalProduits, 0, ',', ' ') }} FC</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span>Total des charges :</span>
+            <strong style="color: #dc2626;">{{ number_format($totalCharges, 0, ',', ' ') }} FC</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-top: 1px solid #dee2e6; padding-top: 8px;">
+            <span><strong>Résultat net :</strong></span>
+            <strong class="{{ $resultat >= 0 ? 'produits' : 'charges' }}">
+                {{ $resultat >= 0 ? '+' : '-' }} {{ number_format(abs($resultat), 0, ',', ' ') }} FC
+            </strong>
+        </div>
+        @if($totalProduits > 0)
+        <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 10px; color: #666;">
+            <span>Marge nette :</span>
+            <span>{{ number_format(($resultat / $totalProduits) * 100, 1) }}%</span>
+        </div>
         @endif
     </div>
 
     <!-- Pied de page -->
     <div class="footer">
         <p>
-            <strong>Bilan comptable</strong> - 
-            {{ $actifs->where('solde_bilan', '>', 0)->count() }} poste(s) à l'actif, {{ $passifs->where('solde_bilan', '>', 0)->count() }} poste(s) au passif - 
-            Document généré par <strong>Ayanna ©</strong> le {{ now()->format('d/m/Y à H:i') }}
+            <strong>Compte de résultat</strong> - 
+            {{ $charges->where('montant', '>', 0)->count() }} poste(s) de charges, {{ $produits->where('montant', '>', 0)->count() }} poste(s) de produits - 
+            Période du {{ \Carbon\Carbon::parse($dateDebut)->format('d/m/Y') }} au {{ \Carbon\Carbon::parse($dateFin)->format('d/m/Y') }}
         </p>
+        <p>Document généré le {{ now()->format('d/m/Y à H:i:s') }}</p>
     </div>
 </body>
 </html>

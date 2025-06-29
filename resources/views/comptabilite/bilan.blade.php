@@ -15,9 +15,10 @@
                     <p class="text-blue-100">Situation patrimoniale au {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}</p>
                 </div>
                 <div class="flex space-x-2">
-                    <button onclick="window.print()" class="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
-                        <i class="fas fa-print mr-2"></i>Imprimer
-                    </button>
+                    <a href="{{ route('comptabilite.bilan.export-pdf', ['date' => $date]) }}" 
+                       class="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-file-pdf mr-2"></i>Export PDF
+                    </a>
                 </div>
             </div>
         </div>

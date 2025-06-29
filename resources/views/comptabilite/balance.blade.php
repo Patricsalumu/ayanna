@@ -130,14 +130,9 @@
 
         <!-- Pied de page -->
         <div class="bg-gray-50 px-6 py-4 border-t">
-            <div class="flex justify-between items-center">
+            <div class="text-center">
                 <div class="text-sm text-gray-600">
                     {{ count($balance) }} compte(s) - Balance au {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}
-                </div>
-                <div class="flex space-x-2">
-                    <button onclick="window.print()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
-                        <i class="fas fa-print mr-2"></i>Imprimer
-                    </button>
                 </div>
             </div>
         </div>
