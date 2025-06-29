@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ayanna | Accueil</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <!-- Alpine.js pour les interactions -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         html {
             scroll-behavior: smooth;
@@ -21,10 +23,40 @@
             <a href="#tarifs" class="hover:text-[#a1887f]">Tarification</a>
             <a href="#contact" class="hover:text-[#a1887f]">Contact</a>
         </nav>
-        <div class="space-x-2 text-sm">
-            <a href="{{ route('login') }}" class="hover:text-[#a1887f]">Connexion</a>
-            <a href="{{ route('register') }}" class="bg-[#a1887f] text-white px-4 py-2 rounded hover:bg-[#8d6e63]">Inscription</a>
-        </div>
+        @auth
+            <!-- Menu utilisateur connecté -->
+            <div class="relative" x-data="{ open: false }">
+                <button @click="open = !open" class="flex items-center space-x-2 text-sm font-semibold hover:text-[#a1887f]">
+                    <span>{{ Auth::user()->name }}</span>
+                    <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <div x-show="open" @click.away="open = false" x-transition class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50" style="display: none;">
+                    <div class="py-1">
+                        <a href="{{ route('profile.edit') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            {{ __('Profil') }}
+                        </a>
+                        <a href="{{ Auth::user()->entreprise_id ? route('entreprises.show', Auth::user()->entreprise_id) : route('entreprises.create') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            {{ Auth::user()->entreprise_id ? Auth::user()->entreprise->nom : __('Créer mon entreprise') }}
+                        </a>
+                        <div class="border-t border-gray-100"></div>
+                        <form method="POST" action="{{ route('logout') }}" class="block">
+                            @csrf
+                            <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                {{ __('Déconnexion') }}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        @else
+            <!-- Liens connexion/inscription pour utilisateurs non connectés -->
+            <div class="space-x-2 text-sm">
+                <a href="{{ route('login') }}" class="hover:text-[#a1887f]">Connexion</a>
+                <a href="{{ route('register') }}" class="bg-[#a1887f] text-white px-4 py-2 rounded hover:bg-[#8d6e63]">Inscription</a>
+            </div>
+        @endauth
     </header>
 
     <!-- Héros -->

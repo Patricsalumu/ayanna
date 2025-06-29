@@ -126,7 +126,6 @@ function posApp() {
       .then(res => res.json())
       .then(data => {
         if(data.success) {
-          alert('Client enregistré !');
         } else {
           alert(data.error || 'Erreur lors de la sélection du client');
         }
@@ -149,7 +148,7 @@ function posApp() {
       .then(res => res.json())
       .then(data => {
         if(data.success) {
-          alert('Serveuse enregistrée !');
+        
         } else {
           alert(data.error || 'Erreur lors de la sélection de la serveuse');
         }
