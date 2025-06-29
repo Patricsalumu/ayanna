@@ -10,6 +10,7 @@ use App\Services\ComptabiliteService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class VenteController extends Controller
 {
@@ -762,5 +763,80 @@ class VenteController extends Controller
             ->findOrFail($commandeId);
         
         return view('creances.facture', compact('commande'));
+    }
+
+    public function exporterListeCreances(Request $request)
+    {
+        $filtre = $request->get('filtre', 'jour');
+        $search = $request->get('search', '');
+        $ids = $request->get('ids', '');
+        
+        // Construire la query de base pour les créances
+        $query = \App\Models\Commande::with([
+            'panier.client', 
+            'panier.serveuse', 
+            'panier.tableResto', 
+            'panier.produits', 
+            'panier.pointDeVente.entreprise',
+            'paiements'
+        ])->where('mode_paiement', 'compte_client');
+
+        // Appliquer le filtre de période
+        if ($filtre === 'jour') {
+            $query->whereDate('created_at', today());
+        }
+
+        // Si des IDs spécifiques sont fournis (depuis la recherche), les utiliser
+        if (!empty($ids)) {
+            $idsArray = explode(',', $ids);
+            $query->whereIn('id', $idsArray);
+        }
+
+        $creances = $query->orderBy('created_at', 'desc')->get();
+
+        // Calculer les totaux
+        $totalGeneral = 0;
+        $totalRestant = 0;
+        $nombreCreances = $creances->count();
+
+        foreach ($creances as $commande) {
+            if ($commande->panier && $commande->panier->produits) {
+                $montantTotal = $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente);
+                $montantPaye = $commande->paiements->sum('montant');
+                $montantRestant = max(0, $montantTotal - $montantPaye);
+                
+                $totalGeneral += $montantTotal;
+                $totalRestant += $montantRestant;
+            }
+        }
+
+        // Informations pour l'en-tête du PDF
+        $entreprise = null;
+        if ($creances->isNotEmpty() && $creances->first()->panier && $creances->first()->panier->pointDeVente) {
+            $entreprise = $creances->first()->panier->pointDeVente->entreprise;
+        }
+
+        $dateGeneration = now();
+        $periode = $filtre === 'jour' ? 'du ' . today()->format('d/m/Y') : 'toutes périodes';
+        $critereRecherche = !empty($search) ? " (recherche: \"$search\")" : '';
+
+        // Générer le PDF
+        $pdf = Pdf::loadView('creances.liste-pdf', compact(
+            'creances', 
+            'totalGeneral', 
+            'totalRestant', 
+            'nombreCreances',
+            'entreprise',
+            'dateGeneration',
+            'periode',
+            'critereRecherche'
+        ));
+
+        $pdf->setPaper('A4', 'portrait');
+        
+        // Nom du fichier avec timestamp
+        $fileName = 'liste_creances_' . date('d-m-Y_H-i-s') . '.pdf';
+        
+        return $pdf->download($fileName);
     }
 }

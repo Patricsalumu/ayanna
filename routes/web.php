@@ -120,6 +120,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/creances/{commande}/paiement', [App\Http\Controllers\VenteController::class, 'enregistrerPaiement'])->name('creances.paiement');
     Route::get('/creances/{commande}/historique', [App\Http\Controllers\VenteController::class, 'historiqueCreance'])->name('creances.historique');
     Route::get('/creances/{commande}/imprimer', [App\Http\Controllers\VenteController::class, 'imprimerCreance'])->name('creances.imprimer');
+    Route::get('/creances/export-liste', [App\Http\Controllers\VenteController::class, 'exporterListeCreances'])->name('creances.export-liste');
     Route::get('/creances', [App\Http\Controllers\VenteController::class, 'creances'])->name('creances.liste');
 
     // Routes comptabilité
