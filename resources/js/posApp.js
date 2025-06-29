@@ -492,11 +492,11 @@ function posApp() {
       }
       html += `<div style='border-top:1px dashed #222;margin:6px 0;'></div>`;
       // Tableau produits
-      html += `<table style='width:100%;font-size:12px;margin:0 auto;'><thead><tr><th style='text-align:left;'>Produit</th><th>Qté</th><th style='text-align:right;'>Total</th></tr></thead><tbody>`;
+      html += `<table style='width:100%;font-size:11px;margin:0 auto;'><thead><tr><th style='text-align:left;'>Produit</th><th>Qté</th><th style='text-align:right;'>Prix</th><th style='text-align:right;'>Total</th></tr></thead><tbody>`;
       panier.filter(item=>item.qte>0).forEach(item => {
         const lineTotal = item.qte * item.prix;
         total += lineTotal;
-        html += `<tr><td style='word-break:break-all;'>${item.nom}</td><td style='text-align:center;'>${item.qte}</td><td style='text-align:right;'>${lineTotal.toLocaleString()} F</td></tr>`;
+        html += `<tr><td style='word-break:break-all;'>${item.nom}</td><td style='text-align:center;'>${item.qte}</td><td style='text-align:right;'>${Math.round(item.prix).toLocaleString()} F</td><td style='text-align:right;'>${lineTotal.toLocaleString()} F</td></tr>`;
       });
       html += `</tbody></table>`;
       html += `<div style='border-top:1px dashed #222;margin:6px 0;'></div>`;
