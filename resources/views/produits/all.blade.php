@@ -538,31 +538,45 @@
 </div>
 
     <!-- Vue liste -->
-    <div id="listView" class="hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full table-auto bg-white shadow rounded-lg">
-                <thead class="bg-gray-100 text-left text-sm font-medium text-gray-600">
+    <div id="listView" class="hidden relative">
+        <!-- Container avec hauteur fixe pour permettre le scroll -->
+        <div class="overflow-x-auto max-h-[calc(100vh-300px)] border border-gray-200 rounded-lg">
+            <table class="w-full table-auto bg-white">
+                <thead class="bg-gray-100 text-left text-sm font-medium text-gray-600 sticky top-0 z-10">
                     <tr>
                         <th class="p-3">Nom</th>
                         <th class="p-3">Stock</th>
                         <th class="p-3">Catégorie</th>
                         <th class="p-3">Prix achat</th>
                         <th class="p-3">Prix vente</th>
+                        <th class="p-3">Val. Achat</th>
+                        <th class="p-3">Val. Vente</th>
                         <th class="p-3">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
+                    @php
+                        $totalAchat = 0;
+                        $totalVente = 0;
+                    @endphp
                     @forelse($produits as $produit)
+                        @php
+                            $stock = optional($produit->stockJournalier)->quantite_reste ?? 0;
+                            $valeurAchat = $stock * $produit->prix_achat;
+                            $valeurVente = $stock * $produit->prix_vente;
+                            $totalAchat += $valeurAchat;
+                            $totalVente += $valeurVente;
+                        @endphp
                         <tr class="border-t hover:bg-gray-50">
                             <td class="p-3 font-semibold">{{ $produit->nom }}</td>
-                            <td class="p-3 font-semibold">
-                                {{ optional($produit->stockJournalier)->quantite_reste !== null ? optional($produit->stockJournalier)->quantite_reste : '0' }}
-                            </td>
+                            <td class="p-3 font-semibold">{{ $stock }}</td>
                             <td class="p-3">
                                 {{ optional($produit->categorie)->nom ?? '-' }}
                             </td>
-                            <td class="p-3">{{ number_format($produit->prix_achat, 2, ',', ' ') }} F</td>
-                            <td class="p-3">{{ number_format($produit->prix_vente, 2, ',', ' ') }} F</td>
+                            <td class="p-3">{{ number_format($produit->prix_achat, 0, ',', ' ') }} F</td>
+                            <td class="p-3">{{ number_format($produit->prix_vente, 0, ',', ' ') }} F</td>
+                            <td class="p-3 font-medium text-blue-600">{{ number_format($valeurAchat, 0, ',', ' ') }} F</td>
+                            <td class="p-3 font-medium text-green-600">{{ number_format($valeurVente, 0, ',', ' ') }} F</td>
                             <td class="p-3 flex gap-2">
                                 <a href="#" @click.prevent="openEdit({
                                     id: {{ $produit->id }},
@@ -584,11 +598,42 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center text-gray-500 p-4">Aucun produit trouvé.</td>
+                            <td colspan="8" class="text-center text-gray-500 p-4">Aucun produit trouvé.</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
+        </div>
+        
+        <!-- Ligne de totaux fixe en bas -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg mt-2 sticky bottom-0 shadow-lg">
+            <div class="p-4">
+                <div class="flex justify-between items-center">
+                    <div class="text-lg font-bold text-gray-700">
+                        TOTAUX GÉNÉRAUX
+                    </div>
+                    <div class="flex gap-8">
+                        <div class="text-center">
+                            <div class="text-sm text-gray-600 mb-1">Total Valeur Achat</div>
+                            <div id="totalAchatDisplay" class="text-xl font-bold text-blue-600">
+                                {{ number_format($totalAchat, 0, ',', ' ') }} F
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-sm text-gray-600 mb-1">Total Valeur Vente</div>
+                            <div id="totalVenteDisplay" class="text-xl font-bold text-green-600">
+                                {{ number_format($totalVente, 0, ',', ' ') }} F
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-sm text-gray-600 mb-1">Marge Potentielle</div>
+                            <div id="margeDisplay" class="text-xl font-bold {{ ($totalVente - $totalAchat) >= 0 ? 'text-emerald-600' : 'text-red-600' }}">
+                                {{ number_format($totalVente - $totalAchat, 0, ',', ' ') }} F
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -639,13 +684,54 @@
             card.style.display = searchText.includes(value) ? '' : 'none';
         });
         
-        // Recherche dans la vue liste
+        // Recherche dans la vue liste et calcul des totaux dynamiques
+        let totalAchatVisible = 0;
+        let totalVenteVisible = 0;
+        
         listView.querySelectorAll('tbody tr').forEach(row => {
             const cells = row.querySelectorAll('td');
             if (!cells.length) return;
-            const text = Array.from(cells).slice(0, 5).map(td => td.textContent.trim().toLowerCase()).join(' ');
-            row.style.display = text.includes(value) ? '' : 'none';
+            
+            const text = Array.from(cells).slice(0, 7).map(td => td.textContent.trim().toLowerCase()).join(' ');
+            const isVisible = text.includes(value);
+            row.style.display = isVisible ? '' : 'none';
+            
+            // Si la ligne est visible, ajouter aux totaux
+            if (isVisible && cells.length >= 7) {
+                // Extraire les valeurs d'achat et de vente (colonnes 5 et 6, index 5 et 6)
+                const valAchatText = cells[5]?.textContent.trim() || '0';
+                const valVenteText = cells[6]?.textContent.trim() || '0';
+                
+                // Nettoyer les valeurs (enlever 'F' et espaces, remplacer virgules par points)
+                const valAchat = parseFloat(valAchatText.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+                const valVente = parseFloat(valVenteText.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+                
+                totalAchatVisible += valAchat;
+                totalVenteVisible += valVente;
+            }
         });
+        
+        // Mettre à jour l'affichage des totaux
+        updateTotalsDisplay(totalAchatVisible, totalVenteVisible);
     });
+    
+    // Fonction pour mettre à jour l'affichage des totaux
+    function updateTotalsDisplay(totalAchat, totalVente) {
+        const totalAchatDisplay = document.getElementById('totalAchatDisplay');
+        const totalVenteDisplay = document.getElementById('totalVenteDisplay');
+        const margeDisplay = document.getElementById('margeDisplay');
+        
+        if (totalAchatDisplay && totalVenteDisplay && margeDisplay) {
+            // Formatter les nombres avec séparateur de milliers
+            totalAchatDisplay.textContent = new Intl.NumberFormat('fr-FR').format(totalAchat) + ' F';
+            totalVenteDisplay.textContent = new Intl.NumberFormat('fr-FR').format(totalVente) + ' F';
+            
+            const marge = totalVente - totalAchat;
+            margeDisplay.textContent = new Intl.NumberFormat('fr-FR').format(marge) + ' F';
+            
+            // Changer la couleur de la marge selon le signe
+            margeDisplay.className = `text-xl font-bold ${marge >= 0 ? 'text-emerald-600' : 'text-red-600'}`;
+        }
+    }
 </script>
 @endsection
