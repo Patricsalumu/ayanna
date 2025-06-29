@@ -73,6 +73,7 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $fullPhone,
+            'role' => 'admin', // Par défaut, l'utilisateur est admin de l'entreprise
             'password' => Hash::make($request->password),
             'entreprise_id' => $entreprise->id,
         ]);
