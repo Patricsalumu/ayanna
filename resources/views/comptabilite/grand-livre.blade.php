@@ -14,10 +14,16 @@
                     <h1 class="text-2xl font-bold">Grand Livre</h1>
                     <p class="text-green-100">Mouvements détaillés par compte</p>
                 </div>
-                <a href="{{ route('comptabilite.journal') }}" 
-                   class="bg-white text-green-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
-                    <i class="fas fa-arrow-left mr-2"></i>Retour au journal
-                </a>
+                <div class="flex space-x-2">
+                    <a href="{{ route('comptabilite.grand-livre.export-general-pdf', request()->query()) }}" 
+                       class="bg-white text-green-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-file-pdf mr-2"></i>Export PDF Général
+                    </a>
+                    <a href="{{ route('comptabilite.journal') }}" 
+                       class="bg-white text-green-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-arrow-left mr-2"></i>Retour au journal
+                    </a>
+                </div>
             </div>
         </div>
 

@@ -13,29 +13,64 @@
             line-height: 1.4;
         }
         
-        .header {
-            text-align: center;
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
             margin-bottom: 30px;
             border-bottom: 2px solid #333;
-            padding-bottom: 10px;
+            padding-bottom: 15px;
+        }
+        
+        .company-info {
+            flex: 1;
+            max-width: 40%;
+        }
+        
+        .company-logo {
+            max-height: 60px;
+            max-width: 120px;
+            margin-bottom: 10px;
         }
         
         .company-name {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
             color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .company-details {
+            font-size: 11px;
+            color: #666;
+            line-height: 1.3;
+        }
+        
+        .title-section {
+            flex: 1;
+            text-align: center;
         }
         
         .report-title {
-            font-size: 16px;
+            font-size: 18px;
             font-weight: bold;
-            margin: 10px 0;
-            color: #666;
+            margin: 0 0 5px 0;
+            color: #333;
         }
         
         .period {
             font-size: 12px;
-            color: #888;
+            color: #666;
+            margin: 0 0 15px 0;
+        }
+        
+        .generated-by {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: 1px solid #e9ecef;
+            font-size: 10px;
+            color: #666;
         }
         
         .journal-entry {
@@ -149,16 +184,45 @@
     </style>
 </head>
 <body>
-    <!-- En-tête du rapport -->
-    <div class="header">
-        <div class="company-name">{{ $entreprise->nom }}</div>
-        <div class="report-title">JOURNAL COMPTABLE</div>
-        <div class="period">
-            Période : {{ \Carbon\Carbon::parse($dateDebut)->format('d/m/Y') }} 
-            au {{ \Carbon\Carbon::parse($dateFin)->format('d/m/Y') }}
+    <!-- En-tête avec logo et informations entreprise -->
+    <div class="header-container">
+        <!-- Logo et informations entreprise à gauche -->
+        <div class="company-info">
+            @if($entreprise && $entreprise->logo)
+                <img src="{{ public_path('storage/' . $entreprise->logo) }}" 
+                     alt="Logo" 
+                     class="company-logo">
+            @endif
+            <div class="company-name">{{ $entreprise->nom }}</div>
+            <div class="company-details">
+                @if($entreprise->numero_entreprise)
+                    N° Entreprise : {{ $entreprise->numero_entreprise }}<br>
+                @endif
+                @if($entreprise->adresse)
+                    {{ $entreprise->adresse }}<br>
+                @endif
+                @if($entreprise->telephone)
+                    Tél : {{ $entreprise->telephone }}<br>
+                @endif
+                @if($entreprise->email)
+                    Email : {{ $entreprise->email }}
+                @endif
+            </div>
         </div>
-        <div class="period">
-            Généré le {{ now()->format('d/m/Y à H:i') }}
+        
+        <!-- Titre et période au centre -->
+        <div class="title-section">
+            <div class="report-title">JOURNAL COMPTABLE</div>
+            <div class="period">
+                Période : {{ \Carbon\Carbon::parse($dateDebut)->format('d/m/Y') }} 
+                au {{ \Carbon\Carbon::parse($dateFin)->format('d/m/Y') }}
+            </div>
+            
+            <!-- Mention générée par Ayanna -->
+            <div class="generated-by">
+                <strong>📄 Généré par Ayanna</strong><br>
+                Le {{ now()->format('d/m/Y à H:i') }}
+            </div>
         </div>
     </div>
 

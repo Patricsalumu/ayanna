@@ -446,4 +446,67 @@ class ComptabiliteController extends Controller
         
         return $pdf->download("balance-comptable-{$date}.pdf");
     }
+
+    /**
+     * Export PDF du grand-livre détail d'un compte
+     */
+    public function exportGrandLivrePdf(Request $request, $compteId)
+    {
+        $user = Auth::user();
+        $entrepriseId = $user->entreprise_id;
+        
+        $dateDebut = $request->get('date_debut', now()->startOfMonth()->toDateString());
+        $dateFin = $request->get('date_fin', now()->toDateString());
+        
+        $compte = Compte::with('classeComptable')->findOrFail($compteId);
+        
+        $ecritures = EcritureComptable::with(['journal', 'client', 'produit'])
+            ->parCompte($compteId)
+            ->whereHas('journal', function($q) use ($dateDebut, $dateFin) {
+                $q->whereBetween('date_ecriture', [$dateDebut, $dateFin]);
+            })
+            ->orderBy('created_at')
+            ->get();
+
+        // Calcul du solde initial
+        $soldeInitial = $compte->solde_initial;
+        $mouvementsAnterieurs = EcritureComptable::parCompte($compteId)
+            ->whereHas('journal', function($q) use ($dateDebut) {
+                $q->where('date_ecriture', '<', $dateDebut);
+            })
+            ->get();
+
+        foreach ($mouvementsAnterieurs as $mvt) {
+            if ($compte->type === 'actif') {
+                $soldeInitial += $mvt->debit - $mvt->credit;
+            } else {
+                $soldeInitial += $mvt->credit - $mvt->debit;
+            }
+        }
+
+        $entreprise = \App\Models\Entreprise::find($entrepriseId);
+
+        $pdf = Pdf::loadView('comptabilite.grand-livre-detail-pdf', compact('compte', 'ecritures', 'soldeInitial', 'dateDebut', 'dateFin', 'entreprise'));
+        
+        return $pdf->download("grand-livre-{$compte->numero}-{$dateDebut}-{$dateFin}.pdf");
+    }
+
+    /**
+     * Export PDF du grand-livre général (tous les comptes)
+     */
+    public function exportGrandLivreGeneralPdf(Request $request)
+    {
+        $user = Auth::user();
+        $entrepriseId = $user->entreprise_id;
+        
+        $dateDebut = $request->get('date_debut', now()->startOfMonth()->toDateString());
+        $dateFin = $request->get('date_fin', now()->toDateString());
+        
+        $comptes = Compte::where('entreprise_id', $entrepriseId)->orderBy('numero')->get();
+        $entreprise = \App\Models\Entreprise::find($entrepriseId);
+
+        $pdf = Pdf::loadView('comptabilite.grand-livre-general-pdf', compact('comptes', 'dateDebut', 'dateFin', 'entreprise'));
+        
+        return $pdf->download("grand-livre-general-{$dateDebut}-{$dateFin}.pdf");
+    }
 }

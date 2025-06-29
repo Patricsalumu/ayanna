@@ -12,10 +12,16 @@
                     <h1 class="text-2xl font-bold">{{ $compte->numero }} - {{ $compte->nom }}</h1>
                     <p class="text-green-100">Détail des mouvements du {{ \Carbon\Carbon::parse($dateDebut)->format('d/m/Y') }} au {{ \Carbon\Carbon::parse($dateFin)->format('d/m/Y') }}</p>
                 </div>
-                <a href="{{ route('comptabilite.grand-livre') }}?date_debut={{ $dateDebut }}&date_fin={{ $dateFin }}" 
-                   class="bg-white text-green-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
-                    <i class="fas fa-arrow-left mr-2"></i>Retour à la liste
-                </a>
+                <div class="flex space-x-2">
+                    <a href="{{ route('comptabilite.grand-livre.export-pdf', ['compteId' => $compte->id, 'date_debut' => $dateDebut, 'date_fin' => $dateFin]) }}" 
+                       class="bg-white text-green-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-file-pdf mr-2"></i>Export PDF
+                    </a>
+                    <a href="{{ route('comptabilite.grand-livre') }}?date_debut={{ $dateDebut }}&date_fin={{ $dateFin }}" 
+                       class="bg-white text-green-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-arrow-left mr-2"></i>Retour à la liste
+                    </a>
+                </div>
             </div>
         </div>
 
