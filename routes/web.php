@@ -209,6 +209,15 @@ Route::post('/panier/supprimer-produit/{produit_id}', [\App\Http\Controllers\Pan
 // Liste des paniers du jour (comptoir)
 Route::get('/paniers/jour', [\App\Http\Controllers\PanierController::class, 'paniersDuJour'])->name('paniers.jour');
 
+// Liste de tous les paniers (avec filtres)
+Route::get('/paniers/show', [\App\Http\Controllers\PanierController::class, 'show'])->name('paniers.show');
+
+// Récupérer les détails d'un panier (AJAX)
+Route::get('/paniers/{panier}/details', [\App\Http\Controllers\PanierController::class, 'details'])->name('paniers.details');
+
+// Générer un reçu pour impression (AJAX)
+Route::get('/paniers/{panier}/print-receipt', [\App\Http\Controllers\PanierController::class, 'printReceipt'])->name('paniers.print-receipt');
+
 // Annuler un panier
 Route::patch('/paniers/{panier}/annuler', [\App\Http\Controllers\PanierController::class, 'annuler'])->name('paniers.annuler');
 
@@ -234,3 +243,8 @@ Route::prefix('transferts')->name('transferts.')->group(function () {
     Route::get('/historique', [\App\Http\Controllers\TransfertController::class, 'historique'])->name('historique');
     Route::get('/api/comptes/{compteId}/transferts-rapides', [\App\Http\Controllers\TransfertController::class, 'transfertsRapides'])->name('api.transferts-rapides');
 });
+
+// Historique des impressions de paniers
+Route::get('/paniers/historique-impressions', [\App\Http\Controllers\PanierController::class, 'historiqueImpressions'])->name('paniers.historique-impressions');
+Route::get('/paniers/impression/{id}/produits', [\App\Http\Controllers\PanierController::class, 'getImpressionProduits'])->name('paniers.impression.produits');
+Route::get('/paniers/api/historique-impressions', [\App\Http\Controllers\PanierController::class, 'getHistoriqueImpressionsData'])->name('paniers.api.historique-impressions');

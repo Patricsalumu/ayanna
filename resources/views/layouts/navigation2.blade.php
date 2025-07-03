@@ -59,8 +59,9 @@
                 <a href="{{ route('salles.show', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Salles</a>
                 <a href="{{ route('categories.show', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Catégories</a>
                 <a href="{{ route('produits.entreprise', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Produits</a>
-                <a href="{{ route('classes-comptables.index') }}" class="text-gray-600 hover:text-gray-800">Classes Comptables</a>
-                <a href="{{ route('comptes.index') }}" class="text-gray-600 hover:text-gray-800"> Plan Comptable</a>
+                <a href="{{ route('classes-comptables.index') }}" class="text-gray-600 hover:text-gray-800">Classes</a>
+                <a href="{{ route('comptes.index') }}" class="text-gray-600 hover:text-gray-800">Comptes</a>
+                <a href="{{ route('paniers.show') }}" class="text-gray-600 hover:text-gray-800">Paniers</a>
                 <a href="{{ route('clients.show', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Clients</a>
                 <a href="{{ route('users.show', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Utilisateurs</a>
                 

@@ -11,7 +11,8 @@
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet">
     <!-- Scripts & Styles Laravel/Vite -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="stylesheet" href="/build/assets/app-Dz7X2YIF.css">
+    <script type="module" src="/build/assets/app-DLcFWqMV.js"></script>
 </head>
 <body class="font-sans antialiased flex items-center justify-center min-h-screen bg-gradient-to-br from-[#faf8f5] to-[#f3eee9]">
     <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm mx-auto">

@@ -465,7 +465,7 @@ function posApp() {
       let now = new Date();
       let dateStr = now.toLocaleDateString('fr-FR');
       let heureStr = now.toLocaleTimeString('fr-FR');
-      let html = `<div style='width:58mm;padding:0;font-family:monospace;'>`;
+      let html = `<div style='width:62mm;margin:0 auto;padding-left:8mm;padding-right:5mm;padding-top:0;padding-bottom:0;font-family:monospace;'>`;
       // Type de reçu
       if(type === 'proforma') {
         html += `<div style='text-align:center;font-size:13px;font-weight:bold;color:#888;margin-bottom:2px;'>ADDITION / PROFORMA</div>`;
@@ -507,7 +507,7 @@ function posApp() {
       document.getElementById('ticket-addition').innerHTML = html;
       const printWindow = window.open('', '', 'width=900,height=800');
       printWindow.document.write('<html><head><title>Addition</title>');
-      printWindow.document.write('<style>body{margin:0;padding:0;}@media print{body{width:58mm!important;}}</style>');
+      printWindow.document.write('<style>body{margin:0;padding:0;}@media print{body{width:70mm!important;margin:0!important;padding:0!important;}}</style>');
       printWindow.document.write('</head><body >');
       printWindow.document.write(html);
       printWindow.document.write('</body></html>');

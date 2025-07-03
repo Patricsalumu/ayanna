@@ -34,23 +34,24 @@
     </div>
 
     <!-- Zone du plan -->
-    <div id="plan" class="relative w-full h-[500px] border border-gray-300 rounded bg-gray-100 overflow-hidden" style="background-image: linear-gradient(0deg, transparent 24%, #e5e7eb 25%, #e5e7eb 26%, transparent 27%, transparent 74%, #e5e7eb 75%, #e5e7eb 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, #e5e7eb 25%, #e5e7eb 26%, transparent 27%, transparent 74%, #e5e7eb 75%, #e5e7eb 76%, transparent 77%, transparent); background-size: 40px 40px;">
-
+    <div id="plan" class="relative w-full min-w-[400px] h-[500px] border border-gray-300 rounded bg-gray-100 overflow-x-auto overflow-y-hidden" style="max-width:100vw; background-image: linear-gradient(0deg, transparent 24%, #e5e7eb 25%, #e5e7eb 26%, transparent 27%, transparent 74%, #e5e7eb 75%, #e5e7eb 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, #e5e7eb 25%, #e5e7eb 26%, transparent 27%, transparent 74%, #e5e7eb 75%, #e5e7eb 76%, transparent 77%, transparent); background-size: 40px 40px;">
+        <div class="relative w-max h-full">
         @foreach ($salle->tables as $table)
+            @php
+                $style = 'top:' . $table->position_y . 'px;'
+                    . 'left:' . $table->position_x . 'px;'
+                    . 'width:' . ($table->width ?? 70) . 'px;'
+                    . 'height:' . ($table->height ?? 70) . 'px;'
+                    . ($table->forme === 'cercle' ? 'border-radius:50%;' : '')
+                    . 'background:' . ($table->is_busy ? '#4ade80' : '#f3f4f6') . ';'
+                    . 'border-color:#22c55e;';
+            @endphp
             <div class="table-item absolute cursor-pointer border-4 flex items-center justify-center group shadow-lg"
                  data-id="{{ $table->id }}"
                  data-forme="{{ $table->forme }}"
                  data-numero="{{ $table->numero }}"
                  tabindex="0"
-                 style="
-                    top: {{ $table->position_y }}px;
-                    left: {{ $table->position_x }}px;
-                    width: {{ $table->width ?? 70 }}px;
-                    height: {{ $table->height ?? 70 }}px;
-                    @if ($table->forme === 'cercle') border-radius: 50%; @endif
-                    background: {{ $table->is_busy ? '#4ade80' : '#f3f4f6' }};
-                    border-color: #22c55e;
-                 "
+                 style="{{ $style }}"
             >
                 <span class="table-num text-center w-full select-none flex items-center justify-center" style="pointer-events:none; font-size:1.3rem; font-weight:bold; color:#222;">{{ $table->numero }}</span>
                 @if(isset($table->nb_commandes) && $table->nb_commandes > 0)
@@ -65,6 +66,7 @@
             <button id="btn-shape-cercle" class="bg-gray-200 rounded-full px-2 py-1 text-xs border border-gray-400" title="Cercle">&#9679;</button>
             <button id="btn-duplicate" class="bg-blue-500 text-white rounded px-2 py-1 text-xs border border-blue-600" title="Dupliquer"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16h8M8 12h8m-7 8h6a2 2 0 002-2V6a2 2 0 00-2-2H9a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></button>
             <button id="btn-delete" class="bg-red-500 text-white rounded px-2 py-1 text-xs border border-red-600" title="Supprimer"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+        </div>
         </div>
     </div>
 

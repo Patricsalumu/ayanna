@@ -12,9 +12,13 @@ class Paiement extends Model
     protected $fillable = [
         'compte_id',
         'commande_id',
+        'panier_id',        // Ajout du lien avec le panier
         'montant',
+        'montant_recu',     // Montant reçu du client
+        'monnaie',          // Monnaie rendue au client
         'montant_restant',
         'mode',
+        'mode_paiement',    // Mode de paiement spécifique pour le panier
         'date_paiement',
         'notes',
         'est_solde',
@@ -24,6 +28,8 @@ class Paiement extends Model
 
     protected $casts = [
         'montant' => 'decimal:2',
+        'montant_recu' => 'decimal:2',
+        'monnaie' => 'decimal:2',
         'montant_restant' => 'decimal:2',
         'date_paiement' => 'date',
         'est_solde' => 'boolean'
@@ -42,5 +48,10 @@ class Paiement extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+    
+    public function panier()
+    {
+        return $this->belongsTo(Panier::class);
     }
 }

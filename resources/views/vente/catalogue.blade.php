@@ -66,54 +66,74 @@
 
     <!-- Sélecteurs + Options -->
     <div class="bg-white rounded-2xl shadow p-1 min-h-0 h-auto mt-1 mb-0">
-      <div class="flex flex-row gap-0.5 mb-4 justify-between items-center">
-        <select
-          class="flex-1 h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-pink-500 text-white font-bold shadow focus:ring-2 focus:ring-pink-300 transition text-center mx-1 px-2 py-0.5 appearance-none"
-          style="height:40px;"
-          x-model="paiement.client_id"
-          @change="setClient(paiement.client_id)"
-        >
-          <option value="">Client</option>
-          @foreach($clients as $c)
-            <option value="{{ (string) $c->id }}">{{ $c->nom }}</option>
-          @endforeach
-        </select>
-        <select
-          class="flex-1 h-12 min-w-[85px] max-w-[110px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-1 px-2 py-0.5 appearance-none"
-          style="height:40px;"
-          x-model="paiement.serveuse_id"
-          @change="setServeuse(paiement.serveuse_id)"
-        >
-          <option value="">Serveuse</option>
-          @foreach($serveuses as $s)
-            <option value="{{ (string) $s->id }}">{{ $s->name }}</option>
-          @endforeach
-        </select>
-        <select class="flex-1 h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-yellow-400 text-gray-800 font-bold shadow cursor-not-allowed text-center mx-1 px-2 py-0.5 appearance-none" style="height:40px;" disabled>
-          @if(isset($tableCourante))
-            @php $table = $tables->firstWhere('id', $tableCourante); @endphp
-            <option selected>
-              @if($table)
-                @if(!empty($table->numero))
-                  T{{ $table->numero }}
-                @elseif(!empty($table->nom))
-                  {{ $table->nom }}
+      <div class="flex flex-row flex-wrap gap-0.5 mb-4 justify-between items-center overflow-x-auto max-w-full"
+        style="min-width:0;">
+        <div class="flex flex-1 flex-row flex-wrap gap-0.5 min-w-0">
+          <select
+            class="flex-1 h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-pink-500 text-white font-bold shadow focus:ring-2 focus:ring-pink-300 transition text-center mx-0.5 px-2 py-0.5 appearance-none
+              md:h-10 md:min-w-[70px] md:max-w-[90px] md:text-sm md:px-1 md:py-0.5
+              sm:h-9 sm:min-w-[60px] sm:max-w-[80px] sm:text-xs sm:px-0.5 sm:py-0
+            "
+            style="height:40px;"
+            x-model="paiement.client_id"
+            @change="setClient(paiement.client_id)"
+          >
+            <option value="">Client</option>
+            @foreach($clients as $c)
+              <option value="{{ (string) $c->id }}">{{ $c->nom }}</option>
+            @endforeach
+          </select>
+          <select
+            class="flex-1 h-12 min-w-[85px] max-w-[110px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-0.5 px-2 py-0.5 appearance-none
+              md:h-10 md:min-w-[70px] md:max-w-[90px] md:text-sm md:px-1 md:py-0.5
+              sm:h-9 sm:min-w-[60px] sm:max-w-[80px] sm:text-xs sm:px-0.5 sm:py-0
+            "
+            style="height:40px;"
+            x-model="paiement.serveuse_id"
+            @change="setServeuse(paiement.serveuse_id)"
+          >
+            <option value="">Serveuse</option>
+            @foreach($serveuses as $s)
+              <option value="{{ (string) $s->id }}">{{ $s->name }}</option>
+            @endforeach
+          </select>
+          <select class="flex-1 h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-yellow-400 text-gray-800 font-bold shadow cursor-not-allowed text-center mx-0.5 px-2 py-0.5 appearance-none
+              md:h-10 md:min-w-[70px] md:max-w-[90px] md:text-sm md:px-1 md:py-0.5
+              sm:h-9 sm:min-w-[60px] sm:max-w-[80px] sm:text-xs sm:px-0.5 sm:py-0
+            " style="height:40px;" disabled>
+            @if(isset($tableCourante))
+              @php $table = $tables->firstWhere('id', $tableCourante); @endphp
+              <option selected>
+                @if($table)
+                  @if(!empty($table->numero))
+                    T{{ $table->numero }}
+                  @elseif(!empty($table->nom))
+                    {{ $table->nom }}
+                  @else
+                    Table {{ $table->id }}
+                  @endif
                 @else
-                  Table {{ $table->id }}
+                  Table inconnue
                 @endif
-              @else
-                Table inconnue
-              @endif
-            </option>
-          @else
-            <option selected>Table</option>
-          @endif
-        </select>
-        <button class="flex-1 h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-1 px-2 py-0.5 appearance-none" style="height:40px;" @click="openPaiement()">Paiement</button>
+              </option>
+            @else
+              <option selected>Table</option>
+            @endif
+          </select>
+          <button class="flex-1 h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-0.5 px-2 py-0.5 appearance-none
+              md:h-10 md:min-w-[70px] md:max-w-[90px] md:text-sm md:px-1 md:py-0.5
+              sm:h-9 sm:min-w-[60px] sm:max-w-[80px] sm:text-xs sm:px-0.5 sm:py-0
+            " style="height:40px;" @click="openPaiement()">Paiement</button>
+        </div>
         <!-- Bouton menu trois points verticaux -->
-        <button @click="showModal = true" class="ml-2 flex items-center justify-center w-10 h-12 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 text-2xl font-bold focus:outline-none" title="Options">
-          <span style="font-size:2rem;line-height:1;">&#8942;</span>
-        </button>
+        <div class="flex-shrink-0 mt-1 md:mt-0">
+          <button @click="showModal = true" class="ml-2 flex items-center justify-center w-10 h-12 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 text-2xl font-bold focus:outline-none
+              md:w-9 md:h-10 md:text-xl
+              sm:w-8 sm:h-9 sm:text-lg
+            " title="Options">
+            <span style="font-size:2rem;line-height:1;">&#8942;</span>
+          </button>
+        </div>
         {{-- DEBUG TABLE --}}
         {{-- DEBUG TABLE retiré --}}
       </div>

@@ -20,10 +20,12 @@ class Panier extends Model
         'last_modified_by',
         'produits_json',
         'status', // Ajouté pour permettre la modification
+        'is_printed', // Ajouté pour gérer l'état d'impression
     ];
 
     protected $casts = [
         'produits_json' => 'array',
+        'is_printed' => 'boolean',
     ];
 
     // Relations
@@ -62,5 +64,20 @@ class Panier extends Model
         return $this->belongsToMany(Produit::class, 'panier_produit')
             ->withPivot('quantite')
             ->withTimestamps();
+    }
+    
+    public function paiements()
+    {
+        return $this->hasMany(Paiement::class);
+    }
+    
+    public function commande()
+    {
+        return $this->hasOne(Commande::class);
+    }
+    
+    public function impressions()
+    {
+        return $this->hasMany(ImpressionPanier::class);
     }
 }
