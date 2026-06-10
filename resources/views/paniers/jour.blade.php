@@ -194,7 +194,6 @@
             const originalText = submitBtn.textContent;
             submitBtn.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>Suppression...';
             submitBtn.disabled = true;
-            
             formToSubmit.submit();
         }
     }

@@ -85,7 +85,6 @@ Route::middleware(['auth'])->group(function ()
     Route::get('entreprises/{entreprise}/salles/{salle}/edit', [SalleController::class, 'edit'])->name('salles.edit');
     Route::put('entreprises/{entreprise}/salles/{salle}', [SalleController::class, 'update'])->name('salles.update');
     Route::delete('entreprises/{entreprise}/salles/{salle}', [SalleController::class, 'destroy'])->name('salles.destroy');
-    Route::resource('tables', TableRestoController::class);
 
     //Routes pour les tables
     Route::get('/salles/{salle}/tables', [TableRestoController::class, 'getTablesBySalle'])->name('tables.getBySalle');
@@ -93,7 +92,6 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/tables/{table}', [TableRestoController::class, 'update'])->name('tables.update');
     Route::delete('/tables/{table}', [TableRestoController::class, 'destroy'])->name('tables.destroy');
     Route::get('/salles/{salle}/tables/{table}/edit', [TableRestoController::class, 'edit'])->name('tables.edit');
-    Route::get('/salles/{salle}/tables/create', [TableRestoController::class, 'create'])->name('tables.create');
     Route::post('/tables', [TableRestoController::class, 'store'])->name('tables.store');
 
     // Catalogue produits pour la vente (PDV)
