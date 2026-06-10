@@ -32,18 +32,15 @@ return new class extends Migration
             $table->decimal('pourboire', 10, 2)->default(0.00); // pourboire
             $table->string('mode_paiement')->nullable(); // mode de paiement (espèces, carte, etc.)
             $table->timestamps();
-            $table->foreign('table_id')->references('id')->on('table_restos');
-            $table->foreign('point_de_vente_id')->references('id')->on('point_de_ventes');
-            $table->foreign('client_id')->references('id')->on('clients');
-            $table->foreign('serveuse_id')->references('id')->on('users');
+            // FK to be added in later migration
+            // FK to be added in later migration
             $table->timestamp('valide_at')->nullable(); // date et heure de validation du panier
             $table->timestamp('ferme_at')->nullable(); // date et heure de fermeture du panier
             $table->timestamp('annule_at')->nullable(); // date et heure d'annulation du panier
             $table->timestamp('opened_at')->nullable(); // date et heure d'ouverture du panier
             $table->timestamp('last_modified_at')->nullable(); // date et heure de la dernière modification du panier
             $table->timestamp('printed_at')->nullable();//date et heure d
-            $table->foreign('opened_by')->references('id')->on('users');
-            $table->foreign('last_modified_by')->references('id')->on('users');
+            // FK to be added in later migration
         });
     }
 

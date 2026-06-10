@@ -271,11 +271,11 @@
         </div>
         <div class="mb-2 text-center">
           <div class="text-lg font-semibold">Montant reçu</div>
-          <div class="text-2xl font-bold bg-green-100 text-green-800 rounded-lg px-4 py-2 inline-block" x-text="formatMoney(paiement.montantRecu) + ' FC'"></div>
+          <div class="text-2xl font-bold bg-green-100 text-green-800 rounded-lg px-4 py-2 inline-block" x-text="formatMoney(paiement.montantRecu) + ' $'"></div>
         </div>
         <div class="mb-2 text-center">
           <span class="text-gray-600">Rendu monnaie :</span>
-          <span class="text-xl font-bold text-green-700" x-text="formatMoney(paiement.monnaie) + ' FC'"></span>
+          <span class="text-xl font-bold text-green-700" x-text="formatMoney(paiement.monnaie) + ' $'"></span>
         </div>
         <div class="flex justify-between mt-4 gap-2">
           <button @click="mode = 'commande'" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Retour</button>

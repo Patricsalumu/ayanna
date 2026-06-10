@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('points_de_vente', function (Blueprint $table) {
             $table->id();
             $table ->string('nom');
-            $table->foreignId('module_id')->constrained()->onDelete('cascade');
-            $table->foreignId('entreprise_id')->constrained()->onDelete('cascade');
+            $table->unsignedBigInteger('module_id')->nullable();
+            $table->unsignedBigInteger('entreprise_id')->nullable();
             $table->enum('etat', ['ouvert', 'ferme'])->default('ferme');
             $table->timestamps();
         });

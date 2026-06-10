@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\ClasseComptable;
+use App\Models\Entreprise;
 
 class ClassesComptablesSeeder extends Seeder
 {
@@ -221,9 +222,19 @@ class ClassesComptablesSeeder extends Seeder
             ]
         ];
 
+        // Récupérer la première entreprise (créée dans DatabaseSeeder)
+        $entreprise = Entreprise::first();
+        if (!$entreprise) {
+            $entreprise = Entreprise::firstOrCreate(
+                ['nom' => 'Test Company'],
+                ['email' => 'test@company.com']
+            );
+        }
+
         foreach ($classes as $classe) {
+            $classe['entreprise_id'] = $entreprise->id;
             ClasseComptable::updateOrCreate(
-                ['numero' => $classe['numero']],
+                ['numero' => $classe['numero'], 'entreprise_id' => $entreprise->id],
                 $classe
             );
         }

@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('categorie_point_de_vente', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('point_de_vente_id')->constrained()->onDelete('cascade');
-            $table->unsignedBigInteger('categorie_id');
+            $table->unsignedBigInteger('point_de_vente_id')->nullable();
+            $table->unsignedBigInteger('categorie_id')->nullable();
             $table->timestamps();
         });
     }

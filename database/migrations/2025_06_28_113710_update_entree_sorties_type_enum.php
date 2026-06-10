@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('entree_sorties', function (Blueprint $table) {
+        Schema::table('entrees_sorties', function (Blueprint $table) {
             // Modifier l'enum pour utiliser 'entree' et 'sortie' au lieu de 'credit' et 'debit'
             $table->enum('type', ['entree', 'sortie'])->change();
         });
@@ -22,7 +22,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('entree_sorties', function (Blueprint $table) {
+        Schema::table('entrees_sorties', function (Blueprint $table) {
             // Remettre l'ancien enum
             $table->enum('type', ['credit', 'debit'])->change();
         });

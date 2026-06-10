@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('commandes_produits', function (Blueprint $table) {
-            $table->foreignId('commande_id')->constrained('commandes')->onDelete('cascade');
-            $table->foreignId('produit_id')->constrained('produits')->onDelete('cascade');
-            $table->foreignId('utilisateur_id')->constrained('utilisateurs')->onDelete('cascade');
-            $table->foreignId('table_id')->constrained('tables')->onDelete('cascade');
+            $table->unsignedBigInteger('commande_id')->nullable();
+            $table->unsignedBigInteger('produit_id')->nullable();
+            $table->unsignedBigInteger('utilisateur_id')->nullable();
+            $table->unsignedBigInteger('table_id')->nullable();
             $table->date('date_commande'); // Date de la commande
             $table->boolean('statut'); // Heure de la commande
             $table->timestamps();

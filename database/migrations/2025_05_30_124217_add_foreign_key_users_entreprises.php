@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('classes_comptables', function (Blueprint $table) {
-            $table->unsignedBigInteger('entreprise_id')->nullable()->after('id');
-            $table->foreign('entreprise_id')->references('id')->on('entreprises')->onDelete('cascade');
+        Schema::table('users', function (Blueprint $table) {
+            $table->foreign('entreprise_id')
+                  ->references('id')
+                  ->on('entreprises')
+                  ->onDelete('cascade');
         });
     }
 
@@ -22,9 +24,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('classes_comptables', function (Blueprint $table) {
+        Schema::table('users', function (Blueprint $table) {
             $table->dropForeign(['entreprise_id']);
-            $table->dropColumn('entreprise_id');
         });
     }
 };

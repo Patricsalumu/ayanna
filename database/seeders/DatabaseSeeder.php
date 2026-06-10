@@ -13,11 +13,33 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // Créer une entreprise de test en premier
+        $entreprise = \App\Models\Entreprise::firstOrCreate(
+            ['nom' => 'Test Company'],
+            [
+                'email' => 'test@company.com',
+                'telephone' => '+1234567890',
+                'adresse' => '123 Main St',
+                'ville' => 'Test City',
+                'pays' => 'Test Country',
+            ]
+        );
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // Créer un utilisateur de test lié à cette entreprise
+        User::firstOrCreate(
+            ['email' => 'test@example.com'],
+            [
+                'name' => 'Test User',
+                'entreprise_id' => $entreprise->id,
+                'password' => bcrypt('password'),
+            ]
+        );
+
+        // Appeler les autres seeders
+        $this->call([
+            ClassesComptablesSeeder::class,
+            ComptesSeeder::class,
+            AssignClassesComptablesToEntreprises::class,
         ]);
     }
 }

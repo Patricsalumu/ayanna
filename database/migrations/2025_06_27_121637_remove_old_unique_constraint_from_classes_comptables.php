@@ -11,10 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('classes_comptables', function (Blueprint $table) {
-            // Supprimer l'ancienne contrainte unique sur 'numero' seulement
-            $table->dropUnique(['numero']); // Cela supprimera la contrainte classes_comptables_numero_unique
-        });
+        // Cette migration a été créée pour supprimer une contrainte qui n'existe plus
+        // (elle a été remplacée par unique(['numero', 'entreprise_id']))
+        // Pas d'action nécessaire
     }
 
     /**

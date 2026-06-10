@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('entreprise_module', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('entreprise_id')->constrained()->onDelete('cascade'); // Référence à l'entreprise
-            $table->foreignId('module_id')->constrained()->onDelete('cascade'); // Référence au module
+            $table->unsignedBigInteger('entreprise_id')->nullable(); // Référence à l'entreprise
+            $table->unsignedBigInteger('module_id')->nullable(); // Référence au module
             $table->timestamps();
         });
     }
