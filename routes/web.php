@@ -232,3 +232,12 @@ Route::prefix('transferts')->name('transferts.')->group(function () {
     Route::get('/historique', [\App\Http\Controllers\TransfertController::class, 'historique'])->name('historique');
     Route::get('/api/comptes/{compteId}/transferts-rapides', [\App\Http\Controllers\TransfertController::class, 'transfertsRapides'])->name('api.transferts-rapides');
 });
+
+// Routes bons de commande
+Route::middleware(['auth'])->prefix('bon-commande')->name('bon-commande.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\BonCommandeController::class, 'index'])->name('index');
+    Route::post('/create', [\App\Http\Controllers\BonCommandeController::class, 'store'])->name('store');
+    Route::get('/{id}', [\App\Http\Controllers\BonCommandeController::class, 'show'])->name('show');
+    Route::get('/{id}/print', [\App\Http\Controllers\BonCommandeController::class, 'print'])->name('print');
+    Route::get('/{id}/reprint', [\App\Http\Controllers\BonCommandeController::class, 'reprint'])->name('reprint');
+});

@@ -539,6 +539,71 @@ function posApp() {
       if (typeof val !== 'number') val = parseFloat(val) || 0;
       return val.toLocaleString('fr-FR', { minimumFractionDigits: 0 });
     },
+    genererBonCommande() {
+      // Vérifier qu'une serveuse est sélectionnée
+      if (!this.paiement.serveuse_id) {
+        alert('❌ Veuillez sélectionner une serveuse avant de générer un bon de commande.');
+        this.showModal = false;
+        return;
+      }
+
+      // Récupérer l'ID du panier
+      const panierId = (this.panier && this.panier.length && this.panier[0].panier_id) ? this.panier[0].panier_id : window.PANIER_ID;
+      if (!panierId) {
+        alert('❌ Impossible de générer un bon : aucun panier n\'est actif.');
+        return;
+      }
+
+      console.log('🔵 Envoi bon commande:', { panierId, serveuse_id: this.paiement.serveuse_id });
+
+      // Appel AJAX pour générer le bon
+      fetch('/bon-commande/create', {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': window.CSRF_TOKEN,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          panier_id: panierId,
+          serveuse_id: this.paiement.serveuse_id
+        })
+      })
+      .then(res => {
+        console.log('🔵 Réponse reçue:', res.status);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(data => {
+        console.log('🔵 Données reçues:', data);
+        this.showModal = false;
+
+        if (data.code === 'no_serveuse') {
+          alert('❌ ' + data.error);
+          return;
+        }
+
+        if (data.code === 'no_new_products') {
+          console.log('ℹ️ ' + data.message);
+          return;
+        }
+
+        if (data.success) {
+          // Ouvrir la page d'impression directement (imprime automatiquement)
+          window.open(`/bon-commande/${data.bon_id}/print`, '_blank');
+        } else {
+          alert('❌ Erreur : ' + (data.error || 'Impossible de générer le bon'));
+          if (data.message) {
+            console.error('Erreur détaillée:', data.message);
+          }
+        }
+      })
+      .catch(err => {
+        console.error('❌ Erreur:', err);
+        alert('❌ Erreur de connexion avec le serveur:\n' + err.message + '\n\nVérifiez les logs du serveur pour plus de détails.');
+      });
+    },
   }
 }
 // Rendre la fonction accessible globalement pour Alpine.js

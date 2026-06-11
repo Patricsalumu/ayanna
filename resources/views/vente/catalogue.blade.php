@@ -64,6 +64,13 @@
       </template>
     </div>
 
+    <!-- Bouton Bon de Commande -->
+    <template x-if="panier.length">
+      <button @click="genererBonCommande()" class="w-full py-3 rounded-2xl bg-orange-600 text-white font-bold text-base shadow hover:bg-orange-700 transition">
+        🍲 Bon de Commande
+      </button>
+    </template>
+
     <!-- Sélecteurs + Options -->
     <div class="bg-white rounded-2xl shadow p-1 min-h-0 h-auto mt-1 mb-0">
       <div class="flex flex-row gap-0.5 mb-4 justify-between items-center">
