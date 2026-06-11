@@ -539,6 +539,27 @@ function posApp() {
       if (typeof val !== 'number') val = parseFloat(val) || 0;
       return val.toLocaleString('fr-FR', { minimumFractionDigits: 0 });
     },
+    async printBonCommande(bonId) {
+      try {
+        const response = await fetch(`/bon-commande/${bonId}/print`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const html = await response.text();
+        // Ouvrir dans un nouvel onglet
+        const printWindow = window.open('', '_blank', 'width=900,height=800');
+        if (!printWindow) {
+          throw new Error('Impossible d\'ouvrir la fenêtre d\'impression');
+        }
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.focus();
+        // Ne pas fermer automatiquement - laisser l'utilisateur imprimer ou recommencer
+      } catch (err) {
+        console.error('Erreur impression bon commande :', err);
+        alert('❌ Erreur d\'impression du bon de commande.\n\nVérifiez votre connexion internet ou réessayez.');
+      }
+    },
     genererBonCommande() {
       // Vérifier qu'une serveuse est sélectionnée
       if (!this.paiement.serveuse_id) {
@@ -585,13 +606,12 @@ function posApp() {
         }
 
         if (data.code === 'no_new_products') {
-          console.log('ℹ️ ' + data.message);
+          alert('⚠️ Aucun nouveau produit à imprimer.\n\nVeuillez ajouter des produits au panier.');
           return;
         }
 
         if (data.success) {
-          // Ouvrir la page d'impression directement (imprime automatiquement)
-          window.open(`/bon-commande/${data.bon_id}/print`, '_blank');
+          this.printBonCommande(data.bon_id);
         } else {
           alert('❌ Erreur : ' + (data.error || 'Impossible de générer le bon'));
           if (data.message) {

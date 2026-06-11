@@ -138,7 +138,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="company-name">{{ config('app.name', 'Ayanna') }}</div>
+            <div class="company-name">{{ $bon->panier?->pointDeVente?->entreprise?->nom ?? config('app.name', 'Ayanna') }}</div>
         </div>
 
         <div class="bon-title">BON DE COMMANDE No {{ $bon->numero_bon }}</div>

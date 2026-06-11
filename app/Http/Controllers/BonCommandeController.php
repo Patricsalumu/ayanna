@@ -150,7 +150,7 @@ class BonCommandeController extends Controller
      */
     public function show($id)
     {
-        $bon = BonCommande::with(['panier', 'serveuse', 'client'])
+        $bon = BonCommande::with(['panier.pointDeVente.entreprise', 'serveuse', 'client'])
             ->findOrFail($id);
 
         return view('bon_commande.show', [
@@ -163,7 +163,7 @@ class BonCommandeController extends Controller
      */
     public function reprint($id)
     {
-        $bon = BonCommande::with(['panier', 'serveuse', 'client'])
+        $bon = BonCommande::with(['panier.pointDeVente.entreprise', 'serveuse', 'client'])
             ->findOrFail($id);
 
         return view('bon_commande.print', [
@@ -176,7 +176,7 @@ class BonCommandeController extends Controller
      */
     public function print($id)
     {
-        $bon = BonCommande::with(['panier', 'serveuse', 'client'])
+        $bon = BonCommande::with(['panier.pointDeVente.entreprise', 'serveuse', 'client'])
             ->findOrFail($id);
 
         return view('bon_commande.print', [
