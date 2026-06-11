@@ -38,7 +38,7 @@
                                         <div class="card-body">
                                             <h6 class="text-info font-weight-bold">{{ $pdv->nom }}</h6>
                                             <p class="text-sm text-muted mb-2">
-                                                Solde: <span class="font-weight-bold">{{ number_format($pdv->compteCaisse->solde ?? 0, 0, ',', ' ') }} F</span>
+                                                Solde: <span class="font-weight-bold">{{ number_format($pdv->compteCaisse->solde ?? 0, 0, ',', ' ') }} $</span>
                                             </p>
                                             <div class="btn-group w-100" role="group">
                                                 <button type="button" class="btn btn-sm btn-outline-primary btn-transfert-rapide" 
@@ -165,7 +165,7 @@
                                     <option value="">Sélectionner le compte source</option>
                                     @foreach($comptes as $compte)
                                         <option value="{{ $compte->id }}" data-solde="{{ $compte->solde ?? 0 }}">
-                                            {{ $compte->nom }} ({{ number_format($compte->solde ?? 0, 0, ',', ' ') }} F)
+                                            {{ $compte->nom }} ({{ number_format($compte->solde ?? 0, 0, ',', ' ') }} $)
                                         </option>
                                     @endforeach
                                 </select>
@@ -179,7 +179,7 @@
                                     <option value="">Sélectionner le compte destination</option>
                                     @foreach($comptes as $compte)
                                         <option value="{{ $compte->id }}">
-                                            {{ $compte->nom }} ({{ number_format($compte->solde ?? 0, 0, ',', ' ') }} F)
+                                            {{ $compte->nom }} ({{ number_format($compte->solde ?? 0, 0, ',', ' ') }} $)
                                         </option>
                                     @endforeach
                                 </select>
@@ -194,7 +194,7 @@
                                 <label for="montant">Montant *</label>
                                 <input type="number" class="form-control" id="montant" name="montant" 
                                        min="1" step="1" required>
-                                <small class="text-muted">Montant à transférer en FCFA</small>
+                                <small class="text-muted">Montant à transférer en $</small>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -334,7 +334,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('apercu-details').innerHTML = `
                 <strong>Source:</strong> ${sourceNom}<br>
                 <strong>Destination:</strong> ${destNom}<br>
-                <strong>Montant:</strong> ${montant.toLocaleString()} F<br>
+                <strong>Montant:</strong> ${montant.toLocaleString()} $<br>
                 <strong>Libellé:</strong> ${libelle}
             `;
             document.getElementById('apercu-transfert').classList.remove('d-none');

@@ -445,8 +445,8 @@
             
             document.getElementById('commandeId').value = commandeId;
             document.getElementById('clientNom').textContent = clientNom;
-            document.getElementById('montantTotal').textContent = montantTotal.toLocaleString() + ' F';
-            document.getElementById('montantRestant').textContent = montantRestant.toLocaleString() + ' F';
+            document.getElementById('montantTotal').textContent = montantTotal.toLocaleString() + ' $';
+            document.getElementById('montantRestant').textContent = montantRestant.toLocaleString() + ' $';
             document.getElementById('montantRecu').value = '';
             document.getElementById('montantRecu').max = montantRestant;
             
@@ -589,8 +589,8 @@
                     <tr class="hover:bg-gray-50">
                         <td class="px-3 py-3 font-medium text-gray-900">${prod.nom}</td>
                         <td class="px-3 py-3 text-center text-gray-700">${prod.pivot.quantite}</td>
-                        <td class="px-3 py-3 text-right text-gray-700">${prod.prix_vente.toLocaleString()} F</td>
-                        <td class="px-3 py-3 text-right font-bold text-green-600">${total.toLocaleString()} F</td>
+                        <td class="px-3 py-3 text-right text-gray-700">${prod.prix_vente.toLocaleString()} $</td>
+                        <td class="px-3 py-3 text-right font-bold text-green-600">${total.toLocaleString()} $</td>
                     </tr>
                 `;
             });
@@ -600,7 +600,7 @@
                         <tfoot class="bg-green-50 border-t-2 border-green-200">
                             <tr>
                                 <td colspan="3" class="px-3 py-4 font-bold text-green-700">Total commande :</td>
-                                <td class="px-3 py-4 text-right font-bold text-green-700 text-lg">${totalGeneral.toLocaleString()} F</td>
+                                <td class="px-3 py-4 text-right font-bold text-green-700 text-lg">${totalGeneral.toLocaleString()} $</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -700,7 +700,7 @@
             const nombreElement = document.querySelector('.total-creances-nombre');
             
             if (totalElement) {
-                totalElement.textContent = totalRestantFiltre.toLocaleString() + ' F';
+                totalElement.textContent = totalRestantFiltre.toLocaleString() + ' $';
             }
             if (nombreElement) {
                 nombreElement.textContent = nombreCreancesFiltre + ' créances';

@@ -230,7 +230,7 @@
             <div class="detail">
                 <div class="detail-label">Solde initial</div>
                 <div class="detail-value {{ $soldeInitial >= 0 ? 'solde positif' : 'solde negatif' }}">
-                    {{ number_format($soldeInitial, 0, ',', ' ') }} FC
+                    {{ number_format($soldeInitial, 0, ',', ' ') }} $
                 </div>
             </div>
             @php
@@ -245,7 +245,7 @@
             <div class="detail">
                 <div class="detail-label">Solde final</div>
                 <div class="detail-value {{ $soldeFinal >= 0 ? 'solde positif' : 'solde negatif' }}">
-                    {{ number_format($soldeFinal, 0, ',', ' ') }} FC
+                    {{ number_format($soldeFinal, 0, ',', ' ') }} $
                 </div>
             </div>
         </div>

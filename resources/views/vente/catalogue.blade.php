@@ -39,8 +39,8 @@
                   <tr @click="selectItem(i)" :class="{'bg-blue-50': selectedIndex===i}" class="hover:bg-blue-100 cursor-pointer">
                     <td x-text="item.nom" class="py-1"></td>
                     <td class="text-center" x-text="item.qte"></td>
-                    <td class="text-right" x-text="item.prix.toLocaleString()+' F'"></td>
-                    <td class="text-right" x-text="(item.qte*item.prix).toLocaleString()+' F'"></td>
+                    <td class="text-right" x-text="item.prix.toLocaleString()+' $'"></td>
+                    <td class="text-right" x-text="(item.qte*item.prix).toLocaleString()+' $'"></td>
                   </tr>
                 </template>
               </tbody>
@@ -50,7 +50,7 @@
             <tbody>
               <tr class="font-bold border-t">
                 <td colspan="3" class="text-right py-1">Total</td>
-                <td class="text-right" x-text="total.toLocaleString()+' F'"></td>
+                <td class="text-right" x-text="total.toLocaleString()+' $'"></td>
               </tr>
             </tbody>
           </table>

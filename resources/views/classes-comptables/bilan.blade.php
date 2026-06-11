@@ -113,7 +113,7 @@
         
         @if(abs($difference) < 1000)
             <div class="mt-3 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                ✅ Le bilan est équilibré ! La différence est acceptable (< 1 000 F).
+                ✅ Le bilan est équilibré ! La différence est acceptable (< 1 000 $).
             </div>
         @else
             <div class="mt-3 bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">

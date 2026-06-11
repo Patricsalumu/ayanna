@@ -325,11 +325,11 @@
                 <span class="total-label">Équilibre:</span>
                 @if($totalDebit == $totalCredit)
                     <span class="total-value" style="color: #28a745;">
-                        ✓ Équilibré ({{ number_format(abs($totalDebit - $totalCredit), 0, ',', ' ') }} F)
+                        ✓ Équilibré ({{ number_format(abs($totalDebit - $totalCredit), 0, ',', ' ') }} $)
                     </span>
                 @else
                     <span class="total-value" style="color: #dc3545;">
-                        ⚠ Déséquilibré ({{ number_format(abs($totalDebit - $totalCredit), 0, ',', ' ') }} F)
+                        ⚠ Déséquilibré ({{ number_format(abs($totalDebit - $totalCredit), 0, ',', ' ') }} $)
                     </span>
                 @endif
             </div>

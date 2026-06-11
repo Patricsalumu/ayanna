@@ -73,8 +73,8 @@
                 <td style="padding:6px; border:1px solid #bcd0ee; text-align:center;">{{ $q_total }}</td>
                 <td style="padding:6px; border:1px solid #bcd0ee;">{{ $q_vendue }}</td>
                 <td style="padding:6px; border:1px solid #bcd0ee;">{{ $q_reste }}</td>
-                <td style="padding:6px; border:1px solid #bcd0ee; text-align:right;">{{ number_format($prix, 0, ',', ' ') }} F</td>
-                <td style="padding:6px; border:1px solid #bcd0ee; text-align:right; font-weight:bold;">{{ number_format($total, 0, ',', ' ') }} F</td>
+                <td style="padding:6px; border:1px solid #bcd0ee; text-align:right;">{{ number_format($prix, 0, ',', ' ') }} $</td>
+                <td style="padding:6px; border:1px solid #bcd0ee; text-align:right; font-weight:bold;">{{ number_format($total, 0, ',', ' ') }} $</td>
             </tr>
         @endforeach
         </tbody>

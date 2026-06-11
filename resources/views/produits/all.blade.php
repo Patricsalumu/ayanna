@@ -527,8 +527,8 @@
                 </div>
                 {{-- Ligne prix --}}
                 <div class="text-gray-600 text-sm mt-1 flex gap-4">
-                    <span>Prix achat : <span class="font-semibold">{{ number_format($produit->prix_achat, 2, ',', ' ') }} F</span></span>
-                    <span>Prix vente : <span class="font-semibold">{{ number_format($produit->prix_vente, 2, ',', ' ') }} F</span></span>
+                    <span>Prix achat : <span class="font-semibold">{{ number_format($produit->prix_achat, 2, ',', ' ') }} $</span></span>
+                    <span>Prix vente : <span class="font-semibold">{{ number_format($produit->prix_vente, 2, ',', ' ') }} $</span></span>
                 </div>
             </div>
         </div>
@@ -573,10 +573,10 @@
                             <td class="p-3">
                                 {{ optional($produit->categorie)->nom ?? '-' }}
                             </td>
-                            <td class="p-3">{{ number_format($produit->prix_achat, 0, ',', ' ') }} F</td>
-                            <td class="p-3">{{ number_format($produit->prix_vente, 0, ',', ' ') }} F</td>
-                            <td class="p-3 font-medium text-blue-600">{{ number_format($valeurAchat, 0, ',', ' ') }} F</td>
-                            <td class="p-3 font-medium text-green-600">{{ number_format($valeurVente, 0, ',', ' ') }} F</td>
+                            <td class="p-3">{{ number_format($produit->prix_achat, 0, ',', ' ') }} $</td>
+                            <td class="p-3">{{ number_format($produit->prix_vente, 0, ',', ' ') }} $</td>
+                            <td class="p-3 font-medium text-blue-600">{{ number_format($valeurAchat, 0, ',', ' ') }} $</td>
+                            <td class="p-3 font-medium text-green-600">{{ number_format($valeurVente, 0, ',', ' ') }} $</td>
                             <td class="p-3 flex gap-2">
                                 <a href="#" @click.prevent="openEdit({
                                     id: {{ $produit->id }},
@@ -723,11 +723,11 @@
         
         if (totalAchatDisplay && totalVenteDisplay && margeDisplay) {
             // Formatter les nombres avec séparateur de milliers
-            totalAchatDisplay.textContent = new Intl.NumberFormat('fr-FR').format(totalAchat) + ' F';
-            totalVenteDisplay.textContent = new Intl.NumberFormat('fr-FR').format(totalVente) + ' F';
+            totalAchatDisplay.textContent = new Intl.NumberFormat('fr-FR').format(totalAchat) + ' $';
+            totalVenteDisplay.textContent = new Intl.NumberFormat('fr-FR').format(totalVente) + ' $';
             
             const marge = totalVente - totalAchat;
-            margeDisplay.textContent = new Intl.NumberFormat('fr-FR').format(marge) + ' F';
+            margeDisplay.textContent = new Intl.NumberFormat('fr-FR').format(marge) + ' $';
             
             // Changer la couleur de la marge selon le signe
             margeDisplay.className = `text-xl font-bold ${marge >= 0 ? 'text-emerald-600' : 'text-red-600'}`;

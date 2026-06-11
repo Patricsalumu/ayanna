@@ -283,7 +283,7 @@
                                 <small>{{ $compte->nom }}</small>
                             </td>
                             <td class="montant charges">
-                                {{ number_format($compte->montant, 0, ',', ' ') }} FC
+                                {{ number_format($compte->montant, 0, ',', ' ') }} $
                             </td>
                         </tr>
                         @endif
@@ -291,7 +291,7 @@
                     <tr class="total-row">
                         <td><strong>TOTAL CHARGES</strong></td>
                         <td class="montant charges">
-                            {{ number_format($totalCharges, 0, ',', ' ') }} FC
+                            {{ number_format($totalCharges, 0, ',', ' ') }} $
                         </td>
                     </tr>
                 </tbody>
@@ -319,7 +319,7 @@
                                 <small>{{ $compte->nom }}</small>
                             </td>
                             <td class="montant produits">
-                                {{ number_format($compte->montant, 0, ',', ' ') }} FC
+                                {{ number_format($compte->montant, 0, ',', ' ') }} $
                             </td>
                         </tr>
                         @endif
@@ -327,7 +327,7 @@
                     <tr class="total-row">
                         <td><strong>TOTAL PRODUITS</strong></td>
                         <td class="montant produits">
-                            {{ number_format($totalProduits, 0, ',', ' ') }} FC
+                            {{ number_format($totalProduits, 0, ',', ' ') }} $
                         </td>
                     </tr>
                 </tbody>
@@ -341,7 +341,7 @@
             {{ $resultat >= 0 ? '🎉 RÉSULTAT BÉNÉFICIAIRE' : '⚠ RÉSULTAT DÉFICITAIRE' }}
         </div>
         <div class="resultat-montant">
-            {{ number_format(abs($resultat), 0, ',', ' ') }} FC
+            {{ number_format(abs($resultat), 0, ',', ' ') }} $
         </div>
         <div style="font-size: 12px; margin-top: 8px;">
             @if($resultat >= 0)
@@ -357,16 +357,16 @@
         <h3 style="color: #059669; margin: 0 0 10px 0; font-size: 14px;">📊 Analyse de performance</h3>
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
             <span>Total des produits :</span>
-            <strong style="color: #16a34a;">{{ number_format($totalProduits, 0, ',', ' ') }} FC</strong>
+            <strong style="color: #16a34a;">{{ number_format($totalProduits, 0, ',', ' ') }} $</strong>
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
             <span>Total des charges :</span>
-            <strong style="color: #dc2626;">{{ number_format($totalCharges, 0, ',', ' ') }} FC</strong>
+            <strong style="color: #dc2626;">{{ number_format($totalCharges, 0, ',', ' ') }} $</strong>
         </div>
         <div style="display: flex; justify-content: space-between; border-top: 1px solid #dee2e6; padding-top: 8px;">
             <span><strong>Résultat net :</strong></span>
             <strong class="{{ $resultat >= 0 ? 'produits' : 'charges' }}">
-                {{ $resultat >= 0 ? '+' : '-' }} {{ number_format(abs($resultat), 0, ',', ' ') }} FC
+                {{ $resultat >= 0 ? '+' : '-' }} {{ number_format(abs($resultat), 0, ',', ' ') }} $
             </strong>
         </div>
         @if($totalProduits > 0)

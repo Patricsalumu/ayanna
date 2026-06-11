@@ -37,7 +37,7 @@
                 <span class="table-num text-center w-full select-none flex items-center justify-center" style="pointer-events:none; font-size:1.3rem; font-weight:bold; color:#222;">{{ $table->numero }}</span>
                 @if(isset($table->montant_total) && $table->montant_total > 0)
                     <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 shadow">
-                        {{ number_format($table->montant_total, 0, ',', ' ') }} F
+                        {{ number_format($table->montant_total, 0, ',', ' ') }} $
                     </span>
                 @endif
             </a>

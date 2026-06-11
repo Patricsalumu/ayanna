@@ -44,7 +44,7 @@
                     </td>
                     <td class="p-3">{{ $panier->created_at->format('H:i') }}</td>
                     <td class="p-3">{{ $panier->status }}</td>
-                    <td class="p-3">{{ number_format($panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * $p->prix_vente), 0, ',', ' ') }} F</td>
+                    <td class="p-3">{{ number_format($panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * $p->prix_vente), 0, ',', ' ') }} $</td>
                     <td class="p-3">
                         @if($panier->status === 'en_cours')
                         <form method="POST" action="{{ route('paniers.annuler', $panier->id) }}" class="annuler-form">
@@ -54,7 +54,7 @@
                             <button type="button" 
                                 class="bg-red-600 text-white rounded-full text-xs px-3 py-1 hover:bg-red-700 annuler-btn"
                                 data-table="{{ $panier->tableResto->nom ?? 'Table ' . $panier->table_id }}"
-                                data-montant="{{ number_format($panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * $p->prix_vente), 0, ',', ' ') }} F">
+                                data-montant="{{ number_format($panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * $p->prix_vente), 0, ',', ' ') }} $">
                                 Annuler
                             </button>
                         </form>

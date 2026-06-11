@@ -173,9 +173,9 @@ function filterRows() {
         }
     });
     // Mise à jour des totaux dynamiques
-    document.getElementById('totalCredits').textContent = totalCredit.toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' F';
-    document.getElementById('totalDebits').textContent = totalDebit.toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' F';
-    document.getElementById('soldeCourant').textContent = (totalCredit - totalDebit).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' F';
+    document.getElementById('totalCredits').textContent = totalCredit.toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' $';
+    document.getElementById('totalDebits').textContent = totalDebit.toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' $';
+    document.getElementById('soldeCourant').textContent = (totalCredit - totalDebit).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' $';
 }
 
 // Synchronisation des filtres avec le formulaire d'export PDF

@@ -241,11 +241,11 @@
             </div>
             <div class="info-item">
                 <div class="info-label">Montant total</div>
-                <div class="info-value total">{{ number_format($totalGeneral, 0, ',', ' ') }} F</div>
+                <div class="info-value total">{{ number_format($totalGeneral, 0, ',', ' ') }} $</div>
             </div>
             <div class="info-item">
                 <div class="info-label">Montant restant à encaisser</div>
-                <div class="info-value restant">{{ number_format($totalRestant, 0, ',', ' ') }} F</div>
+                <div class="info-value restant">{{ number_format($totalRestant, 0, ',', ' ') }} $</div>
             </div>
         </div>
     </div>

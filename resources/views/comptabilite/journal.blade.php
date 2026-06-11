@@ -111,7 +111,7 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                                {{ number_format($journal->montant_total, 0, ',', ' ') }} FC
+                                {{ number_format($journal->montant_total, 0, ',', ' ') }} $
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <button onclick="voirDetail({{ $journal->id }})" 
@@ -407,7 +407,7 @@ function mettreAJourResume() {
         if (sourceOption && destinationOption) {
             document.getElementById('resumeSource').textContent = sourceOption.textContent.split('(')[0].trim();
             document.getElementById('resumeDestination').textContent = destinationOption.textContent.split('(')[0].trim();
-            document.getElementById('resumeMontant').textContent = new Intl.NumberFormat('fr-FR').format(montant) + ' FC';
+            document.getElementById('resumeMontant').textContent = new Intl.NumberFormat('fr-FR').format(montant) + ' $';
             document.getElementById('resumeTransfert').classList.remove('hidden');
         }
     } else {
@@ -425,7 +425,7 @@ function verifierSolde() {
         
         if (solde < montant) {
             document.getElementById('messageSolde').textContent = 
-                `Attention: le solde du compte (${new Intl.NumberFormat('fr-FR').format(solde)} F) est insuffisant pour ce transfert (${new Intl.NumberFormat('fr-FR').format(montant)} F)}`;
+                `Attention: le solde du compte (${new Intl.NumberFormat('fr-FR').format(solde)} $) est insuffisant pour ce transfert (${new Intl.NumberFormat('fr-FR').format(montant)} $)}`;
             document.getElementById('alerteSolde').classList.remove('hidden');
         } else {
             document.getElementById('alerteSolde').classList.add('hidden');

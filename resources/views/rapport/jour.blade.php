@@ -62,28 +62,28 @@
                 <!-- Total Recettes -->
                 <div class="text-center">
                     <div class="text-sm font-medium text-gray-600 mb-1">Total Recettes</div>
-                    <div class="text-2xl font-bold text-green-600">{{ number_format($totalRecettes, 0, ',', ' ') }} F</div>
+                    <div class="text-2xl font-bold text-green-600">{{ number_format($totalRecettes, 0, ',', ' ') }} $</div>
                     <div class="text-xs text-gray-500 mt-1">Ventes + Créances + Entrées</div>
                 </div>
                 
                 <!-- Créances en cours -->
                 <div class="text-center">
                     <div class="text-sm font-medium text-gray-600 mb-1">Créances en cours</div>
-                    <div class="text-2xl font-bold text-orange-600">{{ number_format($totalCreance, 0, ',', ' ') }} F</div>
+                    <div class="text-2xl font-bold text-orange-600">{{ number_format($totalCreance, 0, ',', ' ') }} $</div>
                     <div class="text-xs text-gray-500 mt-1">À recouvrer</div>
                 </div>
                 
                 <!-- Dépenses -->
                 <div class="text-center">
                     <div class="text-sm font-medium text-gray-600 mb-1">Total Dépenses</div>
-                    <div class="text-2xl font-bold text-red-600">{{ number_format($depenses, 0, ',', ' ') }} F</div>
+                    <div class="text-2xl font-bold text-red-600">{{ number_format($depenses, 0, ',', ' ') }} $</div>
                     <div class="text-xs text-gray-500 mt-1">Sorties de caisse</div>
                 </div>
                 
                 <!-- Solde -->
                 <div class="text-center bg-blue-100 rounded-lg p-4">
                     <div class="text-sm font-medium text-blue-700 mb-1">Solde Final</div>
-                    <div class="text-3xl font-extrabold text-blue-900">{{ number_format($solde, 0, ',', ' ') }} F</div>
+                    <div class="text-3xl font-extrabold text-blue-900">{{ number_format($solde, 0, ',', ' ') }} $</div>
                     <div class="text-xs text-blue-600 mt-1">Recettes - Créances - Dépenses</div>
                 </div>
             </div>
@@ -98,14 +98,14 @@
                 <!-- 1. Ventes -->
                 <div class="bg-green-50 rounded-lg p-4 border border-green-200">
                     <h4 class="font-bold text-green-700 mb-3">🛒 Ventes du jour</h4>
-                    <div class="text-2xl font-bold text-green-600 mb-2">{{ number_format($recettesVentes, 0, ',', ' ') }} F</div>
+                    <div class="text-2xl font-bold text-green-600 mb-2">{{ number_format($recettesVentes, 0, ',', ' ') }} $</div>
                     
                     @if($ventesParMode->isNotEmpty())
                         <div class="space-y-1">
                             @foreach($ventesParMode as $mode => $data)
                                 <div class="flex justify-between text-sm">
                                     <span class="text-gray-600">{{ $data['mode'] }} ({{ $data['count'] }})</span>
-                                    <span class="font-medium">{{ number_format($data['total'], 0, ',', ' ') }} F</span>
+                                    <span class="font-medium">{{ number_format($data['total'], 0, ',', ' ') }} $</span>
                                 </div>
                             @endforeach
                         </div>
@@ -115,7 +115,7 @@
                 <!-- 2. Paiements créances -->
                 <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
                     <h4 class="font-bold text-blue-700 mb-3">🏦 Paiements créances</h4>
-                    <div class="text-2xl font-bold text-blue-600 mb-2">{{ number_format($recettesPaiementsCreances, 0, ',', ' ') }} F</div>
+                    <div class="text-2xl font-bold text-blue-600 mb-2">{{ number_format($recettesPaiementsCreances, 0, ',', ' ') }} $</div>
                     
                     @if($paiementsCreances->isNotEmpty())
                         <div class="space-y-1 max-h-20 overflow-y-auto">
@@ -133,7 +133,7 @@
                 <!-- 3. Entrées diverses -->
                 <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
                     <h4 class="font-bold text-purple-700 mb-3">📥 Entrées diverses</h4>
-                    <div class="text-2xl font-bold text-purple-600 mb-2">{{ number_format($recettesEntreesDiverses, 0, ',', ' ') }} F</div>
+                    <div class="text-2xl font-bold text-purple-600 mb-2">{{ number_format($recettesEntreesDiverses, 0, ',', ' ') }} $</div>
                     
                     @if($entresDiverses->isNotEmpty())
                         <div class="space-y-1 max-h-20 overflow-y-auto">

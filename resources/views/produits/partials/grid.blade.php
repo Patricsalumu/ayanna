@@ -14,7 +14,7 @@
                 <h3 class="text-lg font-semibold mb-1">{{ $produit->nom }}</h3>
                 <p class="text-sm text-gray-600 mb-1">{{ $produit->description }}</p>
                 <p class="text-xs text-gray-500 mb-1">{{ $produit->categorie->nom ?? '-' }}</p>
-                <p class="text-md font-bold mt-2">{{ number_format($produit->prix_vente, 0, ',', ' ') }} FC</p>
+                <p class="text-md font-bold mt-2">{{ number_format($produit->prix_vente, 0, ',', ' ') }} $</p>
             </div>
         </div>
     @endforeach

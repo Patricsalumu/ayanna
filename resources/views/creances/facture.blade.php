@@ -204,15 +204,15 @@
                 <tr>
                     <td>{{ $produit->nom }}</td>
                     <td class="text-center">{{ $produit->pivot->quantite }}</td>
-                    <td class="text-right">{{ number_format($produit->prix_vente, 0, ',', ' ') }} F</td>
-                    <td class="text-right">{{ number_format($totalProduit, 0, ',', ' ') }} F</td>
+                    <td class="text-right">{{ number_format($produit->prix_vente, 0, ',', ' ') }} $</td>
+                    <td class="text-right">{{ number_format($totalProduit, 0, ',', ' ') }} $</td>
                 </tr>
             @endforeach
         </tbody>
         <tfoot>
             <tr class="total-row">
                 <td colspan="3"><strong>TOTAL FACTURE</strong></td>
-                <td class="text-right"><strong>{{ number_format($montantTotal, 0, ',', ' ') }} F</strong></td>
+                <td class="text-right"><strong>{{ number_format($montantTotal, 0, ',', ' ') }} $</strong></td>
             </tr>
         </tfoot>
     </table>
@@ -234,7 +234,7 @@
                     @foreach($commande->paiements as $paiement)
                         <tr>
                             <td>{{ \Carbon\Carbon::parse($paiement->date_paiement)->format('d/m/Y H:i') }}</td>
-                            <td class="text-right">{{ number_format($paiement->montant, 0, ',', ' ') }} F</td>
+                            <td class="text-right">{{ number_format($paiement->montant, 0, ',', ' ') }} $</td>
                             <td class="text-center">{{ ucfirst($paiement->mode) }}</td>
                             <td>{{ $paiement->notes ?: '-' }}</td>
                         </tr>
@@ -247,12 +247,12 @@
                     @endphp
                     <tr style="background-color: #DBEAFE;">
                         <td colspan="3"><strong>TOTAL PAYÉ</strong></td>
-                        <td class="text-right"><strong>{{ number_format($montantPaye, 0, ',', ' ') }} F</strong></td>
+                        <td class="text-right"><strong>{{ number_format($montantPaye, 0, ',', ' ') }} $</strong></td>
                     </tr>
                     @if($montantRestant > 0)
                         <tr style="background-color: #FEF3C7;">
                             <td colspan="3"><strong>MONTANT RESTANT DÛ</strong></td>
-                            <td class="text-right"><strong style="color: #D97706;">{{ number_format($montantRestant, 0, ',', ' ') }} F</strong></td>
+                            <td class="text-right"><strong style="color: #D97706;">{{ number_format($montantRestant, 0, ',', ' ') }} $</strong></td>
                         </tr>
                     @else
                         <tr style="background-color: #D1FAE5;">
@@ -265,7 +265,7 @@
     @else
         <!-- Résumé financier sans paiements -->
         <div style="background-color: #FEF3C7; padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px;">
-            <strong style="color: #D97706;">MONTANT TOTAL DÛ : {{ number_format($montantTotal, 0, ',', ' ') }} F</strong>
+            <strong style="color: #D97706;">MONTANT TOTAL DÛ : {{ number_format($montantTotal, 0, ',', ' ') }} $</strong>
         </div>
     @endif
 

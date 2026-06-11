@@ -247,17 +247,17 @@
     <div class="summary">
         <div class="summary-box debit">
             <div class="label">Total Débit</div>
-            <div class="value">{{ number_format($totalDebit, 0, ',', ' ') }} FC</div>
+            <div class="value">{{ number_format($totalDebit, 0, ',', ' ') }} $</div>
         </div>
         <div class="summary-box credit">
             <div class="label">Total Crédit</div>
-            <div class="value">{{ number_format($totalCredit, 0, ',', ' ') }} FC</div>
+            <div class="value">{{ number_format($totalCredit, 0, ',', ' ') }} $</div>
         </div>
         <div class="summary-box equilibre {{ abs($totalDebit - $totalCredit) >= 0.01 ? 'warning' : '' }}">
             <div class="label">Équilibre</div>
             @php $equilibre = $totalDebit - $totalCredit; @endphp
             <div class="value">
-                {{ abs($equilibre) < 0.01 ? '✓ Équilibré' : '⚠ ' . number_format(abs($equilibre), 0, ',', ' ') . ' FC' }}
+                {{ abs($equilibre) < 0.01 ? '✓ Équilibré' : '⚠ ' . number_format(abs($equilibre), 0, ',', ' ') . ' $' }}
             </div>
         </div>
     </div>
@@ -348,7 +348,7 @@
         @if(abs($totalDebit - $totalCredit) >= 0.01)
             <p style="color: #dc3545; font-weight: bold; margin-top: 10px;">
                 ⚠ ATTENTION: La balance n'est pas équilibrée. 
-                Écart de {{ number_format(abs($totalDebit - $totalCredit), 0, ',', ' ') }} FC
+                Écart de {{ number_format(abs($totalDebit - $totalCredit), 0, ',', ' ') }} $
             </p>
         @else
             <p style="color: #28a745; font-weight: bold; margin-top: 10px;">

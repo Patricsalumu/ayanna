@@ -496,11 +496,11 @@ function posApp() {
       panier.filter(item=>item.qte>0).forEach(item => {
         const lineTotal = item.qte * item.prix;
         total += lineTotal;
-        html += `<tr><td style='word-break:break-all;'>${item.nom}</td><td style='text-align:center;'>${item.qte}</td><td style='text-align:right;'>${Math.round(item.prix).toLocaleString()} F</td><td style='text-align:right;'>${lineTotal.toLocaleString()} F</td></tr>`;
+        html += `<tr><td style='word-break:break-all;'>${item.nom}</td><td style='text-align:center;'>${item.qte}</td><td style='text-align:right;'>${Math.round(item.prix).toLocaleString()} $</td><td style='text-align:right;'>${lineTotal.toLocaleString()} $</td></tr>`;
       });
       html += `</tbody></table>`;
       html += `<div style='border-top:1px dashed #222;margin:6px 0;'></div>`;
-      html += `<div style='text-align:right;font-size:14px;font-weight:bold;'>TOTAL : ${total.toLocaleString()} F</div>`;
+      html += `<div style='text-align:right;font-size:14px;font-weight:bold;'>TOTAL : ${total.toLocaleString()} $</div>`;
       html += `<div style='text-align:center;font-size:11px;margin-top:10px;'>Merci pour votre visite !</div>`;
       html += `<div style='text-align:center;font-size:10px;margin-top:8px;'>Généré par Ayanna &copy; | ${dateStr} ${heureStr}</div>`;
       html += `</div>`;

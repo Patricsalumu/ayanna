@@ -247,7 +247,7 @@
                                 <small>{{ $compte->nom }}</small>
                             </td>
                             <td class="montant">
-                                {{ number_format($compte->solde_bilan, 0, ',', ' ') }} FC
+                                {{ number_format($compte->solde_bilan, 0, ',', ' ') }} $
                             </td>
                         </tr>
                         @endif
@@ -255,7 +255,7 @@
                     <tr class="total-row">
                         <td><strong>TOTAL ACTIF</strong></td>
                         <td class="montant">
-                            {{ number_format($totalActif, 0, ',', ' ') }} FC
+                            {{ number_format($totalActif, 0, ',', ' ') }} $
                         </td>
                     </tr>
                 </tbody>
@@ -283,7 +283,7 @@
                                 <small>{{ $compte->nom }}</small>
                             </td>
                             <td class="montant">
-                                {{ number_format($compte->solde_bilan, 0, ',', ' ') }} FC
+                                {{ number_format($compte->solde_bilan, 0, ',', ' ') }} $
                             </td>
                         </tr>
                         @endif
@@ -298,7 +298,7 @@
                             </td>
                             <td class="montant">
                                 <span class="{{ $resultatExercice > 0 ? 'credit' : 'debit' }}">
-                                    {{ number_format(abs($resultatExercice), 0, ',', ' ') }} FC
+                                    {{ number_format(abs($resultatExercice), 0, ',', ' ') }} $
                                 </span>
                             </td>
                         </tr>
@@ -307,7 +307,7 @@
                     <tr class="total-row">
                         <td><strong>TOTAL PASSIF</strong></td>
                         <td class="montant">
-                            {{ number_format($totalPassif, 0, ',', ' ') }} FC
+                            {{ number_format($totalPassif, 0, ',', ' ') }} $
                         </td>
                     </tr>
                 </tbody>
@@ -318,10 +318,10 @@
     <!-- Vérification d'équilibre -->
     <div class="equilibre-check {{ abs($totalActif - $totalPassif) >= 0.01 ? 'equilibre-warning' : '' }}">
         @if(abs($totalActif - $totalPassif) < 0.01)
-            ✓ BILAN ÉQUILIBRÉ - Actif = Passif ({{ number_format($totalActif, 0, ',', ' ') }} FC)
+            ✓ BILAN ÉQUILIBRÉ - Actif = Passif ({{ number_format($totalActif, 0, ',', ' ') }} $)
         @else
-            ⚠ DÉSÉQUILIBRE DÉTECTÉ - Écart de {{ number_format(abs($totalActif - $totalPassif), 0, ',', ' ') }} FC
-            <br>Actif: {{ number_format($totalActif, 0, ',', ' ') }} FC - Passif: {{ number_format($totalPassif, 0, ',', ' ') }} FC
+            ⚠ DÉSÉQUILIBRE DÉTECTÉ - Écart de {{ number_format(abs($totalActif - $totalPassif), 0, ',', ' ') }} $
+            <br>Actif: {{ number_format($totalActif, 0, ',', ' ') }} $ - Passif: {{ number_format($totalPassif, 0, ',', ' ') }} $
         @endif
     </div>
 

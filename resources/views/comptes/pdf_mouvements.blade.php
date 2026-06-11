@@ -51,7 +51,7 @@
         @forelse($mouvements as $mvt)
             <tr>
                 <td>{{ $mvt->created_at->format('d/m/Y H:i') }}</td>
-                <td class="{{ $mvt->type }}">{{ number_format($mvt->montant, 2, ',', ' ') }} F</td>
+                <td class="{{ $mvt->type }}">{{ number_format($mvt->montant, 2, ',', ' ') }} $</td>
                 <td>{{ ucfirst($mvt->type) }}</td>
                 <td>{{ $mvt->libele }}</td>
             </tr>
@@ -61,8 +61,8 @@
         </tbody>
     </table>
     <p style="margin-top:20px;">
-        <strong>Total crédits :</strong> {{ number_format($totalCredit, 2, ',', ' ') }} F<br>
-        <strong>Total débits :</strong> {{ number_format($totalDebit, 2, ',', ' ') }} F<br>
+        <strong>Total crédits :</strong> {{ number_format($totalCredit, 2, ',', ' ') }} $<br>
+        <strong>Total débits :</strong> {{ number_format($totalDebit, 2, ',', ' ') }} $<br>
         <strong>Solde courant :</strong> {{ number_format($totalCredit - $totalDebit, 2, ',', ' ') }} F
     </p>
 </body>
