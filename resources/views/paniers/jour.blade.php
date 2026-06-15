@@ -5,7 +5,21 @@
         @if(session('success'))
             <div class="mb-4 text-green-600 font-bold text-center">{{ session('success') }}</div>
         @endif
-        <h2 class="text-2xl font-bold text-gray-800 text-center mb-4">Paniers du jour</h2>
+        <h2 class="text-2xl font-bold text-gray-800 text-center mb-4">Paniers de session</h2>
+        <div class="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <form method="GET" action="{{ route('paniers.jour') }}" class="flex items-center gap-3 w-full max-w-2xl mx-auto">
+                <label for="session" class="text-sm font-medium text-gray-700">Session :</label>
+                <select name="session" id="session" class="border rounded-full px-4 py-2 w-full md:w-auto focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="all" {{ $selectedSession === 'all' ? 'selected' : '' }}>Toutes les sessions</option>
+                    @foreach($sessions as $session)
+                        <option value="{{ $session->session }}" {{ $selectedSession === $session->session ? 'selected' : '' }}>
+                            {{ $session->session }} - {{ $session->point_de_vente_nom }} - {{ optional($session->validated_at)->format('H:i') ?? 'N/A' }}
+                        </option>
+                    @endforeach
+                </select>
+                <button type="submit" class="bg-blue-600 text-white rounded-full px-5 py-2 text-sm font-semibold hover:bg-blue-700 transition">Filtrer</button>
+            </form>
+        </div>
         <div class="mb-6 flex justify-center">
             <input
                 type="text"
@@ -16,6 +30,30 @@
             />
         </div>
         @if($paniers->count() > 0)
+        <div id="panierDetails" class="hidden mb-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">Détails du panier validé</h3>
+                    <p class="text-sm text-gray-500">Cliquez sur un panier validé pour voir les produits et le total.</p>
+                </div>
+                <button type="button" onclick="hidePanierDetails()" class="text-sm text-gray-500 hover:text-gray-800">Fermer</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 text-sm text-gray-700">
+                <div><span class="font-semibold">Table :</span> <span id="detailTable"></span></div>
+                <div><span class="font-semibold">Client :</span> <span id="detailClient"></span></div>
+                <div><span class="font-semibold">Serveuse :</span> <span id="detailServeuse"></span></div>
+                <div><span class="font-semibold">Point de vente :</span> <span id="detailPointDeVente"></span></div>
+                <div><span class="font-semibold">Ouvert à :</span> <span id="detailOuvertA"></span></div>
+                <div><span class="font-semibold">Statut :</span> <span id="detailStatus"></span></div>
+            </div>
+            <div>
+                <div class="mb-3 text-sm font-semibold text-gray-800">Produits</div>
+                <div id="detailProduits" class="space-y-2"></div>
+            </div>
+            <div class="mt-4 border-t pt-4 text-right text-base font-semibold text-gray-900">
+                Total : <span id="detailTotal"></span> $
+            </div>
+        </div>
         <table class="w-full table-auto rounded-xl overflow-hidden border">
             <thead class="bg-blue-100 text-gray-700">
                 <tr>
@@ -31,8 +69,30 @@
             </thead>
             <tbody>
                 @foreach($paniers as $panier)
-                <tr class="hover:bg-gray-100 {{ $panier->status === 'en_cours' ? 'cursor-pointer' : 'opacity-60' }} panier-row"
+                @php
+                    $panierDetails = [
+                        'id' => $panier->id,
+                        'table' => $panier->tableResto->numero ?? $panier->table_id,
+                        'serveuse' => $panier->serveuse->name ?? '-',
+                        'client' => $panier->client->nom ?? '-',
+                        'point_de_vente' => $panier->pointDeVente->nom ?? 'N/A',
+                        'ouvert_a' => $panier->created_at->format('H:i'),
+                        'status' => $panier->status,
+                        'produits' => $panier->produits->map(function($prod) {
+                            return [
+                                'nom' => $prod->nom,
+                                'quantite' => $prod->pivot->quantite,
+                                'prix' => $prod->prix_vente,
+                                'total' => max(0, $prod->pivot->quantite) * $prod->prix_vente,
+                            ];
+                        })->toArray(),
+                        'total' => $panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * $p->prix_vente),
+                    ];
+                @endphp
+                <tr class="hover:bg-gray-100 {{ $panier->status !== 'annulé' ? 'cursor-pointer' : 'opacity-60' }} panier-row"
                     data-url="{{ $panier->status === 'en_cours' ? route('vente.catalogue', ['pointDeVente' => $panier->point_de_vente_id]) . '?table_id=' . $panier->table_id : '' }}"
+                    data-panier-status="{{ $panier->status }}"
+                    data-panier='@json($panierDetails)'
                     data-produits="{{ strtolower(collect($panier->produits)->pluck('nom')->implode(',')) }}">
                     <td class="p-3">{{ $panier->tableResto->numero ?? $panier->table_id }}</td>
                     <td class="p-3">{{ $panier->serveuse->name ?? '-' }}</td>
@@ -151,10 +211,22 @@
                     return;
                 }
                 
-                console.log('Clic sur ligne détecté');
+                const status = this.getAttribute('data-panier-status');
                 const url = this.getAttribute('data-url');
-                if (url && url !== '') {
+                const panierData = this.getAttribute('data-panier');
+
+                if (status === 'en_cours' && url && url !== '') {
                     window.location = url;
+                    return;
+                }
+
+                if (status !== 'en_cours' && panierData) {
+                    try {
+                        const panier = JSON.parse(panierData);
+                        showPanierDetails(panier);
+                    } catch (error) {
+                        console.error('Impossible de parser les détails du panier :', error);
+                    }
                 }
             });
         });
@@ -232,6 +304,38 @@
                 }
             }
         }
+    }
+
+    function showPanierDetails(panier) {
+        document.getElementById('detailTable').textContent = panier.table;
+        document.getElementById('detailClient').textContent = panier.client;
+        document.getElementById('detailServeuse').textContent = panier.serveuse;
+        document.getElementById('detailPointDeVente').textContent = panier.point_de_vente;
+        document.getElementById('detailOuvertA').textContent = panier.ouvert_a;
+        document.getElementById('detailStatus').textContent = panier.status;
+
+        const produitsContainer = document.getElementById('detailProduits');
+        produitsContainer.innerHTML = '';
+        panier.produits.forEach(item => {
+            const produitRow = document.createElement('div');
+            produitRow.className = 'flex justify-between bg-gray-50 rounded-xl p-3';
+            produitRow.innerHTML = `
+                <div>
+                    <div class="font-semibold text-gray-900">${item.nom}</div>
+                    <div class="text-xs text-gray-500">x${item.quantite} · ${item.prix.toLocaleString('fr-FR')} $</div>
+                </div>
+                <div class="font-semibold text-gray-900">${item.total.toLocaleString('fr-FR')} $</div>
+            `;
+            produitsContainer.appendChild(produitRow);
+        });
+
+        document.getElementById('detailTotal').textContent = panier.total.toLocaleString('fr-FR');
+        document.getElementById('panierDetails').classList.remove('hidden');
+        document.getElementById('panierDetails').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function hidePanierDetails() {
+        document.getElementById('panierDetails').classList.add('hidden');
     }
 </script>
 @endsection

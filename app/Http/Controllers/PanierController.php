@@ -8,6 +8,9 @@ use App\Models\User;
 use App\Models\Client;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Models\PointDeVente;
+use App\Models\StockJournalier;
+use App\Models\Historiquepdv;
 
 class PanierController extends Controller
 {
@@ -236,21 +239,68 @@ class PanierController extends Controller
     }
 
     /**
-     * Affiche tous les paniers du jour (quel que soit le statut)
+     * Affiche tous les paniers de la session (ou du jour si sélection "Toutes")
      */
     public function paniersDuJour(Request $request)
     {
         $user = Auth::user();
         $entrepriseId = $user->entreprise_id ?? ($user->entreprise->id ?? null);
-        $today = now()->startOfDay();
-        $paniers = Panier::whereDate('created_at', $today)
-            ->whereHas('tableResto.salle', function($q) use ($entrepriseId) {
+        $today = now()->toDateString();
+        $selectedSession = $request->get('session', null);
+
+        $pointDeVenteIds = PointDeVente::where('entreprise_id', $entrepriseId)->pluck('id');
+        $sessionGroups = StockJournalier::with('pointDeVente')
+            ->whereIn('point_de_vente_id', $pointDeVenteIds)
+            ->where('date', $today)
+            ->orderByDesc('session')
+            ->get()
+            ->groupBy('session');
+
+        $sessions = $sessionGroups->map(function ($stocks, $session) {
+            $first = $stocks->sortBy('validated_at')->first();
+            return (object) [
+                'session' => $session,
+                'point_de_vente_id' => $first->point_de_vente_id,
+                'point_de_vente_nom' => $first->pointDeVente?->nom ?? 'N/A',
+                'validated_at' => $first->validated_at ?? $first->created_at,
+                'status' => $first->pointDeVente?->etat === 'ouvert' ? 'ouverte' : 'fermée',
+            ];
+        })->values();
+
+        if (!$selectedSession && $sessions->count() > 0) {
+            $selectedSession = $sessions->first()->session;
+        }
+
+        $paniersQuery = Panier::whereHas('tableResto.salle', function ($q) use ($entrepriseId) {
                 $q->where('entreprise_id', $entrepriseId);
-            })
-            ->with(['tableResto', 'serveuse', 'client', 'produits'])
+            });
+
+        if ($selectedSession && $selectedSession !== 'all') {
+            $sessionInfo = $sessions->firstWhere('session', $selectedSession);
+            if ($sessionInfo) {
+                $paniersQuery = $paniersQuery
+                    ->where('point_de_vente_id', $sessionInfo->point_de_vente_id)
+                    ->where('created_at', '>=', $sessionInfo->validated_at);
+
+                $closedAt = Historiquepdv::where('point_de_vente_id', $sessionInfo->point_de_vente_id)
+                    ->where('etat', 'ferme')
+                    ->where('opened_at', $sessionInfo->validated_at)
+                    ->value('closed_at');
+
+                if ($closedAt) {
+                    $paniersQuery = $paniersQuery->where('created_at', '<=', $closedAt);
+                }
+            }
+        } else {
+            $paniersQuery = $paniersQuery->whereDate('created_at', $today);
+        }
+
+        $paniers = $paniersQuery
+            ->with(['tableResto', 'serveuse', 'client', 'produits', 'pointDeVente'])
             ->orderBy('created_at', 'desc')
             ->get();
-        return view('paniers.jour', compact('paniers'));
+
+        return view('paniers.jour', compact('paniers', 'sessions', 'selectedSession'));
     }
 
     /**
