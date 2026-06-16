@@ -121,7 +121,7 @@
                         <div class="space-y-1 max-h-20 overflow-y-auto">
                             @foreach($paiementsCreances as $paiement)
                                 <div class="text-sm text-gray-600">
-                                    {{ \Carbon\Carbon::parse($paiement->created_at)->format('H:i') }} - {{ number_format($paiement->montant, 0, ',', ' ') }} F
+                                    {{ \Carbon\Carbon::parse($paiement->created_at)->format('H:i') }} - {{ number_format($paiement->montant, 0, ',', ' ') }} $
                                 </div>
                             @endforeach
                         </div>
@@ -139,7 +139,7 @@
                         <div class="space-y-1 max-h-20 overflow-y-auto">
                             @foreach($entresDiverses as $entree)
                                 <div class="text-sm text-gray-600">
-                                    {{ substr($entree->libele, 0, 20) }}{{ strlen($entree->libele) > 20 ? '...' : '' }} - {{ number_format($entree->montant, 0, ',', ' ') }} F
+                                    {{ substr($entree->libele, 0, 20) }}{{ strlen($entree->libele) > 20 ? '...' : '' }} - {{ number_format($entree->montant, 0, ',', ' ') }} $
                                 </div>
                             @endforeach
                         </div>
@@ -178,7 +178,7 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 text-right font-bold text-orange-600">
-                                    {{ number_format($detail['total'], 0, ',', ' ') }} F
+                                    {{ number_format($detail['total'], 0, ',', ' ') }} $
                                 </td>
                             </tr>
                         @empty
@@ -221,7 +221,7 @@
                                     {{ $dep->libele ?? $dep->motif ?? '' }}
                                 </td>
                                 <td class="px-4 py-3 text-right font-bold text-red-600">
-                                    -{{ number_format($dep->montant, 0, ',', ' ') }} F
+                                    -{{ number_format($dep->montant, 0, ',', ' ') }} $
                                 </td>
                             </tr>
                         @empty

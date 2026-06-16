@@ -89,6 +89,6 @@
                 $totalVente += $q_vendue * $prix;
             }
         @endphp
-        Total vente session : {{ number_format($totalVente, 0, ',', ' ') }} F
+        Total vente session : {{ number_format($totalVente, 0, ',', ' ') }} $
     </div>
 </div>
