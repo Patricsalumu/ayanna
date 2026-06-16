@@ -249,9 +249,9 @@ class PanierController extends Controller
         $selectedSession = $request->get('session', null);
 
         $pointDeVenteIds = PointDeVente::where('entreprise_id', $entrepriseId)->pluck('id');
+        // Récupérer toutes les sessions disponibles en base pour les points de vente de l'entreprise
         $sessionGroups = StockJournalier::with('pointDeVente')
             ->whereIn('point_de_vente_id', $pointDeVenteIds)
-            ->where('date', $today)
             ->orderByDesc('session')
             ->get()
             ->groupBy('session');
@@ -291,6 +291,8 @@ class PanierController extends Controller
                     $paniersQuery = $paniersQuery->where('created_at', '<=', $closedAt);
                 }
             }
+        } elseif ($selectedSession === 'all') {
+            // Toutes les sessions : pas de filtre de date
         } else {
             $paniersQuery = $paniersQuery->whereDate('created_at', $today);
         }
