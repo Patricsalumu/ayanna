@@ -350,14 +350,14 @@ class PanierController extends Controller
         });
     }
 
-    /**
-     * Annuler un panier (status = 'annulé')
-     */
     private function roleNePeutPasDiminuerPanier(): bool
     {
         return in_array(Auth::user()?->role, ['comptoiriste', 'serveuse'], true);
     }
 
+    /**
+     * Annuler un panier (status = 'annulé')
+     */
     public function annuler($id)
     {
         $panier = Panier::findOrFail($id);
