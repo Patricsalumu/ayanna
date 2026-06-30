@@ -112,7 +112,7 @@
             @endif
         </div>
         <div class="title">
-            <h1>Paniers de session</h1>
+            <h1>Factures des ventes</h1>
             <div class="muted">
                 Session :
                 @if($selectedSession === 'all')

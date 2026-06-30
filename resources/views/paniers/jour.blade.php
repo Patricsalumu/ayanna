@@ -5,7 +5,7 @@
         @if(session('success'))
             <div class="mb-4 text-green-600 font-bold text-center">{{ session('success') }}</div>
         @endif
-        <h2 class="text-2xl font-bold text-gray-800 text-center mb-4">Paniers de session</h2>
+        <h2 class="text-2xl font-bold text-gray-800 text-center mb-4">Factures des ventes</h2>
         <div class="mb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <form method="GET" action="{{ route('paniers.jour') }}" class="flex items-center gap-3 w-full max-w-2xl">
                 <label for="session" class="text-sm font-medium text-gray-700">Session :</label>

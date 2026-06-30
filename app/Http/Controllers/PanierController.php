@@ -337,8 +337,9 @@ class PanierController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $totalPaniers = $paniers->count();
-        $totalMontants = $paniers->sum(fn($panier) => $this->montantPanier($panier));
+        $paniersActifs = $paniers->reject(fn($panier) => $panier->status === 'annulé');
+        $totalPaniers = $paniersActifs->count();
+        $totalMontants = $paniersActifs->sum(fn($panier) => $this->montantPanier($panier));
 
         return compact('paniers', 'sessions', 'selectedSession', 'totalPaniers', 'totalMontants');
     }
