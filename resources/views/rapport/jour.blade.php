@@ -222,6 +222,7 @@
                                 </td>
                                 <td class="px-4 py-3 text-right font-bold text-red-600">
                                     -{{ number_format($dep->montant, 0, ',', ' ') }} $
+                                    
                                 </td>
                             </tr>
                         @empty

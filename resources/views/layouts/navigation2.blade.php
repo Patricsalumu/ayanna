@@ -56,6 +56,10 @@
                     </button>
                     @endif
                 </div>
+                @php
+                    $role = Auth::user()->role; // ou type
+                @endphp
+                @if(!in_array($role, ['serveuse', 'comptoiriste']))
                 <a href="{{ route('salles.show', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Salles</a>
                 <a href="{{ route('categories.show', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Catégories</a>
                 <a href="{{ route('produits.entreprise', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Produits</a>
@@ -124,6 +128,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
             </div>
         </div>
 
