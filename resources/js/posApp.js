@@ -12,6 +12,8 @@ function posApp() {
     selectedIndex: null,
     showOptions: false,
     currentCat: null,
+    userRole: window.USER_ROLE || '',
+    quantityRestrictedRoles: ['comptoiriste', 'serveuse'],
     client_id: window.CLIENT_ID || '',
     serveuse_id: window.SERVEUSE_ID || '',
     mode_paiement_id: '',
@@ -74,6 +76,16 @@ function posApp() {
       // Affiche le badge uniquement si la quantité > 0
       const i = this.panier.find(i => i.id === prod_id);
       return i && i.qte > 0 ? i.qte : null;
+    },
+    isQuantityRestricted() {
+      return this.quantityRestrictedRoles.includes(this.userRole);
+    },
+    isRestrictedQuantityAction(action) {
+      return this.isQuantityRestricted() && ['C', 'x', '-'].includes(action);
+    },
+    isKeyDisabled(btn) {
+      return (this.mode === 'paiement' && btn.disabledEnPaiement)
+        || (this.mode !== 'paiement' && this.isRestrictedQuantityAction(btn.action));
     },
     selectCat(id){
       this.currentCat = id;
@@ -196,6 +208,7 @@ function posApp() {
       if(this.selectedIndex===null) return;
       const item=this.panier[this.selectedIndex];
       if(!item) return;
+      if(this.isRestrictedQuantityAction(action)) return;
       let oldQte = item.qte;
       if(!isNaN(action)){
         // Saisie d'un chiffre
@@ -318,6 +331,10 @@ function posApp() {
       }
       // Appel AJAX pour MAJ la base si la quantité a changé
       if(item.qte !== oldQte) {
+        if(this.isQuantityRestricted() && item.qte < oldQte) {
+          item.qte = oldQte;
+          return;
+        }
         fetch(`/panier/modifier-produit/${item.id}`, {
           method: 'POST',
           headers: {

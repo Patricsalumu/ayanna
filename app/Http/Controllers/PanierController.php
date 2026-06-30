@@ -93,6 +93,11 @@ class PanierController extends Controller
             if (!$panier) return response()->json(['error' => 'Panier non trouvé'], 404);
 
             $existant = $panier->produits()->where('produit_id', $produit_id)->first();
+            $ancienneQuantite = $existant?->pivot?->quantite ?? 0;
+            if ($this->roleNePeutPasDiminuerPanier() && $quantite < $ancienneQuantite) {
+                return response()->json(['success' => false, 'error' => 'Vous n\'etes pas autorise a diminuer la quantite d\'un produit.'], 403);
+            }
+
             if ($existant) {
                 $panier->produits()->updateExistingPivot($produit_id, ['quantite' => $quantite]);
             } else if ($quantite > 0) {
@@ -129,6 +134,10 @@ class PanierController extends Controller
         if (!$panier) return response()->json(['error' => 'Panier non trouvé'], 404);
 
         // Marquer le produit comme supprimé (quantité 0 ans la table pivot)
+        if ($this->roleNePeutPasDiminuerPanier()) {
+            return response()->json(['success' => false, 'error' => 'Vous n\'etes pas autorise a supprimer un produit du panier.'], 403);
+        }
+
         $existant = $panier->produits()->where('produit_id', $produit_id)->first();
         if ($existant) {
             $panier->produits()->updateExistingPivot($produit_id, ['quantite' =>0]);
@@ -344,6 +353,11 @@ class PanierController extends Controller
     /**
      * Annuler un panier (status = 'annulé')
      */
+    private function roleNePeutPasDiminuerPanier(): bool
+    {
+        return in_array(Auth::user()?->role, ['comptoiriste', 'serveuse'], true);
+    }
+
     public function annuler($id)
     {
         $panier = Panier::findOrFail($id);

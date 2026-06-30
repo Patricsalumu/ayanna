@@ -150,8 +150,8 @@
         <template x-for="btn in touches" :key="btn.label">
           <button @click="mode==='paiement' ? ajouterChiffre(btn.action) : handleKey(btn.action)"
                   class="py-3 rounded text-lg font-semibold"
-                  :class="[btn.class, (mode==='paiement' && btn.disabledEnPaiement) ? 'opacity-40 cursor-not-allowed' : '']"
-                  :disabled="mode==='paiement' && btn.disabledEnPaiement">
+                  :class="[btn.class, isKeyDisabled(btn) ? 'opacity-40 cursor-not-allowed' : '']"
+                  :disabled="isKeyDisabled(btn)">
             <span x-text="btn.label"></span>
           </button>
         </template>
@@ -307,6 +307,7 @@ window.POINT_DE_VENTE_ID = "{{ $pointDeVente->id ?? '' }}";
 window.SET_CLIENT_URL = "{{ url('/panier/set-client') }}";
 window.SET_SERVEUSE_URL = "{{ url('/panier/set-serveuse') }}";
 window.PANIER_ID = @json($panier->id ?? ($panier['id'] ?? null));
+window.USER_ROLE = @json(auth()->user()->role ?? null);
 window.ENTREPRISE = @json($pointDeVente->entreprise);
 window.CLIENTS = @json($clientsArray ?? []);
 window.SERVEUSES = @json($serveusesArray ?? []);
