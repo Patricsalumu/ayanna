@@ -206,6 +206,7 @@ Route::post('/panier/supprimer-produit/{produit_id}', [\App\Http\Controllers\Pan
 
 // Liste des paniers du jour (comptoir)
 Route::get('/paniers/jour', [\App\Http\Controllers\PanierController::class, 'paniersDuJour'])->name('paniers.jour');
+Route::get('/paniers/jour/export-pdf', [\App\Http\Controllers\PanierController::class, 'exportPaniersDuJourPdf'])->name('paniers.jour.export-pdf');
 
 // Annuler un panier
 Route::patch('/paniers/{panier}/annuler', [\App\Http\Controllers\PanierController::class, 'annuler'])->name('paniers.annuler');

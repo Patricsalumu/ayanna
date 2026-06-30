@@ -6,8 +6,8 @@
             <div class="mb-4 text-green-600 font-bold text-center">{{ session('success') }}</div>
         @endif
         <h2 class="text-2xl font-bold text-gray-800 text-center mb-4">Paniers de session</h2>
-        <div class="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <form method="GET" action="{{ route('paniers.jour') }}" class="flex items-center gap-3 w-full max-w-2xl mx-auto">
+        <div class="mb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <form method="GET" action="{{ route('paniers.jour') }}" class="flex items-center gap-3 w-full max-w-2xl">
                 <label for="session" class="text-sm font-medium text-gray-700">Session :</label>
                 <select name="session" id="session" class="border rounded-full px-4 py-2 w-full md:w-auto focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="all" {{ $selectedSession === 'all' ? 'selected' : '' }}>Toutes les sessions</option>
@@ -19,6 +19,20 @@
                 </select>
                 <button type="submit" class="bg-blue-600 text-white rounded-full px-5 py-2 text-sm font-semibold hover:bg-blue-700 transition">Filtrer</button>
             </form>
+            <a href="{{ route('paniers.jour.export-pdf', ['session' => $selectedSession]) }}"
+                class="inline-flex items-center justify-center rounded-full bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 transition">
+                Exporter PDF
+            </a>
+        </div>
+        <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="rounded-xl border border-blue-100 bg-blue-50 px-5 py-4">
+                <div class="text-sm font-medium text-blue-700">Total paniers</div>
+                <div class="mt-1 text-2xl font-bold text-blue-900">{{ number_format($totalPaniers ?? $paniers->count(), 0, ',', ' ') }}</div>
+            </div>
+            <div class="rounded-xl border border-green-100 bg-green-50 px-5 py-4">
+                <div class="text-sm font-medium text-green-700">Total montants</div>
+                <div class="mt-1 text-2xl font-bold text-green-900">{{ number_format($totalMontants ?? 0, 0, ',', ' ') }} $</div>
+            </div>
         </div>
         <div class="mb-6 flex justify-center">
             <input

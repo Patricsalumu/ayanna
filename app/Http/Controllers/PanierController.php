@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\PointDeVente;
 use App\Models\StockJournalier;
 use App\Models\Historiquepdv;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PanierController extends Controller
 {
@@ -243,6 +244,31 @@ class PanierController extends Controller
      */
     public function paniersDuJour(Request $request)
     {
+        $data = $this->getPaniersDuJourData($request);
+
+        return view('paniers.jour', $data);
+    }
+
+    /**
+     * Exporte les paniers de la session selectionnee en PDF.
+     */
+    public function exportPaniersDuJourPdf(Request $request)
+    {
+        $data = $this->getPaniersDuJourData($request);
+        $data['entreprise'] = Auth::user()?->entreprise;
+
+        $fileName = 'paniers_du_jour_'.now()->format('Ymd_His').'.pdf';
+
+        return Pdf::loadView('paniers.jour-pdf', $data)
+            ->setPaper('a4', 'landscape')
+            ->download($fileName);
+    }
+
+    /**
+     * Prepare les donnees de la page et du PDF des paniers du jour.
+     */
+    private function getPaniersDuJourData(Request $request): array
+    {
         $user = Auth::user();
         $entrepriseId = $user->entreprise_id ?? ($user->entreprise->id ?? null);
         $today = now()->toDateString();
@@ -302,7 +328,17 @@ class PanierController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return view('paniers.jour', compact('paniers', 'sessions', 'selectedSession'));
+        $totalPaniers = $paniers->count();
+        $totalMontants = $paniers->sum(fn($panier) => $this->montantPanier($panier));
+
+        return compact('paniers', 'sessions', 'selectedSession', 'totalPaniers', 'totalMontants');
+    }
+
+    private function montantPanier(Panier $panier): float
+    {
+        return (float) $panier->produits->sum(function ($produit) {
+            return max(0, $produit->pivot->quantite) * $produit->prix_vente;
+        });
     }
 
     /**
