@@ -76,7 +76,7 @@
                         'serveuse' => $panier->serveuse->name ?? '-',
                         'client' => $panier->client->nom ?? '-',
                         'point_de_vente' => $panier->pointDeVente->nom ?? 'N/A',
-                        'ouvert_a' => $panier->created_at->format('H:i'),
+                        'ouvert_a' => $panier->created_at->format('d/m H:i'),
                         'status' => $panier->status,
                         'produits' => $panier->produits->map(function($prod) {
                             return [
@@ -102,7 +102,7 @@
                             <div class="font-medium text-blue-600">{{ $panier->pointDeVente->nom ?? 'N/A' }}</div>
                         </div>
                     </td>
-                    <td class="p-3">{{ $panier->created_at->format('H:i') }}</td>
+                    <td class="p-3">{{ $panier->created_at->format('d/m H:i') }}</td>
                     <td class="p-3">{{ $panier->status }}</td>
                     <td class="p-3">{{ number_format($panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * $p->prix_vente), 0, ',', ' ') }} $</td>
                     <td class="p-3">
