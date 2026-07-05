@@ -121,19 +121,23 @@
                     <td class="p-3">{{ number_format($panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * $p->prix_vente), 0, ',', ' ') }} $</td>
                     <td class="p-3">
                         @if($panier->status === 'en_cours')
-                        <form method="POST" action="{{ route('paniers.annuler', $panier->id) }}" class="annuler-form">
-                            @csrf
-                            @method("PATCH")
-                            <input type="hidden" name="from" value="jour">
-                            <button type="button" 
-                                class="bg-red-600 text-white rounded-full text-xs px-3 py-1 hover:bg-red-700 annuler-btn"
-                                data-table="{{ $panier->tableResto->nom ?? 'Table ' . $panier->table_id }}"
-                                data-montant="{{ number_format($panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * $p->prix_vente), 0, ',', ' ') }} $">
-                                Annuler
-                            </button>
-                        </form>
+                            @if(!in_array(Auth::user()->role ?? null, ['comptoiriste','serveuse']))
+                                <form method="POST" action="{{ route('paniers.annuler', $panier->id) }}" class="annuler-form">
+                                    @csrf
+                                    @method("PATCH")
+                                    <input type="hidden" name="from" value="jour">
+                                    <button type="button" 
+                                        class="bg-red-600 text-white rounded-full text-xs px-3 py-1 hover:bg-red-700 annuler-btn"
+                                        data-table="{{ $panier->tableResto->nom ?? 'Table ' . $panier->table_id }}"
+                                        data-montant="{{ number_format($panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * $p->prix_vente), 0, ',', ' ') }} $">
+                                        Annuler
+                                    </button>
+                                </form>
+                            @else
+                                <span class="text-gray-400 text-xs">-</span>
+                            @endif
                         @else
-                        <span class="text-gray-400 text-xs">-</span>
+                            <span class="text-gray-400 text-xs">-</span>
                         @endif
                     </td>
                 </tr>

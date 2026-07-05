@@ -31,7 +31,9 @@
             <button id="menu-options" type="button" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-xl font-bold">⋯</button>
             <div id="menu-dropdown" class="hidden absolute right-0 mt-2 w-44 bg-white rounded shadow-lg z-10">
                 <button class="w-full text-left px-4 py-2 hover:bg-gray-100">Imprimer addition</button>
-                <button class="w-full text-left px-4 py-2 hover:bg-gray-100">Annuler</button>
+                @if(!in_array(Auth::user()->role ?? null, ['comptoiriste','serveuse']))
+                    <button class="w-full text-left px-4 py-2 hover:bg-gray-100">Annuler</button>
+                @endif
             </div>
         </div>
     </div>

@@ -1,94 +1,81 @@
 <div style="width:100%; font-family: Arial, sans-serif;">
-    <div style="text-align:center; font-size:12px; color:#888; margin-bottom:4px;">
+    <div style="text-align:center; font-size:11px; color:#6b7280; margin-bottom:6px;">
         Généré par Ayanna le {{ date('d/m/Y H:i') }}
     </div>
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-        <div style="text-align:left;">
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div>
             @if(isset($pointDeVente) && $pointDeVente->entreprise && $pointDeVente->entreprise->logo)
-                <img src="{{ public_path('storage/'.$pointDeVente->entreprise->logo) }}" alt="Logo" style="height:60px; margin-bottom:4px;"><br>
+                <img src="{{ public_path('storage/'.$pointDeVente->entreprise->logo) }}" alt="Logo" style="height:56px; margin-bottom:4px;"><br>
             @endif
             @if(isset($pointDeVente) && $pointDeVente->entreprise)
-                <span style="font-weight:bold; font-size:15px;">{{ $pointDeVente->entreprise->nom }}</span><br>
-                <span style="font-size:12px;">{{ $pointDeVente->entreprise->adresse ?? '' }}</span><br>
-                <span style="font-size:12px;">{{ $pointDeVente->entreprise->telephone ?? '' }}</span>
+                <div style="font-size:16px; font-weight:bold; color:#111827;">{{ $pointDeVente->entreprise->nom }}</div>
+                <div style="font-size:11px; color:#374151;">{{ $pointDeVente->entreprise->adresse ?? '' }}</div>
+                <div style="font-size:11px; color:#374151;">{{ $pointDeVente->entreprise->telephone ?? '' }}</div>
             @endif
         </div>
-        <div style="width:80px;"></div> <!-- Espace à droite pour équilibrer -->
-    </div>
-    <h1 style="font-size:22px; color:#2563eb; margin-bottom:12px;">Fiche de stock journalier du {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}</h1>
-    @if(isset($nomPointDeVente))
-        <div style="margin-bottom:12px; color:#2563eb; background:#e0edff; border-radius:6px; padding:8px 16px; font-weight:bold;">
-            Point de vente courant : {{ $nomPointDeVente }}<br>
-            Comptoiriste : {{ auth()->user()->name ?? '' }}
+        <div style="text-align:right; max-width:320px;">
+            <div style="font-size:20px; font-weight:bold; color:#1d4ed8; margin-bottom:6px;">Fiche de stock journalier</div>
+            <div style="font-size:12px; color:#374151;">Date : {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}</div>
             @if(isset($session) && $session)
-                <br>Session : 
-                @if(strlen($session) === 14 && ctype_digit($session))
-                    {{ \Carbon\Carbon::createFromFormat('YmdHis', $session)->format('d/m/Y H:i:s') }}
-                @else
-                    {{ $session }}
-                @endif
-                
-                <!-- Informations d'ouverture et fermeture -->
-                @if(isset($heureOuverture))
-                    <br>Heure d'ouverture : {{ $heureOuverture->format('H:i:s') }}
-                @endif
-                
-                @if(isset($heureFermeture))
-                    <br>Heure de fermeture : {{ $heureFermeture->format('H:i:s') }}
-                @elseif(isset($sessionEnCours) && $sessionEnCours)
-                    <br>Heure de fermeture : <span style="color:#dc2626; font-weight:bold;">En cours</span>
-                @endif
+                <div style="font-size:12px; color:#374151;">Session : <span style="font-weight:700;">@if(strlen($session) === 14 && ctype_digit($session)){{ \Carbon\Carbon::createFromFormat('YmdHis', $session)->format('d/m/Y H:i:s') }}@else{{ $session }}@endif</span></div>
+            @endif
+            @if(isset($heureOuverture))
+                <div style="font-size:12px; color:#374151;">Ouverture : {{ $heureOuverture->format('H:i:s') }}</div>
+            @endif
+            @if(isset($heureFermeture))
+                <div style="font-size:12px; color:#374151;">Fermeture : {{ $heureFermeture->format('H:i:s') }}</div>
+            @elseif(isset($sessionEnCours) && $sessionEnCours)
+                <div style="font-size:12px; color:#b91c1c; font-weight:700;">Fermeture : en cours</div>
             @endif
         </div>
-    @endif
-    <table style="width:100%; border-collapse:collapse; font-size:14px;">
+    </div>
+
+    <div style="margin-bottom:16px; padding:12px 14px; border:1px solid #dbeafe; border-radius:12px; background:#eff6ff; color:#1e40af; font-size:13px;">
+        <div style="font-weight:700; margin-bottom:6px;">Point de vente : {{ $nomPointDeVente ?? 'N/D' }}</div>
+        <div style="font-size:12px; color:#1f2937;">Comptoiriste : {{ auth()->user()->name ?? 'N/D' }}</div>
+    </div>
+
+    <table style="width:100%; border-collapse:collapse; font-size:13px; color:#111827;">
         <thead>
-            <tr style="background:#e0edff; color:#2563eb;">
-                <th style="padding:6px; border:1px solid #bcd0ee;">Produit</th>
-                <th style="padding:6px; border:1px solid #bcd0ee;">Q. Initiale</th>
-                <th style="padding:6px; border:1px solid #bcd0ee;">Q. Ajoutée</th>
-                <th style="padding:6px; border:1px solid #bcd0ee;">Q. Totale</th>
-                <th style="padding:6px; border:1px solid #bcd0ee;">Q. Vendue</th>
-                <th style="padding:6px; border:1px solid #bcd0ee;">Q. Restée</th>
-                <th style="padding:6px; border:1px solid #bcd0ee;">Prix unitaire</th>
-                <th style="padding:6px; border:1px solid #bcd0ee;">Total</th>
+            <tr style="background:#eff6ff; color:#1d4ed8;">
+                <th style="padding:8px; border:1px solid #bfdbfe; text-align:left;">Produit</th>
+                <th style="padding:8px; border:1px solid #bfdbfe; text-align:center;">Q. Initiale</th>
+                <th style="padding:8px; border:1px solid #bfdbfe; text-align:center;">Q. Ajoutée</th>
+                <th style="padding:8px; border:1px solid #bfdbfe; text-align:center;">Q. Totale</th>
+                <th style="padding:8px; border:1px solid #bfdbfe; text-align:center;">Q. Vendue</th>
+                <th style="padding:8px; border:1px solid #bfdbfe; text-align:center;">Q. Restée</th>
+                <th style="padding:8px; border:1px solid #bfdbfe; text-align:right;">Prix unitaire</th>
+                <th style="padding:8px; border:1px solid #bfdbfe; text-align:right;">Total</th>
             </tr>
         </thead>
         <tbody>
-        @foreach($produits as $produit)
-            @php
-                $stock = $stocks->firstWhere('produit_id', $produit->id);
-                $q_init = $stock->quantite_initiale ?? 0;
-                $q_ajout = $stock->quantite_ajoutee ?? 0;
-                $q_vendue = $stock->quantite_vendue ?? 0;
-                $q_total = $q_init + $q_ajout;
-                $q_reste = $stock->quantite_reste ?? ($q_total - $q_vendue);
-                $prix = $produit->prix_vente;
-                $total = $q_vendue * $prix;
-            @endphp
-            <tr>
-                <td style="padding:6px; border:1px solid #bcd0ee; font-weight:bold;">{{ $produit->nom }}</td>
-                <td style="padding:6px; border:1px solid #bcd0ee;">{{ $q_init }}</td>
-                <td style="padding:6px; border:1px solid #bcd0ee;">{{ $q_ajout }}</td>
-                <td style="padding:6px; border:1px solid #bcd0ee; text-align:center;">{{ $q_total }}</td>
-                <td style="padding:6px; border:1px solid #bcd0ee;">{{ $q_vendue }}</td>
-                <td style="padding:6px; border:1px solid #bcd0ee;">{{ $q_reste }}</td>
-                <td style="padding:6px; border:1px solid #bcd0ee; text-align:right;">{{ number_format($prix, 0, ',', ' ') }} $</td>
-                <td style="padding:6px; border:1px solid #bcd0ee; text-align:right; font-weight:bold;">{{ number_format($total, 0, ',', ' ') }} $</td>
+        @foreach($produitsByCategory as $categorie => $produits)
+            <tr style="background:#e0f2fe; color:#0f172a;">
+                <td colspan="8" style="padding:10px 12px; border:1px solid #bfdbfe; font-weight:700; font-size:14px;">{{ $categorie }}</td>
+            </tr>
+            @foreach($produits as $produit)
+                <tr>
+                    <td style="padding:8px; border:1px solid #dbeafe;">{{ $produit['nom'] }}</td>
+                    <td style="padding:8px; border:1px solid #dbeafe; text-align:center;">{{ $produit['q_init'] }}</td>
+                    <td style="padding:8px; border:1px solid #dbeafe; text-align:center;">{{ $produit['q_ajout'] }}</td>
+                    <td style="padding:8px; border:1px solid #dbeafe; text-align:center;">{{ $produit['q_total'] }}</td>
+                    <td style="padding:8px; border:1px solid #dbeafe; text-align:center;">{{ $produit['q_vendue'] }}</td>
+                    <td style="padding:8px; border:1px solid #dbeafe; text-align:center;">{{ $produit['q_reste'] }}</td>
+                    <td style="padding:8px; border:1px solid #dbeafe; text-align:right;">{{ number_format($produit['prix'], 0, ',', ' ') }} $</td>
+                    <td style="padding:8px; border:1px solid #dbeafe; text-align:right; font-weight:700;">{{ number_format($produit['total'], 0, ',', ' ') }} $</td>
+                </tr>
+            @endforeach
+            <tr style="background:#dbeafe; color:#0f172a; font-weight:700;">
+                <td colspan="7" style="padding:10px 12px; border:1px solid #bfdbfe; text-align:right;">Total catégorie {{ $categorie }}</td>
+                <td style="padding:10px 12px; border:1px solid #bfdbfe; text-align:right;">{{ number_format($categoryTotals[$categorie] ?? 0, 0, ',', ' ') }} $</td>
             </tr>
         @endforeach
         </tbody>
     </table>
-    <div style="margin-top:16px; text-align:right; font-size:16px; font-weight:bold; color:#2563eb;">
-        @php
-            $totalVente = 0;
-            foreach($produits as $produit) {
-                $stock = $stocks->firstWhere('produit_id', $produit->id);
-                $q_vendue = $stock->quantite_vendue ?? 0;
-                $prix = $produit->prix_vente;
-                $totalVente += $q_vendue * $prix;
-            }
-        @endphp
-        Total vente session : {{ number_format($totalVente, 0, ',', ' ') }} $
+
+    <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border:1px solid #bfdbfe; border-radius:12px; background:#eff6ff;">
+        <div style="font-size:13px; color:#1f2937;">Total catégories : {{ count($produitsByCategory) }}</div>
+        <div style="font-size:16px; font-weight:700; color:#1d4ed8;">Total vente session : {{ number_format($totalVente ?? 0, 0, ',', ' ') }} $</div>
     </div>
 </div>

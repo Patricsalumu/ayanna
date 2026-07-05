@@ -361,6 +361,11 @@ class PanierController extends Controller
      */
     public function annuler($id)
     {
+        // Empêcher certaines catégories d'utilisateurs d'annuler un panier
+        if (in_array(Auth::user()?->role, ['comptoiriste', 'serveuse'], true)) {
+            return redirect()->back()->with('message', 'Vous n\'êtes pas autorisé à annuler un panier.');
+        }
+
         $panier = Panier::findOrFail($id);
         \Log::debug('[DEBUG PANIER ANNULER] Avant', ['id' => $id, 'status' => $panier->status]);
         if ($panier->status === 'en_cours') {

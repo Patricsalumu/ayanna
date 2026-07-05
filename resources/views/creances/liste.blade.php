@@ -37,12 +37,12 @@
                             <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                             </svg>
-                            <select name="filtre" onchange="this.form.submit()" 
-                                    class="bg-transparent border-none text-sm font-medium text-blue-700 focus:ring-0 focus:outline-none cursor-pointer">
-                                <option value="jour" {{ $filtre === 'jour' ? 'selected' : '' }}>Aujourd'hui</option>
-                                <option value="toutes" {{ $filtre === 'toutes' ? 'selected' : '' }}>Toutes</option>
-                            </select>
+                            <input type="date" name="date" value="{{ $date ?? now()->toDateString() }}" 
+                                   class="bg-transparent border-none text-sm font-medium text-blue-700 focus:ring-0 focus:outline-none cursor-pointer">
                         </div>
+                        <button type="submit" class="inline-flex items-center px-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg text-sm hover:bg-blue-700 transition-all shadow-sm">
+                            Appliquer
+                        </button>
                     </form>
                     
                     <!-- Barre de recherche moderne -->
@@ -85,7 +85,7 @@
                                     return 0;
                                 });
                             @endphp
-                            {{ number_format($totalRestant, 0, ',', ' ') }} F
+                            {{ number_format($totalRestant, 0, ',', ' ') }} $
                         </div>
                         <div class="text-xs text-orange-700 font-medium total-creances-nombre">{{ $creances->count() }} créances</div>
                         <div class="text-xs text-gray-500 mt-1">À encaisser</div>
@@ -155,9 +155,7 @@
                                 <!-- Montant total -->
                                 <td class="px-4 py-2 text-right">
                                     <div class="font-semibold text-green-600">
-                                        {{ number_format($commande->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente), 0, ',', ' ') }} F
-                                    </div>
-                                </td>
+                                    {{ number_format($commande->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente), 0, ',', ' ') }} $
                                 
                                 <!-- Montant restant -->
                                 <td class="px-4 py-2 text-right">
@@ -178,11 +176,11 @@
                                         </div>
                                     @else
                                         <div class="font-semibold text-orange-600">
-                                            {{ number_format($montantRestant, 0, ',', ' ') }} F
+                                            {{ number_format($montantRestant, 0, ',', ' ') }} $
                                         </div>
                                         @if($montantPaye > 0)
                                             <div class="text-xs text-gray-500">
-                                                Payé: {{ number_format($montantPaye, 0, ',', ' ') }} F
+                                                Payé: {{ number_format($montantPaye, 0, ',', ' ') }} $
                                             </div>
                                         @endif
                                     @endif
@@ -289,8 +287,8 @@
                 </div>
                 <h3 class="text-lg font-medium text-gray-900 mb-2">Aucune créance</h3>
                 <p class="text-gray-500 text-sm">
-                    @if($filtre === 'jour')
-                        Aucune créance pour aujourd'hui.
+                    @if(!empty($date))
+                        Aucune créance pour le {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}.
                     @else
                         Aucune créance enregistrée.
                     @endif
@@ -633,7 +631,7 @@
         // Fonction pour exporter la liste des créances
         function exporterListe() {
             const search = document.getElementById('search-creance').value;
-            const filtre = '{{ $filtre }}';
+            const date = document.querySelector('input[name="date"]').value || '{{ $date ?? now()->toDateString() }}';
             
             // Collecter les IDs des créances visibles
             const rows = document.querySelectorAll('#body-creances tr');
@@ -659,7 +657,7 @@
             
             // Construire l'URL d'export avec les paramètres
             const params = new URLSearchParams({
-                filtre: filtre,
+                date: date,
                 search: search,
                 ids: creancesVisibles.join(',')
             });

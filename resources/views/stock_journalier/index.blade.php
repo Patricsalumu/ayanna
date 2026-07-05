@@ -21,8 +21,11 @@
             <h1 class="text-2xl font-bold text-gray-800 mb-2">
                 Fiche de Stock Journalier
             </h1>
-            <div class="flex justify-center items-center gap-6 text-gray-600">
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-6 text-gray-600">
                 <span>{{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}</span>
+                @if(isset($sessionLabel))
+                    <span class="text-blue-700 font-semibold">Session : {{ $sessionLabel }}</span>
+                @endif
                 @if(isset($nomPointDeVente))
                     <span class="text-gray-700 font-medium">{{ $nomPointDeVente }}</span>
                 @endif
@@ -33,13 +36,7 @@
         <div class="flex flex-wrap gap-4 items-end justify-between">
             <!-- Filtres -->
             <form method="GET" class="flex flex-wrap gap-4 items-end">
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Date :</label>
-                    <input type="date" name="date" value="{{ $date }}" 
-                           class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                           onchange="this.form.submit()">
-                </div>
-                @if(isset($sessions) && $sessions->count() > 1)
+                @if(isset($sessions) && $sessions->count() > 0)
                     <div>
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Session :</label>
                         <select name="session" 
@@ -57,6 +54,14 @@
                                 @endif
                             @endforeach
                         </select>
+                    </div>
+                    <input type="hidden" name="date" value="{{ $date }}">
+                @else
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Date :</label>
+                        <input type="date" name="date" value="{{ $date }}" 
+                               class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                               onchange="this.form.submit()">
                     </div>
                 @endif
             </form>
@@ -81,14 +86,24 @@
             <!-- Export PDF -->
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-2">&nbsp;</label>
-                <a href="{{ route('stock_journalier.export_pdf', ['pointDeVente' => $pointDeVenteId, 'date' => $date, 'session' => $session ?? '']) }}" 
-                   target="_blank" 
-                   class="inline-flex items-center px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 shadow transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Exporter PDF
-                </a>
+                <div class="flex flex-col gap-2">
+                    <a href="{{ route('stock_journalier.export_pdf', ['pointDeVente' => $pointDeVenteId, 'date' => $date, 'session' => $session ?? '']) }}" 
+                       target="_blank" 
+                       class="inline-flex items-center justify-center px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 shadow transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Exporter PDF
+                    </a>
+                    <a href="{{ route('stock_journalier.export_opening_pdf', ['pointDeVente' => $pointDeVenteId, 'session' => $session ?? '']) }}" 
+                       target="_blank" 
+                       class="inline-flex items-center justify-center px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 shadow transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Exporter inventaire d'ouverture
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -118,7 +133,7 @@
                         $stock = $stocks->where('produit_id', $produit->id)->last();
                         $q_init = $stock->quantite_initiale ?? 0;
                         $q_ajout = $stock->quantite_ajoutee ?? 0;
-                        $q_vendue = $stock->quantite_vendue ?? 0;
+                        $q_vendue = $ventesParProduit[$produit->id] ?? ($stock->quantite_vendue ?? 0);
                         $q_total = $q_init + $q_ajout;
                         $q_reste = $stock->quantite_reste ?? ($q_total - $q_vendue);
                         $prix = $produit->prix_vente;
@@ -170,6 +185,7 @@
                                 <input type="hidden" name="produit_id" value="{{ $produit->id }}">
                                 <input type="hidden" name="date" value="{{ $date }}">
                                 <input type="hidden" name="point_de_vente_id" value="{{ $pointDeVenteId }}">
+                                <input type="hidden" name="session" value="{{ $session }}">
                                 <input type="number" 
                                        name="quantite_ajoutee" 
                                        value="{{ $q_ajout }}" 
@@ -193,17 +209,8 @@
         <!-- Total des ventes -->
         <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
             <div class="text-right">
-                @php
-                    $totalVente = 0;
-                    foreach($produits as $produit) {
-                        $stock = $stocks->where('produit_id', $produit->id)->last();
-                        $q_vendue = $stock->quantite_vendue ?? 0;
-                        $prix = $produit->prix_vente;
-                        $totalVente += $q_vendue * $prix;
-                    }
-                @endphp
                 <span class="text-xl font-bold text-blue-700">
-                    Total vente session : {{ number_format($totalVente, 0, ',', ' ') }} $
+                    Total vente session : {{ number_format($totalVente ?? 0, 0, ',', ' ') }} $
                 </span>
             </div>
         </div>
@@ -250,6 +257,7 @@
             <input type="hidden" name="produit_id" id="modal-produit-id">
             <input type="hidden" name="date" value="{{ $date }}">
             <input type="hidden" name="point_de_vente_id" value="{{ $pointDeVenteId }}">
+            <input type="hidden" name="session" value="{{ $session }}">
             <div class="mb-6">
                 <label class="block text-sm font-semibold text-gray-700 mb-2">Quantité ajoutée :</label>
                 <input type="number" 

@@ -167,6 +167,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/stock-journalier/{pointDeVente?}', [\App\Http\Controllers\StockJournalierController::class, 'index'])->name('stock_journalier.index');
     Route::post('/stock-journalier', [\App\Http\Controllers\StockJournalierController::class, 'store'])->name('stock_journalier.store');
     Route::get('/stock-journalier/{pointDeVente}/export-pdf', [App\Http\Controllers\StockJournalierController::class, 'exportPdf'])->name('stock_journalier.export_pdf');
+    Route::get('/stock-journalier/{pointDeVente}/export-opening-pdf', [App\Http\Controllers\StockJournalierController::class, 'exportOpeningPdf'])->name('stock_journalier.export_opening_pdf');
     Route::post('/stock-journalier/qtajoute', [App\Http\Controllers\StockJournalierController::class, 'storeqtajoute'])->name('stock_journalier.storeqtajoute');
     Route::post('/stock-journalier/qtinitial', [App\Http\Controllers\StockJournalierController::class, 'storeqtinitial'])->name('stock_journalier.storeqtinitial');
     Route::get('/stock-journalier/ouverture/{pointDeVente}', [App\Http\Controllers\StockJournalierController::class, 'ficheOuvertureStock'])->name('stock_journalier.ouverture');

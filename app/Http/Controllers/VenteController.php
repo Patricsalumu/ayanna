@@ -553,7 +553,7 @@ class VenteController extends Controller
     {
         $user = Auth::user();
         $entrepriseId = $user->entreprise_id ?? ($user->entreprise->id ?? null);
-        $filtre = $request->get('filtre', 'jour'); // 'jour' ou 'toutes'
+        $date = $request->get('date', now()->toDateString());
         
         $query = Commande::with(['panier', 'panier.client', 'panier.serveuse', 'panier.tableResto', 'panier.pointDeVente', 'paiements'])
             ->where('mode_paiement', 'compte_client')
@@ -561,13 +561,13 @@ class VenteController extends Controller
                 $q->where('entreprise_id', $entrepriseId);
             });
             
-        if ($filtre === 'jour') {
-            $query->whereDate('created_at', now()->toDateString());
+        if (!empty($date) && $date !== 'all') {
+            $query->whereDate('created_at', $date);
         }
         
         $creances = $query->orderByDesc('created_at')->get();
         
-        return view('creances.liste', compact('creances', 'filtre'));
+        return view('creances.liste', compact('creances', 'date'));
     }
 
     public function confirmerCreance($commandeId)
@@ -767,7 +767,7 @@ class VenteController extends Controller
 
     public function exporterListeCreances(Request $request)
     {
-        $filtre = $request->get('filtre', 'jour');
+        $date = $request->get('date', today()->toDateString());
         $search = $request->get('search', '');
         $ids = $request->get('ids', '');
         
@@ -781,9 +781,9 @@ class VenteController extends Controller
             'paiements'
         ])->where('mode_paiement', 'compte_client');
 
-        // Appliquer le filtre de période
-        if ($filtre === 'jour') {
-            $query->whereDate('created_at', today());
+        // Appliquer le filtre de date
+        if (!empty($date) && $date !== 'all') {
+            $query->whereDate('created_at', $date);
         }
 
         // Si des IDs spécifiques sont fournis (depuis la recherche), les utiliser
@@ -817,7 +817,7 @@ class VenteController extends Controller
         }
 
         $dateGeneration = now();
-        $periode = $filtre === 'jour' ? 'du ' . today()->format('d/m/Y') : 'toutes périodes';
+        $periode = !empty($date) ? 'du ' . \Carbon\Carbon::parse($date)->format('d/m/Y') : 'toutes périodes';
         $critereRecherche = !empty($search) ? " (recherche: \"$search\")" : '';
 
         // Générer le PDF

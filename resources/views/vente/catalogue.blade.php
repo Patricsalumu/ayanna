@@ -132,12 +132,14 @@
           <button class="w-full mb-2 py-3 rounded-lg bg-gray-600 text-white font-bold text-base shadow hover:bg-gray-700 transition" @click="printAddition('proforma')">Addition</button>
           <button class="w-full mb-2 py-3 rounded-lg bg-green-600 text-white font-bold text-base shadow hover:bg-green-700 transition">Paiement</button>
           <!-- Bouton Annuler dans la modale -->
-          <form method="POST" action="{{ (isset($panier) && !empty($panier->id)) ? route('paniers.annuler', $panier->id) : '#' }}" onsubmit="return confirm('Annuler ce panier ?');" style="width:100%;">
+            @if(!in_array(Auth::user()->role ?? null, ['comptoiriste','serveuse']))
+            <form method="POST" action="{{ (isset($panier) && !empty($panier->id)) ? route('paniers.annuler', $panier->id) : '#' }}" onsubmit="return confirm('Annuler ce panier ?');" style="width:100%;">
               @csrf
               @method('PATCH')
               <input type="hidden" name="from" value="catalogue">
               <button type="submit" class="w-full py-3 rounded-lg bg-red-600 text-white font-bold text-base shadow hover:bg-red-700 transition">Annuler</button>
-          </form>
+            </form>
+            @endif
         </div>
         <div @click="showModal = false" class="fixed inset-0" style="z-index:-1;"></div>
       </div>

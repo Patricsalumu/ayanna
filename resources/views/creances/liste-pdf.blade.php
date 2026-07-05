@@ -284,13 +284,13 @@
                             {{ \Carbon\Carbon::parse($commande->created_at)->format('d/m/Y H:i') }}
                         </td>
                         <td class="montant total">
-                            {{ number_format($montantTotal, 0, ',', ' ') }} F
+                            {{ number_format($montantTotal, 0, ',', ' ') }} $
                         </td>
                         <td class="montant {{ $montantRestant <= 0 ? 'solde' : 'restant' }}">
                             @if($montantRestant <= 0)
                                 Soldé
                             @else
-                                {{ number_format($montantRestant, 0, ',', ' ') }} F
+                                {{ number_format($montantRestant, 0, ',', ' ') }} $
                             @endif
                         </td>
                         <td class="text-center">

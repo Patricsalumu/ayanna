@@ -144,7 +144,7 @@
                         $soldeFermeture = $lastFermeture ? number_format($lastFermeture->solde, 0, ',', ' ') : '0';
                     @endphp
                     <p class="text-gray-600 text-sm">Fermé le {{ $lastFermeture && $lastFermeture->closed_at ? \Carbon\Carbon::parse($lastFermeture->closed_at)->format('d/m/Y H:i') : '-' }}</p>
-                    <p class="text-gray-600 text-sm">Solde à la fermeture : {{ $soldeFermeture }} Fr</p>
+                    <p class="text-gray-600 text-sm">Solde à la fermeture : {{ $soldeFermeture }} $</p>
                     <a href="{{ route('vente.ouvrir', $pdv->id) }}" class="mt-3 block text-center bg-green-600 text-white rounded py-2 hover:bg-green-700">Ouvrir la vente</a>
                 @else
                     @php
@@ -152,7 +152,7 @@
                         $soldeEnCours = $pdv->getSoldeEnCours() ?? 0;
                     @endphp
                     <p class="text-gray-600 text-sm">Ouvert le {{ $lastOuverture && $lastOuverture->opened_at ? \Carbon\Carbon::parse($lastOuverture->opened_at)->format('d/m/Y H:i') : '-' }}</p>
-                    <p class="text-gray-600 text-sm">Solde en cours : {{ number_format($soldeEnCours, 0, ',', ' ') }} Fr</p>
+                    <p class="text-gray-600 text-sm">Solde en cours : {{ number_format($soldeEnCours, 0, ',', ' ') }} $</p>
                     <a href="{{ route('vente.continuer', $pdv->id) }}" class="mt-3 block text-center bg-purple-600 text-white rounded py-2 hover:bg-purple-700">Continuer la vente</a>
                 @endif
             </div>
@@ -187,7 +187,7 @@
                             </td>
                             <td class="p-3">
                                 @php $solde = $lastFermeture ? number_format($lastFermeture->solde, 0, ',', ' ') : '0' ; @endphp
-                                {{ $solde }} Fr
+                                {{ $solde }} $
                             </td>
                             <td class="p-3 flex space-x-2">
                                 <div class="flex flex-row gap-2">

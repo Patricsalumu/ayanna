@@ -1,20 +1,22 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Models\StockJournalier;
+use App\Models\Historiquepdv;
+use App\Models\PointDeVente;
 use App\Models\Produit;
+use App\Models\StockJournalier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf; // tout en haut
 
 class StockJournalierController extends Controller
 {
-    // Affiche la fiche de stock journalier pour une date donnée (par défaut aujourd'hui)
+    // Affiche la fiche de stock journalier pour une session donnée
     public function index(Request $request, $pointDeVenteId = null)
     {
-        $date = $request->get('date', now()->toDateString());
         $session = $request->get('session');
         if (!$pointDeVenteId) {
             $pointDeVenteId = $request->get('point_de_vente_id');
@@ -23,44 +25,151 @@ class StockJournalierController extends Controller
             $pointDeVenteId = auth()->user()->point_de_vente_id ?? null;
         }
         if (!$pointDeVenteId) {
-            // Si aucun point de vente n'est fourni, prendre le premier point de vente existant
-            $pointDeVenteId = \App\Models\PointDeVente::first()?->id;
+            $pointDeVenteId = PointDeVente::first()?->id;
         }
+
         if (!$pointDeVenteId) {
-            // Aucun point de vente trouvé, retourner une vue vide ou un message
             return view('stock_journalier.index', [
                 'stocks' => collect(),
-                'date' => $date,
+                'date' => now()->toDateString(),
                 'produits' => collect(),
                 'pointDeVenteId' => null,
                 'message' => 'Aucun point de vente disponible.'
             ]);
         }
-        // Pour debug : récupérer le nom du point de vente courant
-        $pointDeVente = \App\Models\PointDeVente::find($pointDeVenteId);
+
+        $data = $this->getStockJournalierSessionData($pointDeVenteId, $session);
+        return view('stock_journalier.index', $data);
+    }
+
+    private function getStockJournalierSessionData($pointDeVenteId, $session = null)
+    {
+        $pointDeVente = PointDeVente::find($pointDeVenteId);
         $nomPointDeVente = $pointDeVente ? $pointDeVente->nom : null;
-        // Récupérer toutes les sessions distinctes du jour pour ce point de vente
-        $sessions = StockJournalier::where('date', $date)
-            ->where('point_de_vente_id', $pointDeVenteId)
+        $sessions = StockJournalier::where('point_de_vente_id', $pointDeVenteId)
             ->orderByDesc('session')
             ->pluck('session')
             ->unique()
             ->values();
-        // Si aucune session sélectionnée, prendre la dernière
+
         if (!$session && $sessions->count() > 0) {
             $session = $sessions->first();
         }
-        // Filtrer les stocks de la session sélectionnée
+
         $stocks = StockJournalier::with('produit')
-            ->where('date', $date)
             ->where('point_de_vente_id', $pointDeVenteId)
-            ->when($session, function($q) use ($session) {
+            ->when($session, function ($q) use ($session) {
                 $q->where('session', $session);
             })
             ->get();
-        // Filtrer les produits liés à ce point de vente
-        $produits = $pointDeVente->produits()->orderBy('nom')->get();
-        return view('stock_journalier.index', compact('stocks', 'date', 'produits', 'pointDeVenteId', 'nomPointDeVente', 'sessions', 'session'));
+
+        $produits = $pointDeVente ? $pointDeVente->produits()->with('categorie')->orderBy('nom')->get() : collect();
+
+        $date = $stocks->first()?->date ?? now()->toDateString();
+        $sessionLabel = null;
+        if ($session) {
+            if (strlen($session) === 14 && ctype_digit($session)) {
+                $sessionLabel = Carbon::createFromFormat('YmdHis', $session)->format('d/m/Y H:i:s');
+            } else {
+                $sessionLabel = $session;
+            }
+        }
+
+        $heureOuverture = null;
+        $heureFermeture = null;
+        $sessionEnCours = false;
+        $firstStock = null;
+        if ($session) {
+            $firstStock = StockJournalier::where('point_de_vente_id', $pointDeVenteId)
+                ->where('session', $session)
+                ->orderBy('created_at')
+                ->first();
+            if ($firstStock && $firstStock->validated_at) {
+                $heureOuverture = Carbon::parse($firstStock->validated_at);
+            }
+            $fermeture = Historiquepdv::where('point_de_vente_id', $pointDeVenteId)
+                ->where('etat', 'ferme')
+                ->where('opened_at', $firstStock?->validated_at)
+                ->first();
+            if ($fermeture && $fermeture->closed_at) {
+                $heureFermeture = Carbon::parse($fermeture->closed_at);
+            } else {
+                $sessionEnCours = true;
+            }
+        }
+
+        $ventesParProduit = [];
+        if ($stocks->isNotEmpty() && $heureOuverture) {
+            $ventesParProduit = DB::table('panier_produit')
+                ->join('paniers', 'paniers.id', '=', 'panier_produit.panier_id')
+                ->where('paniers.point_de_vente_id', $pointDeVenteId)
+                ->where('paniers.status', '!=', 'annulé')
+                ->when($heureOuverture, function ($q) use ($heureOuverture) {
+                    return $q->where('paniers.created_at', '>=', $heureOuverture);
+                })
+                ->when($heureFermeture, function ($q) use ($heureFermeture) {
+                    return $q->where('paniers.created_at', '<=', $heureFermeture);
+                })
+                ->groupBy('panier_produit.produit_id')
+                ->selectRaw('panier_produit.produit_id, SUM(panier_produit.quantite) as qty')
+                ->pluck('qty', 'produit_id')
+                ->toArray();
+        }
+
+        $produitsData = $produits->map(function ($produit) use ($stocks, $ventesParProduit) {
+            $stock = $stocks->where('produit_id', $produit->id)->last();
+            $q_init = $stock->quantite_initiale ?? 0;
+            $q_ajout = $stock->quantite_ajoutee ?? 0;
+            $q_vendue = $ventesParProduit[$produit->id] ?? ($stock->quantite_vendue ?? 0);
+            $q_total = $q_init + $q_ajout;
+            $q_reste = $stock->quantite_reste ?? ($q_total - $q_vendue);
+            $prix = $produit->prix_vente;
+            $total = $q_vendue * $prix;
+
+            return [
+                'categorie' => $produit->categorie?->nom ?? 'Sans catégorie',
+                'nom' => $produit->nom,
+                'q_init' => $q_init,
+                'q_ajout' => $q_ajout,
+                'q_total' => $q_total,
+                'q_vendue' => $q_vendue,
+                'q_reste' => $q_reste,
+                'prix' => $prix,
+                'total' => $total,
+            ];
+        });
+
+        $produitsByCategory = $produitsData
+            ->sortBy(fn ($produit) => $produit['nom'])
+            ->groupBy('categorie')
+            ->map(function ($produits) {
+                return $produits->sortBy('nom')->values();
+            });
+
+        $categoryTotals = $produitsByCategory->map(function ($produits) {
+            return $produits->sum('total');
+        });
+
+        $totalVente = $categoryTotals->sum();
+
+        return compact(
+            'pointDeVente',
+            'nomPointDeVente',
+            'pointDeVenteId',
+            'sessions',
+            'stocks',
+            'produits',
+            'produitsByCategory',
+            'categoryTotals',
+            'date',
+            'session',
+            'sessionLabel',
+            'heureOuverture',
+            'heureFermeture',
+            'sessionEnCours',
+            'ventesParProduit',
+            'totalVente'
+        );
     }
 
     // Saisie ou modification de la quantité ajoutée du stock journalier pour un produit
@@ -69,16 +178,19 @@ class StockJournalierController extends Controller
         $data = $request->validate([
             'produit_id' => 'required|exists:produits,id',
             'date' => 'required|date',
+            'session' => 'nullable|string',
             'quantite_ajoutee' => 'required|integer',
             'point_de_vente_id' => 'required|exists:points_de_vente,id',
         ]);
 
-        // On récupère la dernière ligne de la dernière session du jour pour ce produit/point de vente
-        $stock = StockJournalier::where('produit_id', $data['produit_id'])
+        // On récupère la ligne de stock correspondant à la session sélectionnée, ou la dernière session du jour si elle n'est pas précisée
+        $stockQuery = StockJournalier::where('produit_id', $data['produit_id'])
             ->where('date', $data['date'])
-            ->where('point_de_vente_id', $data['point_de_vente_id'])
-            ->orderBy('session', 'desc')
-            ->first();
+            ->where('point_de_vente_id', $data['point_de_vente_id']);
+        if (!empty($data['session'])) {
+            $stockQuery->where('session', $data['session']);
+        }
+        $stock = $stockQuery->orderBy('session', 'desc')->first();
 
         $quantite_ajoutee = $data['quantite_ajoutee'];
         if ($stock) {
@@ -100,10 +212,13 @@ class StockJournalierController extends Controller
             'point_de_vente_id' => 'required|exists:points_de_vente,id',
         ]);
 
-        $stock = StockJournalier::where('produit_id', $data['produit_id'])
+        $stockQuery = StockJournalier::where('produit_id', $data['produit_id'])
             ->where('date', $data['date'])
-            ->where('point_de_vente_id', $data['point_de_vente_id'])
-            ->first();
+            ->where('point_de_vente_id', $data['point_de_vente_id']);
+        if (!empty($data['session'])) {
+            $stockQuery->where('session', $data['session']);
+        }
+        $stock = $stockQuery->first();
 
         $quantite_ajoutee = $stock->quantite_ajoutee ?? 0;
         $quantite_vendue = $stock->quantite_vendue ?? 0;
@@ -118,12 +233,17 @@ class StockJournalierController extends Controller
             'quantite_reste' => $quantite_reste,
         ];
 
+        $attributes = [
+            'produit_id' => $data['produit_id'],
+            'date' => $data['date'],
+            'point_de_vente_id' => $data['point_de_vente_id'],
+        ];
+        if (!empty($data['session'])) {
+            $attributes['session'] = $data['session'];
+        }
+
         StockJournalier::updateOrCreate(
-            [
-                'produit_id' => $data['produit_id'],
-                'date' => $data['date'],
-                'point_de_vente_id' => $data['point_de_vente_id'],
-            ],
+            $attributes,
             $saveData
         );
         return redirect()->back()->with('success', 'Quantité initiale enregistrée.');
@@ -153,89 +273,138 @@ class StockJournalierController extends Controller
                 'message' => 'Aucun point de vente disponible.'
             ]);
         }
-        // Correction : récupération de l'objet PointDeVente et du nom
-        $pointDeVente = \App\Models\PointDeVente::find($pointDeVenteId);
-        $nomPointDeVente = $pointDeVente ? $pointDeVente->nom : null;
-        // Récupérer toutes les sessions distinctes du jour pour ce point de vente
-        $sessions = StockJournalier::where('date', $date)
-            ->where('point_de_vente_id', $pointDeVenteId)
-            ->orderByDesc('session')
-            ->pluck('session')
-            ->unique()
-            ->values();
-        // Si aucune session sélectionnée, prendre la dernière
-        if (!$session && $sessions->count() > 0) {
-            $session = $sessions->first();
-        }
-        // Filtrer les stocks de la session sélectionnée
-        $stocks = StockJournalier::with('produit')
-            ->where('date', $date)
-            ->where('point_de_vente_id', $pointDeVenteId)
-            ->when($session, function($q) use ($session) {
-                $q->where('session', $session);
-            })
-            ->get();
-        // Filtrer les produits liés à ce point de vente
-        $produits = $pointDeVente ? $pointDeVente->produits()->orderBy('nom')->get() : collect();
+        $data = $this->getStockJournalierSessionData($pointDeVenteId, $session);
 
-        // Récupérer les informations d'ouverture et de fermeture de la session
-        $sessionInfo = null;
-        $heureOuverture = null;
-        $heureFermeture = null;
-        $sessionEnCours = false;
-        
+        $fileName = 'stock_journalier_'.$data['date'];
         if ($session) {
-            // Récupérer l'historique correspondant à cette session
-            // L'heure d'ouverture est stockée dans validated_at du stock_journalier
-            $firstStock = StockJournalier::where('point_de_vente_id', $pointDeVenteId)
-                ->where('session', $session)
-                ->orderBy('created_at')
-                ->first();
-            
-            if ($firstStock && $firstStock->validated_at) {
-                $heureOuverture = \Carbon\Carbon::parse($firstStock->validated_at);
-            }
-            
-            // Vérifier s'il y a une fermeture correspondante dans l'historique
-            $fermeture = \App\Models\Historiquepdv::where('point_de_vente_id', $pointDeVenteId)
-                ->where('etat', 'ferme')
-                ->whereDate('closed_at', $date)
-                ->where('opened_at', $firstStock?->validated_at)
-                ->first();
-            
-            if ($fermeture && $fermeture->closed_at) {
-                $heureFermeture = \Carbon\Carbon::parse($fermeture->closed_at);
-            } else {
-                $sessionEnCours = true;
-            }
-        }
-
-        // Créer un nom de fichier unique avec la session
-        $fileName = 'stock_journalier_'.$date;
-        if ($session) {
-            // Format de session plus lisible dans le nom de fichier
             if (strlen($session) === 14 && ctype_digit($session)) {
-                $sessionFormatted = \Carbon\Carbon::createFromFormat('YmdHis', $session)->format('Y-m-d_H-i-s');
+                $sessionFormatted = Carbon::createFromFormat('YmdHis', $session)->format('Y-m-d_H-i-s');
                 $fileName .= '_session_'.$sessionFormatted;
             } else {
-                $fileName .= '_session_'.$session;
+                $fileName .= '_session_'.$this->sanitizeFileName($session);
             }
         }
         $fileName .= '.pdf';
 
-        return Pdf::loadView('stock_journalier.pdf', [
-            'stocks' => $stocks,
-            'date' => $date,
-            'session' => $session,
-            'sessions' => $sessions,
-            'produits' => $produits,
-            'pointDeVenteId' => $pointDeVenteId,
-            'nomPointDeVente' => $nomPointDeVente,
-            'pointDeVente' => $pointDeVente,
-            'heureOuverture' => $heureOuverture,
-            'heureFermeture' => $heureFermeture,
-            'sessionEnCours' => $sessionEnCours,
-        ])->download($fileName);
+        return Pdf::loadView('stock_journalier.pdf', $data)->download($fileName);
+    }
+
+    public function exportOpeningPdf(Request $request, $pointDeVenteId)
+    {
+        $session = $request->get('session');
+        if (!$pointDeVenteId) {
+            $pointDeVenteId = $request->get('point_de_vente_id');
+        }
+        if (!$pointDeVenteId) {
+            $pointDeVenteId = auth()->user()->point_de_vente_id ?? null;
+        }
+        if (!$pointDeVenteId) {
+            $pointDeVenteId = PointDeVente::first()?->id;
+        }
+
+        if (!$pointDeVenteId) {
+            return redirect()->back()->with('message', 'Aucun point de vente disponible pour l’export inventaire.');
+        }
+
+        $data = $this->getStockJournalierOpeningData($pointDeVenteId, $session);
+
+        $fileName = 'inventaire_ouverture_'.$data['date'];
+        if ($data['session']) {
+            $sessionPart = $data['sessionLabel'] ?? $data['session'];
+            $fileName .= '_session_'.$this->sanitizeFileName($sessionPart);
+        }
+        $fileName .= '.pdf';
+
+        return Pdf::loadView('stock_journalier.opening_inventaire_pdf', $data)->download($fileName);
+    }
+
+    private function getStockJournalierOpeningData($pointDeVenteId, $session = null)
+    {
+        $pointDeVente = PointDeVente::find($pointDeVenteId);
+        $nomPointDeVente = $pointDeVente ? $pointDeVente->nom : null;
+        $sessions = StockJournalier::where('point_de_vente_id', $pointDeVenteId)
+            ->orderByDesc('session')
+            ->pluck('session')
+            ->unique()
+            ->values();
+
+        if (!$session && $sessions->count() > 0) {
+            $session = $sessions->first();
+        }
+
+        $sessionLabel = null;
+        if ($session) {
+            if (strlen($session) === 14 && ctype_digit($session)) {
+                $sessionLabel = Carbon::createFromFormat('YmdHis', $session)->format('d/m/Y H:i:s');
+            } else {
+                $sessionLabel = $session;
+            }
+        }
+
+        $currentStocks = StockJournalier::with('produit')
+            ->where('point_de_vente_id', $pointDeVenteId)
+            ->when($session, fn($q) => $q->where('session', $session))
+            ->get();
+
+        $previousSession = null;
+        if ($session) {
+            $index = $sessions->search($session);
+            if ($index !== false && isset($sessions[$index + 1])) {
+                $previousSession = $sessions[$index + 1];
+            }
+        } elseif ($sessions->count() > 1) {
+            $previousSession = $sessions->get(1);
+        }
+
+        $previousStocks = collect();
+        if ($previousSession) {
+            $previousStocks = StockJournalier::with('produit')
+                ->where('point_de_vente_id', $pointDeVenteId)
+                ->where('session', $previousSession)
+                ->get();
+        }
+
+        $produits = $pointDeVente ? $pointDeVente->produits()->with('categorie')->orderBy('nom')->get() : collect();
+        $date = $currentStocks->first()?->date ?? now()->toDateString();
+
+        $produitsData = $produits->map(function ($produit) use ($currentStocks, $previousStocks) {
+            $current = $currentStocks->where('produit_id', $produit->id)->last();
+            $previous = $previousStocks->where('produit_id', $produit->id)->last();
+            $q_system = $previous->quantite_reste ?? 0;
+            $q_counted = $current->quantite_initiale ?? 0;
+            $difference = $q_counted - $q_system;
+
+            return [
+                'categorie' => $produit->categorie?->nom ?? 'Sans catégorie',
+                'nom' => $produit->nom,
+                'q_system' => $q_system,
+                'q_counted' => $q_counted,
+                'difference' => $difference,
+            ];
+        });
+
+        $produitsByCategory = $produitsData
+            ->sortBy(fn ($item) => $item['nom'])
+            ->groupBy('categorie')
+            ->map(fn ($items) => $items->sortBy('nom')->values());
+
+        $totalDifference = $produitsData->sum('difference');
+
+        return compact(
+            'pointDeVente',
+            'nomPointDeVente',
+            'sessions',
+            'date',
+            'session',
+            'sessionLabel',
+            'produitsByCategory',
+            'totalDifference'
+        );
+    }
+
+    private function sanitizeFileName(string $string): string
+    {
+        return preg_replace('/[^A-Za-z0-9_\-\.]/', '_', $string);
     }
 
     /**
