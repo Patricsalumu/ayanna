@@ -73,6 +73,17 @@
                     <input type="text" name="numero_tva" value="{{ old('numero_tva', $entreprise->numero_tva) }}" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm w-full">
                 </div>
                 <div class="mb-4">
+                    <label class="block font-medium text-sm text-gray-700">Devise</label>
+                    <select name="devise" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm w-full">
+                        <option value="$" {{ old('devise', $entreprise->devise) === '$' ? 'selected' : '' }}>$</option>
+                        <option value="F" {{ old('devise', $entreprise->devise) === 'F' ? 'selected' : '' }}>F</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block font-medium text-sm text-gray-700">Taux (1$ = ... F)</label>
+                    <input type="number" step="0.0001" name="taux" value="{{ old('taux', $entreprise->taux) }}" required class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm w-full">
+                </div>
+                <div class="mb-4">
                     <label class="block font-medium text-sm text-gray-700">Email</label>
                     <input type="email" name="email" value="{{ old('email', $entreprise->email) }}" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm w-full">
                 </div>

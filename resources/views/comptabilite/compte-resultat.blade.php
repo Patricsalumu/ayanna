@@ -60,7 +60,7 @@
                                             <div class="text-sm text-gray-600">{{ $compte->nom }}</div>
                                         </div>
                                         <div class="font-semibold text-red-600">
-                                            {{ number_format($compte->montant, 0, ',', ' ') }}
+                                            @currency($compte->montant)
                                         </div>
                                     </div>
                                 @endif
@@ -70,7 +70,7 @@
                             <div class="flex justify-between items-center py-3 border-t-2 border-red-200 bg-red-50 rounded-lg px-4 mt-4">
                                 <div class="font-bold text-red-900">TOTAL CHARGES</div>
                                 <div class="font-bold text-xl text-red-600">
-                                    {{ number_format($totalCharges, 0, ',', ' ') }} $
+                                    @currency($totalCharges)
                                 </div>
                             </div>
                         </div>
@@ -99,7 +99,7 @@
                                             <div class="text-sm text-gray-600">{{ $compte->nom }}</div>
                                         </div>
                                         <div class="font-semibold text-green-600">
-                                            {{ number_format($compte->montant, 0, ',', ' ') }}
+                                            @currency($compte->montant)
                                         </div>
                                     </div>
                                 @endif
@@ -109,7 +109,7 @@
                             <div class="flex justify-between items-center py-3 border-t-2 border-green-200 bg-green-50 rounded-lg px-4 mt-4">
                                 <div class="font-bold text-green-900">TOTAL PRODUITS</div>
                                 <div class="font-bold text-xl text-green-600">
-                                    {{ number_format($totalProduits, 0, ',', ' ') }} $
+                                    @currency($totalProduits)
                                 </div>
                             </div>
                         </div>
@@ -131,17 +131,17 @@
                     <div class="space-y-3">
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600">Total Produits :</span>
-                            <span class="font-medium text-green-600">{{ number_format($totalProduits, 0, ',', ' ') }} $</span>
+                            <span class="font-medium text-green-600">@currency($totalProduits)</span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600">Total Charges :</span>
-                            <span class="font-medium text-red-600">{{ number_format($totalCharges, 0, ',', ' ') }} $</span>
+                            <span class="font-medium text-red-600">@currency($totalCharges)</span>
                         </div>
                         <div class="border-t pt-3">
                             <div class="flex justify-between items-center">
                                 <span class="font-bold text-gray-900">Résultat Net :</span>
                                 <span class="font-bold text-2xl {{ $resultat >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ $resultat >= 0 ? '+' : '' }}{{ number_format($resultat, 0, ',', ' ') }} $
+                                    {{ $resultat >= 0 ? '+' : '' }}@currency(abs($resultat))
                                 </span>
                             </div>
                             <div class="mt-2">

@@ -85,18 +85,15 @@
                         <div class="space-y-2 text-sm">
                             <div class="flex justify-between">
                                 <span class="text-gray-600">Débit période:</span>
-                                <span class="font-medium text-red-600">{{ number_format($debitTotal, 0, ',', ' ') }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Crédit période:</span>
-                                <span class="font-medium text-green-600">{{ number_format($creditTotal, 0, ',', ' ') }}</span>
-                            </div>
-                            <div class="flex justify-between border-t pt-2">
-                                <span class="text-gray-900 font-medium">Solde actuel:</span>
-                                <span class="font-bold {{ $soldeColor }}">{{ number_format($solde, 0, ',', ' ') }}</span>
-                            </div>
-                        </div>
-                        
+                                    <span class="font-medium text-red-600">@currency($debitTotal)</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Crédit période:</span>
+                                    <span class="font-medium text-green-600">@currency($creditTotal)</span>
+                                </div>
+                                <div class="flex justify-between border-t pt-2">
+                                    <span class="text-gray-900 font-medium">Solde actuel:</span>
+                                    <span class="font-bold {{ $soldeColor }}">@currency($solde)</span>
                         @if($mouvements > 0)
                             <div class="mt-4">
                                 <a href="{{ route('comptabilite.grand-livre', $compte->id) }}?date_debut={{ $dateDebut }}&date_fin={{ $dateFin }}" 

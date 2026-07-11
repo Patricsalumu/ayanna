@@ -42,17 +42,17 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-white p-4 rounded-lg shadow-sm">
                     <div class="text-sm text-gray-600">Total Débit</div>
-                    <div class="text-2xl font-bold text-red-600">{{ number_format($totalDebit, 0, ',', ' ') }} $</div>
+                    <div class="text-2xl font-bold text-red-600">@currency($totalDebit)</div>
                 </div>
                 <div class="bg-white p-4 rounded-lg shadow-sm">
                     <div class="text-sm text-gray-600">Total Crédit</div>
-                    <div class="text-2xl font-bold text-green-600">{{ number_format($totalCredit, 0, ',', ' ') }} $</div>
+                    <div class="text-2xl font-bold text-green-600">@currency($totalCredit)</div>
                 </div>
                 <div class="bg-white p-4 rounded-lg shadow-sm">
                     <div class="text-sm text-gray-600">Équilibre</div>
                     @php $equilibre = $totalDebit - $totalCredit; @endphp
                     <div class="text-2xl font-bold {{ abs($equilibre) < 0.01 ? 'text-green-600' : 'text-red-600' }}">
-                        {{ abs($equilibre) < 0.01 ? '✓ Équilibré' : '⚠ ' . number_format(abs($equilibre), 0, ',', ' ') . ' $' }}
+                        {{ abs($equilibre) < 0.01 ? '✓ Équilibré' : '⚠ ' . @currency(abs($equilibre)) }}
                     </div>
                 </div>
             </div>
@@ -84,16 +84,32 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm {{ $item['debit_periode'] > 0 ? 'font-medium text-red-600' : 'text-gray-400' }}">
-                                {{ $item['debit_periode'] > 0 ? number_format($item['debit_periode'], 0, ',', ' ') : '-' }}
+                                @if($item['debit_periode'] > 0)
+                                    @currency($item['debit_periode'])
+                                @else
+                                    -
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm {{ $item['credit_periode'] > 0 ? 'font-medium text-green-600' : 'text-gray-400' }}">
-                                {{ $item['credit_periode'] > 0 ? number_format($item['credit_periode'], 0, ',', ' ') : '-' }}
+                                @if($item['credit_periode'] > 0)
+                                    @currency($item['credit_periode'])
+                                @else
+                                    -
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm {{ $item['solde_debit'] > 0 ? 'font-bold text-red-600' : 'text-gray-400' }}">
-                                {{ $item['solde_debit'] > 0 ? number_format($item['solde_debit'], 0, ',', ' ') : '-' }}
+                                @if($item['solde_debit'] > 0)
+                                    @currency($item['solde_debit'])
+                                @else
+                                    -
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm {{ $item['solde_credit'] > 0 ? 'font-bold text-green-600' : 'text-gray-400' }}">
-                                {{ $item['solde_credit'] > 0 ? number_format($item['solde_credit'], 0, ',', ' ') : '-' }}
+                                @if($item['solde_credit'] > 0)
+                                    @currency($item['solde_credit'])
+                                @else
+                                    -
+                                @endif
                             </td>
                         </tr>
                     @empty
@@ -111,16 +127,16 @@
                         <tr class="bg-gray-100 font-bold border-t-2 border-gray-300">
                             <td colspan="2" class="px-6 py-4 text-sm text-gray-900">TOTAUX</td>
                             <td class="px-6 py-4 text-right text-sm text-red-600">
-                                {{ number_format(collect($balance)->sum('debit_periode'), 0, ',', ' ') }}
+                                @currency(collect($balance)->sum('debit_periode'))
                             </td>
                             <td class="px-6 py-4 text-right text-sm text-green-600">
-                                {{ number_format(collect($balance)->sum('credit_periode'), 0, ',', ' ') }}
+                                @currency(collect($balance)->sum('credit_periode'))
                             </td>
                             <td class="px-6 py-4 text-right text-sm text-red-600">
-                                {{ number_format($totalDebit, 0, ',', ' ') }}
+                                @currency($totalDebit)
                             </td>
                             <td class="px-6 py-4 text-right text-sm text-green-600">
-                                {{ number_format($totalCredit, 0, ',', ' ') }}
+                                @currency($totalCredit)
                             </td>
                         </tr>
                     @endif

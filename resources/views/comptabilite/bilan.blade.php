@@ -55,7 +55,7 @@
                                             <div class="text-sm text-gray-600">{{ $compte->nom }}</div>
                                         </div>
                                         <div class="font-semibold text-blue-600">
-                                            {{ number_format($compte->solde_bilan, 0, ',', ' ') }}
+                                            @currency($compte->solde_bilan)
                                         </div>
                                     </div>
                                 @endif
@@ -65,7 +65,7 @@
                             <div class="flex justify-between items-center py-3 border-t-2 border-blue-200 bg-blue-50 rounded-lg px-4 mt-4">
                                 <div class="font-bold text-blue-900">TOTAL ACTIF</div>
                                 <div class="font-bold text-xl text-blue-600">
-                                    {{ number_format($totalActif, 0, ',', ' ') }} $
+                                    @currency($totalActif)
                                 </div>
                             </div>
                         </div>
@@ -94,7 +94,7 @@
                                             <div class="text-sm text-gray-600">{{ $compte->nom }}</div>
                                         </div>
                                         <div class="font-semibold text-purple-600">
-                                            {{ number_format($compte->solde_bilan, 0, ',', ' ') }}
+                                            @currency($compte->solde_bilan)
                                         </div>
                                     </div>
                                 @endif
@@ -110,7 +110,7 @@
                                         <div class="text-sm text-gray-600">Exercice en cours</div>
                                     </div>
                                     <div class="font-semibold {{ $resultatExercice > 0 ? 'text-green-600' : 'text-red-600' }}">
-                                        {{ number_format(abs($resultatExercice), 0, ',', ' ') }}
+                                        @currency(abs($resultatExercice))
                                     </div>
                                 </div>
                             @endif
@@ -119,7 +119,7 @@
                             <div class="flex justify-between items-center py-3 border-t-2 border-purple-200 bg-purple-50 rounded-lg px-4 mt-4">
                                 <div class="font-bold text-purple-900">TOTAL PASSIF</div>
                                 <div class="font-bold text-xl text-purple-600">
-                                    {{ number_format($totalPassif, 0, ',', ' ') }} $
+                                    @currency($totalPassif)
                                 </div>
                             </div>
                         </div>
@@ -138,11 +138,11 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-white p-4 rounded-lg shadow-sm">
                     <div class="text-sm text-gray-600">Total Actif</div>
-                    <div class="text-xl font-bold text-blue-600">{{ number_format($totalActif, 0, ',', ' ') }} $</div>
+                    <div class="text-xl font-bold text-blue-600">@currency($totalActif)</div>
                 </div>
                 <div class="bg-white p-4 rounded-lg shadow-sm">
                     <div class="text-sm text-gray-600">Total Passif</div>
-                    <div class="text-xl font-bold text-purple-600">{{ number_format($totalPassif, 0, ',', ' ') }} $</div>
+                    <div class="text-xl font-bold text-purple-600">@currency($totalPassif)</div>
                 </div>
                 <div class="bg-white p-4 rounded-lg shadow-sm">
                     <div class="text-sm text-gray-600">Équilibre</div>
@@ -151,7 +151,7 @@
                         @if(abs($equilibre) < 0.01)
                             <i class="fas fa-check-circle mr-2"></i>Équilibré
                         @else
-                            <i class="fas fa-exclamation-triangle mr-2"></i>{{ number_format(abs($equilibre), 0, ',', ' ') }} $
+                            <i class="fas fa-exclamation-triangle mr-2"></i>@currency(abs($equilibre))
                         @endif
                     </div>
                 </div>

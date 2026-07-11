@@ -59,6 +59,30 @@
                     <x-input-error :messages="$errors->get('entreprise_nom')" class="mt-2" />
                 </div>
 
+                <!-- Devise de l'entreprise -->
+                <div>
+                    <x-input-label for="entreprise_devise" :value="__('Devise')" class="text-[#3e2f24] font-semibold" />
+                    <select id="entreprise_devise" name="entreprise_devise" required
+                            class="block mt-1 w-full rounded border border-[#d8c1a8] focus:outline-none focus:ring focus:border-[#d8c1a8] bg-white">
+                        <option value="$" {{ old('entreprise_devise', '$') === '$' ? 'selected' : '' }}>$</option>
+                        <option value="F" {{ old('entreprise_devise') === 'F' ? 'selected' : '' }}>F</option>
+                    </select>
+                    <x-input-error :messages="$errors->get('entreprise_devise')" class="mt-2" />
+                </div>
+
+                <!-- Taux de conversion -->
+                <div>
+                    <x-input-label for="entreprise_taux" :value="__('Taux (1$ = ... F)')" class="text-[#3e2f24] font-semibold" />
+                    <x-text-input id="entreprise_taux"
+                                   class="block mt-1 w-full rounded border border-[#d8c1a8] focus:outline-none focus:ring focus:border-[#d8c1a8] bg-white"
+                                   type="number"
+                                   step="0.0001"
+                                   name="entreprise_taux"
+                                   :value="old('entreprise_taux', '1.0000')"
+                                   required />
+                    <x-input-error :messages="$errors->get('entreprise_taux')" class="mt-2" />
+                </div>
+
                 <!-- Logo de l'entreprise (optionnel) -->
                 <div>
                     <x-input-label for="entreprise_logo" :value="__('Logo Entreprise (optionnel)')" class="text-[#3e2f24] font-semibold" />

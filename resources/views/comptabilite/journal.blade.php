@@ -111,7 +111,7 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                                {{ number_format($journal->montant_total, 0, ',', ' ') }} $
+                                @currency($journal->montant_total)
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <button onclick="voirDetail({{ $journal->id }})" 
@@ -145,17 +145,25 @@
                                                             @endif
                                                         </td>
                                                         <td class="px-3 py-2 text-right {{ $ecriture->debit > 0 ? 'font-medium text-red-600' : 'text-gray-400' }}">
-                                                            {{ $ecriture->debit > 0 ? number_format($ecriture->debit, 0, ',', ' ') : '-' }}
+                                                            @if($ecriture->debit > 0)
+                                                                @currency($ecriture->debit)
+                                                            @else
+                                                                -
+                                                            @endif
                                                         </td>
                                                         <td class="px-3 py-2 text-right {{ $ecriture->credit > 0 ? 'font-medium text-green-600' : 'text-gray-400' }}">
-                                                            {{ $ecriture->credit > 0 ? number_format($ecriture->credit, 0, ',', ' ') : '-' }}
+                                                            @if($ecriture->credit > 0)
+                                                                @currency($ecriture->credit)
+                                                            @else
+                                                                -
+                                                            @endif
                                                         </td>
                                                     </tr>
                                                 @endforeach
                                                 <tr class="bg-gray-100 font-medium">
                                                     <td class="px-3 py-2">Total</td>
-                                                    <td class="px-3 py-2 text-right text-red-600">{{ number_format($totalDebit, 0, ',', ' ') }}</td>
-                                                    <td class="px-3 py-2 text-right text-green-600">{{ number_format($totalCredit, 0, ',', ' ') }}</td>
+                                                    <td class="px-3 py-2 text-right text-red-600">@currency($totalDebit)</td>
+                                                    <td class="px-3 py-2 text-right text-green-600">@currency($totalCredit)</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -225,7 +233,7 @@
                             <option value="{{ $compte->id }}" data-solde="{{ $compte->solde ?? 0 }}">
                                 {{ $compte->nom }} ({{ $compte->numero }})
                                 @if($compte->type === 'actif')
-                                    - Solde: {{ number_format($compte->solde ?? 0, 0, ',', ' ') }} F
+                                    - Solde: @currency($compte->solde ?? 0)
                                 @endif
                             </option>
                         @endforeach
@@ -293,7 +301,7 @@
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-coins text-yellow-600 mr-1"></i>
-                        Montant à transférer (FC)
+                        Montant à transférer
                     </label>
                     <input type="number" name="montant" id="montantTransfert" min="1" step="1" required 
                            placeholder="Ex: 50000"
@@ -407,7 +415,7 @@ function mettreAJourResume() {
         if (sourceOption && destinationOption) {
             document.getElementById('resumeSource').textContent = sourceOption.textContent.split('(')[0].trim();
             document.getElementById('resumeDestination').textContent = destinationOption.textContent.split('(')[0].trim();
-            document.getElementById('resumeMontant').textContent = new Intl.NumberFormat('fr-FR').format(montant) + ' $';
+            document.getElementById('resumeMontant').textContent = new Intl.NumberFormat('fr-FR').format(montant) + ' ' + currencySymbol;
             document.getElementById('resumeTransfert').classList.remove('hidden');
         }
     } else {
@@ -434,7 +442,7 @@ function verifierSolde() {
         document.getElementById('alerteSolde').classList.add('hidden');
     }
 }
-
+const currencySymbol = @json(optional(Auth::user()->entreprise)->devise ?? '$');
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
     // Écouter les changements dans les selects et inputs

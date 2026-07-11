@@ -41,6 +41,19 @@
                 </div>
 
                 <div class="mb-4">
+                    <label class="block font-medium text-sm text-gray-700" for="devise">Devise</label>
+                    <select name="devise" id="devise" required class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm w-full">
+                        <option value="$" {{ old('devise', '$') === '$' ? 'selected' : '' }}>$</option>
+                        <option value="F" {{ old('devise') === 'F' ? 'selected' : '' }}>F</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block font-medium text-sm text-gray-700" for="taux">Taux (1$ = ... F)</label>
+                    <input type="number" step="0.0001" name="taux" id="taux" value="{{ old('taux', '1.0000') }}" required class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm w-full">
+                </div>
+
+                <div class="mb-4">
                     <label class="block font-medium text-sm text-gray-700" for="logo">Logo</label>
                     <input type="file" name="logo" id="logo" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
                 </div>

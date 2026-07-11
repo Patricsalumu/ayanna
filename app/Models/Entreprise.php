@@ -23,6 +23,8 @@ class Entreprise extends Model
         'numero_entreprise',
         'numero_tva',
         'email',
+        'devise',
+        'taux',
     ];
 
     /**
@@ -56,6 +58,25 @@ class Entreprise extends Model
     {
         return $this->hasMany(\App\Models\Client::class);
     }
+
+    public function formatAmount(float $amount, bool $withSymbol = true, int $decimals = 0): string
+    {
+        $formatted = number_format($amount, $decimals, ',', ' ');
+
+        if (! $withSymbol) {
+            return $formatted;
+        }
+
+        if ($this->devise === 'F') {
+            return $formatted . ' F';
+        }
+
+        return $formatted . ' $';
+    }
+
+    public function convertToF(float $amount): float
+    {
+        return $amount * (float) $this->taux;
+    }
 }
-?>
 

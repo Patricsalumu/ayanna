@@ -44,6 +44,8 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'entreprise_nom' => ['required', 'string', 'max:255'],
             'entreprise_logo' => ['nullable', 'image', 'max:2048'],
+            'entreprise_devise' => ['required', 'string', 'in:$,F'],
+            'entreprise_taux' => ['required', 'numeric', 'min:0.0001'],
         ], [
             'phone.unique' => __('validation.unique_phone'),
             'phone.regex' => __('validation.phone.regex'),
@@ -62,6 +64,8 @@ class RegisteredUserController extends Controller
         // Création de l'entreprise
         $entrepriseData = [
             'nom' => $request->entreprise_nom,
+            'devise' => $request->entreprise_devise,
+            'taux' => $request->entreprise_taux,
         ];
         if ($request->hasFile('entreprise_logo')) {
             $entrepriseData['logo'] = $request->file('entreprise_logo')->store('logos', 'public');

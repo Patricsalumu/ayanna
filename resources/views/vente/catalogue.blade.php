@@ -73,9 +73,9 @@
 
     <!-- Sélecteurs + Options -->
     <div class="bg-white rounded-2xl shadow p-1 min-h-0 h-auto mt-1 mb-0">
-      <div class="flex flex-row gap-0.5 mb-4 justify-between items-center">
+      <div class="flex flex-row flex-wrap gap-2 mb-4 justify-between items-center">
         <select
-          class="flex-1 h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-pink-500 text-white font-bold shadow focus:ring-2 focus:ring-pink-300 transition text-center mx-1 px-2 py-0.5 appearance-none"
+          class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-pink-500 text-white font-bold shadow focus:ring-2 focus:ring-pink-300 transition text-center mx-1 px-2 py-0.5 appearance-none"
           style="height:40px;"
           x-model="paiement.client_id"
           @change="setClient(paiement.client_id)"
@@ -86,7 +86,7 @@
           @endforeach
         </select>
         <select
-          class="flex-1 h-12 min-w-[85px] max-w-[110px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-1 px-2 py-0.5 appearance-none"
+          class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[85px] max-w-[110px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-1 px-2 py-0.5 appearance-none"
           style="height:40px;"
           x-model="paiement.serveuse_id"
           @change="setServeuse(paiement.serveuse_id)"
@@ -96,7 +96,7 @@
             <option value="{{ (string) $s->id }}">{{ $s->name }}</option>
           @endforeach
         </select>
-        <select class="flex-1 h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-yellow-400 text-gray-800 font-bold shadow cursor-not-allowed text-center mx-1 px-2 py-0.5 appearance-none" style="height:40px;" disabled>
+        <select class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-yellow-400 text-gray-800 font-bold shadow cursor-not-allowed text-center mx-1 px-2 py-0.5 appearance-none" style="height:40px;" disabled>
           @if(isset($tableCourante))
             @php $table = $tables->firstWhere('id', $tableCourante); @endphp
             <option selected>
@@ -116,34 +116,21 @@
             <option selected>Table</option>
           @endif
         </select>
-        <button class="flex-1 h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-1 px-2 py-0.5 appearance-none" style="height:40px;" @click="openPaiement()">Paiement</button>
-        <!-- Bouton menu trois points verticaux -->
-        <button @click="showModal = true" class="ml-2 flex items-center justify-center w-10 h-12 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 text-2xl font-bold focus:outline-none" title="Options">
-          <span style="font-size:2rem;line-height:1;">&#8942;</span>
-        </button>
-        {{-- DEBUG TABLE --}}
-        {{-- DEBUG TABLE retiré --}}
+        <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-1 px-2 py-0.5 appearance-none" style="height:40px;" @click="openPaiement()">Paiement</button>
       </div>
-      <!-- MODALE OPTIONS -->
-      <div x-show="showModal" style="background:rgba(0,0,0,0.25)" class="fixed inset-0 z-50 flex items-center justify-center" x-transition>
-        <div class="bg-white rounded-2xl shadow-xl p-6 min-w-[260px] flex flex-col items-center relative">
-          <button @click="showModal = false" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl">&times;</button>
-          <div class="mb-4 text-lg font-bold text-gray-700">Actions</div>
-          <button class="w-full mb-2 py-3 rounded-lg bg-gray-600 text-white font-bold text-base shadow hover:bg-gray-700 transition" @click="printAddition('proforma')">Addition</button>
-          <button class="w-full mb-2 py-3 rounded-lg bg-green-600 text-white font-bold text-base shadow hover:bg-green-700 transition">Paiement</button>
-          <!-- Bouton Annuler dans la modale -->
-            @if(!in_array(Auth::user()->role ?? null, ['comptoiriste','serveuse']))
-            <form method="POST" action="{{ (isset($panier) && !empty($panier->id)) ? route('paniers.annuler', $panier->id) : '#' }}" onsubmit="return confirm('Annuler ce panier ?');" style="width:100%;">
-              @csrf
-              @method('PATCH')
-              <input type="hidden" name="from" value="catalogue">
-              <button type="submit" class="w-full py-3 rounded-lg bg-red-600 text-white font-bold text-base shadow hover:bg-red-700 transition">Annuler</button>
-            </form>
-            @endif
-        </div>
-        <div @click="showModal = false" class="fixed inset-0" style="z-index:-1;"></div>
+      <div class="flex flex-row flex-wrap gap-2 mb-2 justify-between items-center">
+        <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[140px] rounded-xl bg-gray-800 text-white font-bold shadow hover:bg-gray-900 transition text-center px-4 py-0.5" @click="printAddition('proforma')">Addition</button>
+        @if(!in_array(Auth::user()->role ?? null, ['comptoiriste','serveuse']))
+          <form method="POST" action="{{ (isset($panier) && !empty($panier->id)) ? route('paniers.annuler', $panier->id) : '#' }}" onsubmit="return confirm('Annuler ce panier ?');" class="flex-none sm:flex-1 w-full sm:w-auto min-w-[140px]">
+            @csrf
+            @method('PATCH')
+            <input type="hidden" name="from" value="catalogue">
+            <button type="submit" class="w-full h-12 rounded-xl bg-red-600 text-white font-bold shadow hover:bg-red-700 transition">Annuler</button>
+          </form>
+        @endif
       </div>
-
+      {{-- DEBUG TABLE --}}
+      {{-- DEBUG TABLE retiré --}}
     </div>
 
     <!-- Pavé numérique -->

@@ -30,6 +30,8 @@ class EntreprisesController extends Controller
             'email' => 'nullable|email|unique:entreprises,email',
             'telephone' => 'nullable',
             'logo' => 'nullable|image|max:2048', // max 2MB
+            'devise' => 'required|string|in:$,F',
+            'taux' => 'required|numeric|min:0.0001',
         ]);
 
         // Gestion de l’image
@@ -73,6 +75,8 @@ class EntreprisesController extends Controller
             'numero_entreprise' => 'nullable|string|max:255',
             'numero_tva' => 'nullable|string|max:255',
             'email' => 'nullable|email',
+            'devise' => 'required|string|in:$,F',
+            'taux' => 'required|numeric|min:0.0001',
         ]);
 
         $entreprise = auth()->user()->entreprise;
