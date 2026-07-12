@@ -398,8 +398,8 @@ class VenteController extends Controller
             Log::info('[VALIDATION PAIEMENT] Panier trouvé', ['panier_id' => $panier->id]);
 
             // Mettre à jour les informations du panier si nécessaires (pour paiement par compte client)
+            $panierUpdated = false;
             if ($data['mode_paiement'] === 'compte_client') {
-                $panierUpdated = false;
                 if (!$panier->client_id && !empty($data['client_id'])) {
                     $panier->client_id = $data['client_id'];
                     $panierUpdated = true;
@@ -408,13 +408,20 @@ class VenteController extends Controller
                     $panier->serveuse_id = $data['serveuse_id'];
                     $panierUpdated = true;
                 }
-                if ($panierUpdated) {
-                    $panier->save();
-                    Log::info('[VALIDATION PAIEMENT] Panier mis à jour avec client et serveuse', [
-                        'client_id' => $panier->client_id,
-                        'serveuse_id' => $panier->serveuse_id
-                    ]);
-                }
+            }
+
+            if ($panier->mode_paiement !== $data['mode_paiement']) {
+                $panier->mode_paiement = $data['mode_paiement'];
+                $panierUpdated = true;
+            }
+
+            if ($panierUpdated) {
+                $panier->save();
+                Log::info('[VALIDATION PAIEMENT] Panier mis à jour', [
+                    'client_id' => $panier->client_id,
+                    'serveuse_id' => $panier->serveuse_id,
+                    'mode_paiement' => $panier->mode_paiement,
+                ]);
             }
 
             // Calculer le montant depuis le panier si pas fourni

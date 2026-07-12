@@ -143,7 +143,7 @@
 
         <div class="bon-title">BON DE COMMANDE No {{ $bon->numero_bon }}</div>
 
-        <div class="serveuse-info">{{ $bon->serveuse?->name ?? 'N/A' }} | Table {{ $bon->panier?->table_id ?? 'N/A' }}</div>
+        <div class="serveuse-info">{{ $bon->serveuse?->name ?? 'N/A' }} | Table {{ $bon->panier?->tableResto?->numero ?? $bon->panier?->table_id ?? 'N/A' }}</div>
 
         <div class="details">
             Panier #{{ $bon->panier_id }} | {{ $bon->created_at->format('H:i') }}
@@ -153,9 +153,11 @@
 
         <div class="produits">
             @php
-                $produits = is_string($bon->produits_json) ? json_decode($bon->produits_json, true) : $bon->produits_json;
+                $produits = is_string($bon->produits_json)
+                    ? json_decode($bon->produits_json, true)
+                    : ($bon->produits_json ?? []);
             @endphp
-            @if($produits && count($produits) > 0)
+            @if(is_array($produits) && count($produits) > 0)
                 @foreach($produits as $produit)
                     <div class="produit-item">
                         <span class="produit-nom">{{ $produit['nom'] }}</span>
@@ -179,5 +181,13 @@
     <button class="print-button" onclick="window.print(); return false;">
         🖨️ Imprimer
     </button>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                window.print();
+            }, 300);
+        });
+    </script>
 </body>
 </html>

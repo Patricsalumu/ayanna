@@ -551,15 +551,27 @@ function posApp() {
           throw new Error(`HTTP ${response.status}`);
         }
         const html = await response.text();
-        // Ouvrir dans un nouvel onglet
-        const printWindow = window.open('', '_blank', 'width=900,height=800');
+        const printWindow = window.open('', 'printWindow', 'width=900,height=800');
         if (!printWindow) {
           throw new Error('Impossible d\'ouvrir la fenêtre d\'impression');
         }
+        printWindow.document.open();
         printWindow.document.write(html);
         printWindow.document.close();
         printWindow.focus();
-        // Ne pas fermer automatiquement - laisser l'utilisateur imprimer ou recommencer
+        const attemptPrint = () => {
+          try {
+            printWindow.print();
+            printWindow.close();
+          } catch (printErr) {
+            console.error('Erreur lors de print() :', printErr);
+          }
+        };
+        // On attend le chargement de la page pour déclencher l'impression
+        printWindow.onload = () => {
+          setTimeout(attemptPrint, 500);
+        };
+        setTimeout(attemptPrint, 1500);
       } catch (err) {
         console.error('Erreur impression bon commande :', err);
         alert('❌ Erreur d\'impression du bon de commande.\n\nVérifiez votre connexion internet ou réessayez.');

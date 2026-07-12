@@ -20,14 +20,23 @@ class BonCommandeController extends Controller
         $startDate = Carbon::parse($date)->startOfDay();
         $endDate = Carbon::parse($date)->endOfDay();
 
-        $bons = BonCommande::whereBetween('created_at', [$startDate, $endDate])
-            ->with(['panier', 'serveuse', 'client', 'utilisateur'])
+        $pointDeVenteId = session('point_de_vente_id') ?? null;
+
+        $query = BonCommande::whereBetween('created_at', [$startDate, $endDate]);
+        if ($pointDeVenteId) {
+            $query->whereHas('panier', function ($q) use ($pointDeVenteId) {
+                $q->where('point_de_vente_id', $pointDeVenteId);
+            });
+        }
+
+        $bons = $query->with(['panier', 'serveuse', 'client', 'utilisateur'])
             ->orderByDesc('numero_bon')
             ->paginate(20);
 
         return view('bon_commande.index', [
             'bons' => $bons,
             'date' => $date,
+            'pointDeVenteId' => $pointDeVenteId,
         ]);
     }
 
@@ -119,7 +128,7 @@ class BonCommandeController extends Controller
                 'serveuse_id' => $serveuse_id,
                 'client_id' => $panier->client_id,
                 'utilisateur_id' => Auth::id(),
-                'produits_json' => json_encode($nouveauxProduits),
+                'produits_json' => $nouveauxProduits,
             ]);
 
             \Log::info('[BonCommande] Bon créé', ['bon_id' => $bon->id, 'numero' => $bon->numero_bon]);

@@ -27,6 +27,25 @@ class BonCommande extends Model
         'updated_at' => 'datetime',
     ];
 
+    public function getProduitsJsonAttribute($value)
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (empty($value)) {
+            return [];
+        }
+
+        $decoded = json_decode($value, true);
+
+        if (is_string($decoded)) {
+            $decoded = json_decode($decoded, true);
+        }
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
     // Relations
     public function panier()
     {

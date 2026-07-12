@@ -24,14 +24,26 @@
                 Exporter PDF
             </a>
         </div>
-        <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="rounded-xl border border-blue-100 bg-blue-50 px-5 py-4">
                 <div class="text-sm font-medium text-blue-700">Total paniers</div>
                 <div class="mt-1 text-2xl font-bold text-blue-900">{{ number_format($totalPaniers ?? $paniers->count(), 0, ',', ' ') }}</div>
             </div>
             <div class="rounded-xl border border-green-100 bg-green-50 px-5 py-4">
-                <div class="text-sm font-medium text-green-700">Total montants</div>
+                <div class="text-sm font-medium text-green-700">Total général</div>
                 <div class="mt-1 text-2xl font-bold text-green-900">{{ number_format($totalMontants ?? 0, 0, ',', ' ') }} $</div>
+            </div>
+            <div class="rounded-xl border border-yellow-100 bg-yellow-50 px-5 py-4">
+                <div class="text-sm font-medium text-yellow-700">Total crédit</div>
+                <div class="mt-1 text-2xl font-bold text-yellow-900">{{ number_format($totalCredit ?? 0, 0, ',', ' ') }} $</div>
+            </div>
+            <div class="rounded-xl border border-indigo-100 bg-indigo-50 px-5 py-4">
+                <div class="text-sm font-medium text-indigo-700">Total espèces</div>
+                <div class="mt-1 text-2xl font-bold text-indigo-900">{{ number_format($totalEspece ?? 0, 0, ',', ' ') }} $</div>
+            </div>
+            <div class="rounded-xl border border-pink-100 bg-pink-50 px-5 py-4 md:col-span-4 lg:col-span-1">
+                <div class="text-sm font-medium text-pink-700">Total Mobile Money</div>
+                <div class="mt-1 text-2xl font-bold text-pink-900">{{ number_format($totalMobileMoney ?? 0, 0, ',', ' ') }} $</div>
             </div>
         </div>
         <div class="mb-6 flex justify-center">
@@ -77,6 +89,7 @@
                     <th class="p-3 text-left">Point de vente</th>
                     <th class="p-3 text-left">Ouvert à</th>
                     <th class="p-3 text-left">Statut</th>
+                    <th class="p-3 text-left">Mode paiement</th>
                     <th class="p-3 text-left">Montant</th>
                     <th class="p-3 text-left">Action</th>
                 </tr>
@@ -118,6 +131,15 @@
                     </td>
                     <td class="p-3">{{ $panier->created_at->format('d/m H:i') }}</td>
                     <td class="p-3">{{ $panier->status }}</td>
+                    <td class="p-3">
+                        @php
+                            $mode = strtolower(str_replace(['_', '-', 'é', 'è', 'ê'], [' ', ' ', 'e', 'e', 'e'], $panier->mode_paiement ?? 'compte_client'));
+                            $modeLabel = $mode === 'compte client' || $mode === 'compte client' ? 'Crédit' : ucfirst($mode);
+                        @endphp
+                        <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold {{ in_array($mode, ['compte client','credit']) ? 'bg-yellow-100 text-yellow-800' : ($mode === 'especes' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800') }}">
+                            {{ $modeLabel }}
+                        </span>
+                    </td>
                     <td class="p-3">{{ number_format($panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * $p->prix_vente), 0, ',', ' ') }} $</td>
                     <td class="p-3">
                         @if($panier->status === 'en_cours')

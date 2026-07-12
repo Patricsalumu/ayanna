@@ -333,15 +333,31 @@ class PanierController extends Controller
         }
 
         $paniers = $paniersQuery
-            ->with(['tableResto', 'serveuse', 'client', 'produits', 'pointDeVente'])
+            ->with(['tableResto', 'serveuse', 'client', 'produits', 'pointDeVente', 'commande'])
             ->orderBy('created_at', 'desc')
             ->get();
 
         $paniersActifs = $paniers->reject(fn($panier) => $panier->status === 'annulé');
         $totalPaniers = $paniersActifs->count();
         $totalMontants = $paniersActifs->sum(fn($panier) => $this->montantPanier($panier));
+        $totalCredit = $paniersActifs
+            ->filter(fn($panier) => in_array($this->normalizeModePaiement($panier->commande?->mode_paiement ?? $panier->mode_paiement), ['compte_client', 'credit'], true))
+            ->sum(fn($panier) => $this->montantPanier($panier));
+        $totalEspece = $paniersActifs
+            ->filter(fn($panier) => $this->normalizeModePaiement($panier->commande?->mode_paiement ?? $panier->mode_paiement) === 'especes')
+            ->sum(fn($panier) => $this->montantPanier($panier));
+        $totalMobileMoney = $paniersActifs
+            ->filter(fn($panier) => $this->normalizeModePaiement($panier->commande?->mode_paiement ?? $panier->mode_paiement) === 'mobile_money')
+            ->sum(fn($panier) => $this->montantPanier($panier));
 
-        return compact('paniers', 'sessions', 'selectedSession', 'totalPaniers', 'totalMontants');
+        return compact('paniers', 'sessions', 'selectedSession', 'totalPaniers', 'totalMontants', 'totalCredit', 'totalEspece', 'totalMobileMoney');
+    }
+
+    private function normalizeModePaiement(?string $mode): string
+    {
+        $mode = trim(strtolower($mode ?? ''));
+        $mode = str_replace([' ', '-', 'é', 'è', 'ê', 'à'], ['_', '_', 'e', 'e', 'e', 'a'], $mode);
+        return $mode;
     }
 
     private function montantPanier(Panier $panier): float

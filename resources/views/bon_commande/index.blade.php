@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.appvente')
 
 @section('content')
 <div class="container mx-auto p-6">
@@ -66,9 +66,15 @@
                                     {{ $bon->created_at->format('d/m/Y H:i') }}
                                 </td>
                                 <td class="px-6 py-4 text-sm">
-                                    @if($bon->produits_json && count($bon->produits_json) > 0)
+                                    @php
+                                        $produits = is_string($bon->produits_json)
+                                            ? json_decode($bon->produits_json, true)
+                                            : ($bon->produits_json ?? []);
+                                    @endphp
+
+                                    @if(is_array($produits) && count($produits) > 0)
                                         <ul class="list-disc list-inside">
-                                            @foreach($bon->produits_json as $produit)
+                                            @foreach($produits as $produit)
                                                 <li>{{ $produit['nom'] }} x{{ $produit['quantite'] }}</li>
                                             @endforeach
                                         </ul>
@@ -77,8 +83,7 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <a href="{{ route('bon-commande.print', $bon->id) }}" 
-                                       target="_blank"
+                                    <a href="{{ route('bon-commande.print', $bon->id) }}"
                                        class="text-blue-600 hover:text-blue-900 mr-3">
                                         Imprimer
                                     </a>

@@ -19,12 +19,22 @@ class Panier extends Model
         'opened_by',
         'last_modified_by',
         'produits_json',
+        'mode_paiement',
         'status', // Ajouté pour permettre la modification
     ];
 
     protected $casts = [
         'produits_json' => 'array',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($panier) {
+            if (($panier->status ?? 'en_cours') === 'en_cours' && empty($panier->mode_paiement)) {
+                $panier->mode_paiement = 'compte_client';
+            }
+        });
+    }
 
     // Relations
     public function client()
@@ -47,6 +57,11 @@ class Panier extends Model
         return $this->belongsTo(PointDeVente::class, 'point_de_vente_id');
     }
 
+    public function commande()
+    {
+        return $this->hasOne(Commande::class, 'panier_id');
+    }
+
     public function openedBy()
     {
         return $this->belongsTo(User::class, 'opened_by');
@@ -62,5 +77,27 @@ class Panier extends Model
         return $this->belongsToMany(Produit::class, 'panier_produit')
             ->withPivot('quantite')
             ->withTimestamps();
+    }
+
+    public function getModePaiementEffectiveAttribute(): string
+    {
+        return $this->commande?->mode_paiement ?? $this->mode_paiement ?? 'compte_client';
+    }
+
+    public function getModePaiementLabelAttribute(): string
+    {
+        $mode = strtolower(str_replace(['_', '-', 'é', 'è', 'ê', 'à'], [' ', ' ', 'e', 'e', 'e', 'a'], $this->mode_paiement_effective));
+
+        if (in_array($mode, ['compte client', 'credit'], true)) {
+            return 'Crédit';
+        }
+        if ($mode === 'especes' || $mode === 'espèces' || $mode === 'espace') {
+            return 'Espèces';
+        }
+        if ($mode === 'mobile money' || $mode === 'mobile_money') {
+            return 'Mobile Money';
+        }
+
+        return ucfirst($mode);
     }
 }
