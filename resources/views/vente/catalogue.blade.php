@@ -266,8 +266,16 @@
           <button @click="paiement.modePaiement = 'compte_client'" :class="paiement.modePaiement === 'compte_client' ? 'bg-blue-500 text-white font-bold ring-2 ring-blue-300' : 'bg-gray-100 text-gray-700'" class="px-4 py-2 rounded transition">Compte Client</button>
         </div>
         <div class="mb-2 text-center">
-          <div class="text-lg font-semibold">Montant reçu</div>
-          <div class="text-2xl font-bold bg-green-100 text-green-800 rounded-lg px-4 py-2 inline-block" x-text="formatMoney(paiement.montantRecu) + ' $'"></div>
+          <label class="block text-lg font-semibold mb-2">Montant reçu</label>
+          <input
+            x-model.number="paiement.montantRecu"
+            @input="paiement.monnaie = paiement.montantRecu - total"
+            type="number"
+            min="0"
+            step="1"
+            class="w-full text-center text-2xl font-bold bg-green-100 text-green-800 rounded-lg px-4 py-2 appearance-none border border-green-200 focus:outline-none focus:ring-2 focus:ring-green-300"
+            placeholder="Entrez le montant reçu"
+          />
         </div>
         <div class="mb-2 text-center">
           <span class="text-gray-600">Rendu monnaie :</span>
