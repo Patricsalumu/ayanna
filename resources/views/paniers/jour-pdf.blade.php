@@ -128,7 +128,9 @@
     <table class="summary">
         <tr>
             <td>Total paniers : {{ number_format($totalPaniers, 0, ',', ' ') }}</td>
-            <td class="amount">Total montants : {{ number_format($totalMontants, 0, ',', ' ') }} $</td>
+            <td class="amount">Total montant : {{ number_format($totalMontants ?? 0, 0, ',', ' ') }} $</td>
+            <td class="amount">Total payé : {{ number_format($totalPaye ?? 0, 0, ',', ' ') }} $</td>
+            <td class="amount">Total crédit : {{ number_format($totalCredit ?? 0, 0, ',', ' ') }} $</td>
         </tr>
     </table>
 
@@ -165,7 +167,7 @@
             @endforelse
             <tr class="footer-total">
                 <td colspan="6" class="right">Total</td>
-                <td class="right">{{ number_format($totalMontants, 0, ',', ' ') }} $</td>
+                <td class="right">{{ number_format($totalMontants ?? 0, 0, ',', ' ') }} $</td>
             </tr>
         </tbody>
     </table>

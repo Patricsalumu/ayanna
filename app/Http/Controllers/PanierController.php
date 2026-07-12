@@ -340,17 +340,24 @@ class PanierController extends Controller
         $paniersActifs = $paniers->reject(fn($panier) => $panier->status === 'annulé');
         $totalPaniers = $paniersActifs->count();
         $totalMontants = $paniersActifs->sum(fn($panier) => $this->montantPanier($panier));
+        // Total payé = somme des montants des paniers dont le mode de paiement est 'especes'
+        $totalPaye = $paniersActifs
+            ->filter(function($panier) {
+                $modeRaw = $panier->commande?->mode_paiement ?? $panier->mode_paiement ?? 'compte_client';
+                $modeNorm = $this->normalizeModePaiement($modeRaw);
+                return str_contains($modeNorm, 'especes');
+            })
+            ->sum(fn($panier) => $this->montantPanier($panier));
+        // Total crédit = somme des montants des paniers dont le mode de paiement est crédit
         $totalCredit = $paniersActifs
-            ->filter(fn($panier) => in_array($this->normalizeModePaiement($panier->commande?->mode_paiement ?? $panier->mode_paiement), ['compte_client', 'credit'], true))
-            ->sum(fn($panier) => $this->montantPanier($panier));
-        $totalEspece = $paniersActifs
-            ->filter(fn($panier) => $this->normalizeModePaiement($panier->commande?->mode_paiement ?? $panier->mode_paiement) === 'especes')
-            ->sum(fn($panier) => $this->montantPanier($panier));
-        $totalMobileMoney = $paniersActifs
-            ->filter(fn($panier) => $this->normalizeModePaiement($panier->commande?->mode_paiement ?? $panier->mode_paiement) === 'mobile_money')
+            ->filter(function($panier) {
+                $modeRaw = $panier->commande?->mode_paiement ?? $panier->mode_paiement ?? 'compte_client';
+                $modeNorm = $this->normalizeModePaiement($modeRaw);
+                return str_contains($modeNorm, 'compte') || in_array($modeNorm, ['credit', 'compteclient', 'compte_client'], true);
+            })
             ->sum(fn($panier) => $this->montantPanier($panier));
 
-        return compact('paniers', 'sessions', 'selectedSession', 'totalPaniers', 'totalMontants', 'totalCredit', 'totalEspece', 'totalMobileMoney');
+        return compact('paniers', 'sessions', 'selectedSession', 'totalPaniers', 'totalMontants', 'totalPaye', 'totalCredit');
     }
 
     private function normalizeModePaiement(?string $mode): string
