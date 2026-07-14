@@ -20,7 +20,13 @@
         @csrf
         <input type="hidden" name="date" value="{{ $date }}">
         <input type="hidden" name="point_de_vente_id" value="{{ $pointDeVente->id }}">
-        <table class="min-w-full bg-white rounded shadow mb-6">
+
+        <div class="mb-4">
+            <label for="searchProduct" class="block text-sm font-semibold text-gray-700 mb-2">Rechercher un produit</label>
+            <input id="searchProduct" type="text" placeholder="Tapez le nom du produit..." class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" autocomplete="off">
+        </div>
+
+        <table id="ouvertureTable" class="min-w-full bg-white rounded shadow mb-6">
             <thead>
                 <tr class="bg-gray-100 text-gray-700">
                     <th class="p-2 text-left">Produit</th>
@@ -30,7 +36,7 @@
             </thead>
             <tbody>
                 @foreach($produits as $produit)
-                <tr class="border-b">
+                <tr class="border-b product-row" data-product-name="{{ strtolower($produit->nom) }}">
                     <td class="p-2">{{ $produit->nom }}</td>
                     <td class="p-2 text-center">{{ $stocksDerniereSession[$produit->id] ?? 0 }}</td>
                     <td class="p-2 text-center">
@@ -48,4 +54,47 @@
         @endif
     </form>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('searchProduct');
+        const rows = document.querySelectorAll('#ouvertureTable .product-row');
+        const tbody = document.querySelector('#ouvertureTable tbody');
+
+        const noResultRow = document.createElement('tr');
+        noResultRow.id = 'no-result-row';
+        noResultRow.innerHTML = `
+            <td colspan="3" class="px-6 py-8 text-center">
+                <div class="text-gray-500">
+                    <div class="text-4xl mb-3">🔍</div>
+                    <div class="text-lg font-medium mb-2">Aucun produit trouvé</div>
+                    <div class="text-sm">Essayez de modifier votre recherche</div>
+                </div>
+            </td>
+        `;
+
+        function filterProducts() {
+            const filter = searchInput.value.trim().toLowerCase();
+            let visibleCount = 0;
+
+            rows.forEach(function (row) {
+                const productName = row.dataset.productName || '';
+                const matches = productName.includes(filter);
+                row.style.display = matches ? '' : 'none';
+                if (matches) visibleCount++;
+            });
+
+            if (visibleCount === 0 && filter !== '') {
+                if (!tbody.querySelector('#no-result-row')) {
+                    tbody.appendChild(noResultRow);
+                }
+            } else {
+                const existing = tbody.querySelector('#no-result-row');
+                if (existing) existing.remove();
+            }
+        }
+
+        searchInput.addEventListener('input', filterProducts);
+    });
+</script>
 @endsection
