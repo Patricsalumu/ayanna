@@ -20,11 +20,11 @@ class RapportController extends Controller
             })
             ->get();
         $recette = $commandes->sum(function($cmd) {
-            return $cmd->montant ?? ($cmd->panier ? $cmd->panier->produits->sum(function($p) { return $p->pivot->quantite * $p->prix_vente; }) : 0);
+            return $cmd->montant ?? ($cmd->panier ? $cmd->panier->produits->sum(function($p) { return $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0); }) : 0);
         });
         $creances = $commandes->whereIn('mode_paiement', ['compte_client', 'credit']);
         $totalCreance = $creances->sum(function($cmd) {
-            return $cmd->montant ?? ($cmd->panier ? $cmd->panier->produits->sum(function($p) { return $p->pivot->quantite * $p->prix_vente; }) : 0);
+            return $cmd->montant ?? ($cmd->panier ? $cmd->panier->produits->sum(function($p) { return $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0); }) : 0);
         });
         $detailsCreance = $creances->groupBy(function($cmd) {
             return $cmd->panier->client_id ?? 0;
@@ -32,7 +32,7 @@ class RapportController extends Controller
             $client = $cmds->first()->panier->client->nom ?? 'Inconnu';
             $serveuses = $cmds->pluck('panier.serveuse.name')->unique()->toArray();
             $total = $cmds->sum(function($cmd) {
-                return $cmd->montant ?? ($cmd->panier ? $cmd->panier->produits->sum(function($p) { return $p->pivot->quantite * $p->prix_vente; }) : 0);
+                return $cmd->montant ?? ($cmd->panier ? $cmd->panier->produits->sum(function($p) { return $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0); }) : 0);
             });
             return [
                 'client' => $client,

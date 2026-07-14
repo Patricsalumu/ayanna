@@ -35,7 +35,7 @@ class Commande extends Model
     public function getMontantRestantAttribute()
     {
         $montantTotal = $this->montant ?? ($this->panier && $this->panier->produits ? 
-            $this->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente) : 0);
+            $this->panier->produits->sum(fn($p) => $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0)) : 0);
         return $montantTotal - $this->total_paye;
     }
 

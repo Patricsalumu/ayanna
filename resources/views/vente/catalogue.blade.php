@@ -48,8 +48,18 @@
           </div>
           <table class="w-full text-sm sticky bottom-0 bg-white">
             <tbody>
+              <tr class="border-t">
+                <td colspan="3" class="text-right py-1">Sous-total</td>
+                <td class="text-right" x-text="totalHt.toLocaleString()+' $'"></td>
+              </tr>
+              <tr class="border-t">
+                <td colspan="3" class="text-right py-1">Remise</td>
+                <td class="text-right">
+                  <input x-model.number="remise" type="number" min="0" step="0.01" class="w-full text-right border border-gray-300 rounded px-2 py-1" placeholder="0" />
+                </td>
+              </tr>
               <tr class="font-bold border-t">
-                <td colspan="3" class="text-right py-1">Total</td>
+                <td colspan="3" class="text-right py-1">Net à payer</td>
                 <td class="text-right" x-text="total.toLocaleString()+' $'"></td>
               </tr>
             </tbody>

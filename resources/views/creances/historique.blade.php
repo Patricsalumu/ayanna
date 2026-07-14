@@ -45,7 +45,7 @@
             <div class="bg-green-50 rounded-xl p-4 border border-green-200">
                 <h3 class="font-bold text-green-700 mb-3">Résumé financier</h3>
                 @php
-                    $montantTotal = $commande->montant ?? $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente);
+                    $montantTotal = $commande->montant ?? $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0));
                     $montantPaye = $commande->paiements->sum('montant');
                     $montantRestant = $montantTotal - $montantPaye;
                 @endphp
@@ -191,9 +191,9 @@
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-6 py-4 font-medium text-gray-900">{{ $produit->nom }}</td>
                             <td class="px-6 py-4 text-center text-gray-700">{{ $produit->pivot->quantite }}</td>
-                            <td class="px-6 py-4 text-right text-gray-700">{{ number_format($produit->prix_vente, 0, ',', ' ') }} $</td>
+                            <td class="px-6 py-4 text-right text-gray-700">{{ number_format(($produit->pivot->prix ?? $produit->prix_vente) ?? 0, 0, ',', ' ') }} $</td>
                             <td class="px-6 py-4 text-right font-bold text-green-600">
-                                {{ number_format($produit->pivot->quantite * $produit->prix_vente, 0, ',', ' ') }} $
+                                {{ number_format($produit->pivot->quantite * (($produit->pivot->prix ?? $produit->prix_vente) ?? 0), 0, ',', ' ') }} $
                             </td>
                         </tr>
                     @endforeach

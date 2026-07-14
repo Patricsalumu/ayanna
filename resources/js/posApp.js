@@ -21,6 +21,7 @@ function posApp() {
     montant_recu: '',
     renduMonnaie: '',
     mode: 'commande',
+    remise: 0,
     paiement: {
       montantRecu: 0,
       monnaie: 0,
@@ -47,8 +48,17 @@ function posApp() {
       return colors[(categoryId || 0) % colors.length];
     },
     
+    get totalHt(){
+      return this.panier.filter(item => item.qte > 0).reduce((sum,item) => sum + item.qte * item.prix, 0);
+    },
+    get totalRemise(){
+      return Math.max(0, Number(this.remise) || 0);
+    },
+    get totalTva(){
+      return 0;
+    },
     get total(){
-      return this.panier.filter(item => item.qte > 0).reduce((a,b)=> a+ b.qte*b.prix,0);
+      return Math.max(0, this.totalHt - this.totalRemise);
     },
     get filteredProduits(){
       return this.produits.filter(p => {
@@ -388,6 +398,7 @@ function posApp() {
           mode_paiement: this.paiement.modePaiement,
           client_id: this.paiement.client_id,
           serveuse_id: this.paiement.serveuse_id,
+          remise: this.remise,
           table_id: window.TABLE_COURANTE,
           point_de_vente_id: window.POINT_DE_VENTE_ID,
           panier_id: (this.panier && this.panier.length && this.panier[0].panier_id) ? this.panier[0].panier_id : (window.PANIER_ID || null)
@@ -434,6 +445,7 @@ function posApp() {
             mode_paiement: this.paiement.modePaiement,
             client_id: this.paiement.client_id,
             serveuse_id: this.paiement.serveuse_id,
+            remise: this.remise,
             table_id: window.TABLE_COURANTE,
             point_de_vente_id: window.POINT_DE_VENTE_ID,
             panier_id: (this.panier && this.panier.length && this.panier[0].panier_id) ? this.panier[0].panier_id : (window.PANIER_ID || null)
@@ -505,7 +517,9 @@ function posApp() {
       });
       html += `</tbody></table>`;
       html += `<div style='border-top:1px dashed #222;margin:6px 0;'></div>`;
-      html += `<div style='text-align:right;font-size:14px;font-weight:bold;'>TOTAL : ${total.toLocaleString()} $</div>`;
+      html += `<div style='text-align:right;font-size:12px;'>Sous-total : ${this.totalHt.toLocaleString()} $</div>`;
+      html += `<div style='text-align:right;font-size:12px;'>Remise : ${this.totalRemise.toLocaleString()} $</div>`;
+      html += `<div style='text-align:right;font-size:14px;font-weight:bold;'>Net à payer : ${this.total.toLocaleString()} $</div>`;
       html += `<div style='text-align:center;font-size:11px;margin-top:10px;'>Merci pour votre visite !</div>`;
       html += `<div style='text-align:center;font-size:10px;margin-top:8px;'>Généré par Ayanna &copy; | ${dateStr} ${heureStr}</div>`;
       html += `</div>`;

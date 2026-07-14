@@ -6,7 +6,6 @@ use App\Models\PointDeVente;
 use App\Models\Historiquepdv;
 use App\Models\Panier;
 use App\Models\Commande;
-use App\Services\ComptabiliteService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -52,7 +51,7 @@ class VenteController extends Controller
                             'id' => $prod->id,
                             'nom' => $prod->nom,
                             'qte' => $prod->pivot->quantite,
-                            'prix' => $prod->prix_vente,
+                            'prix' => $prod->pivot->prix ?? $prod->prix_vente,
                             'image' => $prod->image ? asset('storage/'.$prod->image) : null,
                             'cat_id' => $prod->categorie_id,
                         ];
@@ -158,7 +157,7 @@ class VenteController extends Controller
                             'id' => $prod->id,
                             'nom' => $prod->nom,
                             'qte' => $prod->pivot->quantite,
-                            'prix' => $prod->prix_vente,
+                            'prix' => $prod->pivot->prix ?? $prod->prix_vente,
                             'image' => $prod->image ? asset('storage/'.$prod->image) : null,
                             'cat_id' => $prod->categorie_id,
                         ];
@@ -216,12 +215,17 @@ class VenteController extends Controller
             if ($updated) $panier->save();
 
             // 2. Vérifier si le produit est déjà dans le panier
+            $produitModel = \App\Models\Produit::find($produitId);
+            $prix = $produitModel?->prix_vente ?? 0;
             $existant = $panier->produits()->where('produit_id', $produitId)->first();
             if ($existant) {
                 $nouvelleQte = $existant->pivot->quantite + 1;
-                $panier->produits()->updateExistingPivot($produitId, ['quantite' => $nouvelleQte]);
+                $panier->produits()->updateExistingPivot($produitId, [
+                    'quantite' => $nouvelleQte,
+                    'prix' => $existant->pivot->prix ?? $prix,
+                ]);
             } else {
-                $panier->produits()->attach($produitId, ['quantite' => 1]);
+                $panier->produits()->attach($produitId, ['quantite' => 1, 'prix' => $prix]);
             }
 
             // 3. Retourner le panier actualisé (structure attendue par le JS/vue)
@@ -230,7 +234,7 @@ class VenteController extends Controller
                 return [
                     'id' => $prod->id,
                     'nom' => $prod->nom,
-                    'prix' => $prod->prix_vente,
+                    'prix' => $prod->pivot->prix ?? $prod->prix_vente,
                     'qte' => $prod->pivot->quantite,
                     'image' => $prod->image ? asset('storage/'.$prod->image) : null,
                     'cat_id' => $prod->categorie_id,
@@ -373,6 +377,12 @@ class VenteController extends Controller
                 Log::info('[VALIDATION PAIEMENT] Aucun montant fourni, calcul depuis le panier');
             }
 
+            // Gestion de la remise
+            $remise = isset($data['remise']) ? floatval($data['remise']) : 0;
+            if ($remise < 0) {
+                return response()->json(['error' => 'La remise doit être positive'], 400);
+            }
+
             // Vérification du panier (accepter 'panier' ou récupérer via 'panier_id' ou 'table_id')
             if (!empty($data['panier']) && is_array($data['panier'])) {
                 // Mode avec panier complet envoyé
@@ -427,11 +437,25 @@ class VenteController extends Controller
             // Calculer le montant depuis le panier si pas fourni
             if (!$montant) {
                 $panier->load('produits');
-                $montant = $panier->produits->sum(function($produit) {
-                    return $produit->pivot->quantite * $produit->prix_vente;
+                $panierTotalHt = $panier->produits->sum(function($produit) {
+                    return ($produit->pivot->quantite ?? 0) * (($produit->pivot->prix ?? $produit->prix_vente) ?? 0);
                 });
-                Log::info('[VALIDATION PAIEMENT] Montant calculé depuis le panier', ['montant_calcule' => $montant]);
+                $montant = max(0, $panierTotalHt - $remise);
+                Log::info('[VALIDATION PAIEMENT] Montant calculé depuis le panier', ['total_ht' => $panierTotalHt, 'remise' => $remise, 'montant_calcule' => $montant]);
+            } else {
+                $panier->load('produits');
+                $panierTotalHt = $panier->produits->sum(function($produit) {
+                    return ($produit->pivot->quantite ?? 0) * (($produit->pivot->prix ?? $produit->prix_vente) ?? 0);
+                });
+                Log::info('[VALIDATION PAIEMENT] Montant fourni explicitement', ['montant_provided' => $montant, 'total_ht' => $panierTotalHt, 'remise' => $remise]);
             }
+
+            // Mettre à jour les totaux du panier avant de valider
+            $panier->total_ht = $panierTotalHt;
+            $panier->total_remise = $remise;
+            $panier->total_tva = 0;
+            $panier->total_ttc = max(0, $panierTotalHt - $panier->total_tva - $remise);
+            $panier->save();
 
             // 2. Créer la commande à partir du panier (seulement les champs qui existent dans la table)
             $commande = new Commande();
@@ -640,7 +664,7 @@ class VenteController extends Controller
             }
             
             // Calculer le montant total de la commande
-            $montantTotal = $commande->montant ?? $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente);
+            $montantTotal = $commande->montant ?? $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0));
             
             // Calculer le montant déjà payé
             $montantDejaPaye = $commande->paiements->sum('montant');
@@ -808,7 +832,7 @@ class VenteController extends Controller
 
         foreach ($creances as $commande) {
             if ($commande->panier && $commande->panier->produits) {
-                $montantTotal = $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente);
+                $montantTotal = $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0));
                 $montantPaye = $commande->paiements->sum('montant');
                 $montantRestant = max(0, $montantTotal - $montantPaye);
                 

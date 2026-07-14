@@ -78,7 +78,7 @@
                             @php
                                 $totalRestant = $creances->sum(function($commande) {
                                     if ($commande->panier && $commande->panier->produits) {
-                                        $montantTotal = $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente);
+                                        $montantTotal = $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0));
                                         $montantPaye = $commande->paiements->sum('montant');
                                         return max(0, $montantTotal - $montantPaye);
                                     }
@@ -116,7 +116,7 @@
                         @foreach($creances as $commande)
                             @php
                                 $montantTotal = $commande->panier && $commande->panier->produits ? 
-                                    $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente) : 0;
+                                    $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0)) : 0;
                                 $montantPaye = $commande->paiements ? $commande->paiements->sum('montant') : 0;
                                 $montantRestant = max(0, $montantTotal - $montantPaye);
                             @endphp
@@ -155,12 +155,12 @@
                                 <!-- Montant total -->
                                 <td class="px-4 py-2 text-right">
                                     <div class="font-semibold text-green-600">
-                                    {{ number_format($commande->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente), 0, ',', ' ') }} $
+                                    {{ number_format($commande->panier->produits->sum(fn($p) => $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0)), 0, ',', ' ') }} $
                                 
                                 <!-- Montant restant -->
                                 <td class="px-4 py-2 text-right">
                                     @php
-                                        $montantTotal = $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente);
+                                        $montantTotal = $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0));
                                         $montantPaye = $commande->paiements->sum('montant');
                                         $montantRestant = $montantTotal - $montantPaye;
                                     @endphp
@@ -207,8 +207,8 @@
                                             <button onclick="ouvrirModalePaiement(this)"
                                                     data-commande-id="{{ $commande->id }}"
                                                     data-client-nom="{{ $commande->panier->client->nom ?? 'N/A' }}"
-                                                    data-montant-total="{{ $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente) }}"
-                                                    data-montant-restant="{{ $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente) - $commande->paiements->sum('montant') }}"
+                                                    data-montant-total="{{ $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0)) }}"
+                                                    data-montant-restant="{{ $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0)) - $commande->paiements->sum('montant') }}"
                                                     class="inline-flex items-center px-3 py-2 bg-green-600 text-white font-medium rounded-lg text-sm hover:bg-green-700 transition-colors shadow-sm"
                                                     title="Encaisser le paiement">
                                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -581,13 +581,14 @@
             
             let totalGeneral = 0;
             commande.panier.produits.forEach(prod => {
-                const total = prod.pivot.quantite * prod.prix_vente;
+                const unitPrice = prod.pivot?.prix ?? prod.prix_vente;
+                const total = prod.pivot.quantite * unitPrice;
                 totalGeneral += total;
                 html += `
                     <tr class="hover:bg-gray-50">
                         <td class="px-3 py-3 font-medium text-gray-900">${prod.nom}</td>
                         <td class="px-3 py-3 text-center text-gray-700">${prod.pivot.quantite}</td>
-                        <td class="px-3 py-3 text-right text-gray-700">${prod.prix_vente.toLocaleString()} $</td>
+                        <td class="px-3 py-3 text-right text-gray-700">${unitPrice.toLocaleString()} $</td>
                         <td class="px-3 py-3 text-right font-bold text-green-600">${total.toLocaleString()} $</td>
                     </tr>
                 `;

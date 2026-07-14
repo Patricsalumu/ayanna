@@ -3,7 +3,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Panier;
-use App\Models\Produit;
 use App\Models\User;
 use App\Models\Client;
 use Illuminate\Support\Facades\Auth;
@@ -101,7 +100,8 @@ class PanierController extends Controller
             if ($existant) {
                 $panier->produits()->updateExistingPivot($produit_id, ['quantite' => $quantite]);
             } else if ($quantite > 0) {
-                $panier->produits()->attach($produit_id, ['quantite' => $quantite]);
+                $produit = \App\Models\Produit::find($produit_id);
+                $panier->produits()->attach($produit_id, ['quantite' => $quantite, 'prix' => $produit?->prix_vente ?? 0]);
             }
 
             $panier->load('produits');
@@ -109,7 +109,7 @@ class PanierController extends Controller
                 return [
                     'id' => $prod->id,
                     'nom' => $prod->nom,
-                    'prix' => $prod->prix_vente,
+                    'prix' => $prod->pivot->prix ?? $prod->prix_vente,
                     'qte' => $prod->pivot->quantite,
                     'image' => $prod->image ? asset('storage/'.$prod->image) : null,
                     'cat_id' => $prod->categorie_id,
@@ -150,7 +150,7 @@ class PanierController extends Controller
                 return [
                     'id' => $prod->id,
                     'nom' => $prod->nom,
-                    'prix' => $prod->prix_vente,
+                    'prix' => $prod->pivot->prix ?? $prod->prix_vente,
                     'qte' => $prod->pivot->quantite,
                     'image' => $prod->image ? asset('storage/'.$prod->image) : null,
                     'cat_id' => $prod->categorie_id,
@@ -370,7 +370,7 @@ class PanierController extends Controller
     private function montantPanier(Panier $panier): float
     {
         return (float) $panier->produits->sum(function ($produit) {
-            return max(0, $produit->pivot->quantite) * $produit->prix_vente;
+            return max(0, $produit->pivot->quantite) * (($produit->pivot->prix ?? $produit->prix_vente) ?? 0);
         });
     }
 
@@ -390,11 +390,11 @@ class PanierController extends Controller
         }
 
         $panier = Panier::findOrFail($id);
-        \Log::debug('[DEBUG PANIER ANNULER] Avant', ['id' => $id, 'status' => $panier->status]);
+        Log::debug('[DEBUG PANIER ANNULER] Avant', ['id' => $id, 'status' => $panier->status]);
         if ($panier->status === 'en_cours') {
             $panier->status = 'annulé';
             $panier->save();
-            \Log::debug('[DEBUG PANIER ANNULER] Après', ['id' => $id, 'status' => $panier->status]);
+            Log::debug('[DEBUG PANIER ANNULER] Après', ['id' => $id, 'status' => $panier->status]);
         }
         $requestFrom = request('from');
         if ($requestFrom === 'jour') {

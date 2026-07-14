@@ -268,7 +268,7 @@
                 @foreach($creances as $commande)
                     @php
                         $montantTotal = $commande->panier && $commande->panier->produits ? 
-                            $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * $p->prix_vente) : 0;
+                            $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0)) : 0;
                         $montantPaye = $commande->paiements ? $commande->paiements->sum('montant') : 0;
                         $montantRestant = max(0, $montantTotal - $montantPaye);
                     @endphp

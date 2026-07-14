@@ -24,22 +24,55 @@
                 Exporter PDF
             </a>
         </div>
+        @php
+            $totalPaniersCount = $paniers->count();
+            $totalMontantsCalc = $paniers->sum(function($panier) {
+                $montant = $panier->total_ttc ?? (
+                    $panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * (($p->pivot->prix ?? $p->prix_vente) ?? 0))
+                    - ($panier->remise ?? 0)
+                    + ($panier->total_tva ?? 0)
+                );
+                return $montant;
+            });
+
+            $totalPayeCalc = $paniers->sum(function($panier) {
+                if ($panier->commande && $panier->commande->paiements) {
+                    return $panier->commande->paiements->sum('montant');
+                }
+                return 0;
+            });
+
+            $totalCreditCalc = $paniers->sum(function($panier) {
+                $modeRaw = $panier->commande?->mode_paiement ?? $panier->mode_paiement ?? 'compte_client';
+                $modeNorm = strtolower(str_replace(['_', '-', ' ', 'é', 'è', 'ê'], ['', '', '', 'e', 'e', 'e'], $modeRaw));
+                $isCredit = str_contains($modeNorm, 'compte') || in_array($modeNorm, ['credit', 'compteclient', 'compte_client'], true);
+                if (!$isCredit) return 0;
+                $montant = $panier->total_ttc ?? (
+                    $panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * (($p->pivot->prix ?? $p->prix_vente) ?? 0))
+                    - ($panier->remise ?? 0)
+                    + ($panier->total_tva ?? 0)
+                );
+                $paye = ($panier->commande && $panier->commande->paiements) ? $panier->commande->paiements->sum('montant') : 0;
+                return max(0, $montant - $paye);
+            });
+        @endphp
+
         <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="rounded-xl border border-blue-100 bg-blue-50 px-5 py-4">
                 <div class="text-sm font-medium text-blue-700">Total paniers</div>
-                <div class="mt-1 text-2xl font-bold text-blue-900">{{ number_format($totalPaniers ?? $paniers->count(), 0, ',', ' ') }}</div>
+                <div class="mt-1 text-2xl font-bold text-blue-900">{{ number_format($totalPaniersCount, 0, ',', ' ') }}</div>
             </div>
             <div class="rounded-xl border border-indigo-100 bg-indigo-50 px-5 py-4">
-                <div class="text-sm font-medium text-indigo-700">Total montant</div>
-                <div class="mt-1 text-2xl font-bold text-indigo-900">{{ number_format($totalMontants ?? 0, 0, ',', ' ') }} $</div>
+                <div class="text-sm font-medium text-indigo-700">Total montant (TTC)</div>
+                <div class="mt-1 text-2xl font-bold text-indigo-900">{{ number_format($totalMontantsCalc ?? 0, 0, ',', ' ') }} $</div>
             </div>
             <div class="rounded-xl border border-green-100 bg-green-50 px-5 py-4">
                 <div class="text-sm font-medium text-green-700">Total payé</div>
-                <div class="mt-1 text-2xl font-bold text-green-900">{{ number_format($totalPaye ?? 0, 0, ',', ' ') }} $</div>
+                <div class="mt-1 text-2xl font-bold text-green-900">{{ number_format($totalPayeCalc ?? 0, 0, ',', ' ') }} $</div>
             </div>
             <div class="rounded-xl border border-yellow-100 bg-yellow-50 px-5 py-4">
                 <div class="text-sm font-medium text-yellow-700">Total crédit</div>
-                <div class="mt-1 text-2xl font-bold text-yellow-900">{{ number_format($totalCredit ?? 0, 0, ',', ' ') }} $</div>
+                <div class="mt-1 text-2xl font-bold text-yellow-900">{{ number_format($totalCreditCalc ?? 0, 0, ',', ' ') }} $</div>
             </div>
         </div>
         <div class="mb-6 flex justify-center">
@@ -102,14 +135,15 @@
                         'ouvert_a' => $panier->created_at->format('d/m H:i'),
                         'status' => $panier->status,
                         'produits' => $panier->produits->map(function($prod) {
+                            $unit = $prod->pivot->prix ?? $prod->prix_vente;
                             return [
                                 'nom' => $prod->nom,
                                 'quantite' => $prod->pivot->quantite,
-                                'prix' => $prod->prix_vente,
-                                'total' => max(0, $prod->pivot->quantite) * $prod->prix_vente,
+                                'prix' => $unit,
+                                'total' => max(0, $prod->pivot->quantite) * ($unit ?? 0),
                             ];
                         })->toArray(),
-                        'total' => $panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * $p->prix_vente),
+                        'total' => $panier->total_ttc ?? ($panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * (($p->pivot->prix ?? $p->prix_vente) ?? 0)) - ($panier->remise ?? 0) + ($panier->total_tva ?? 0)),
                     ];
                 @endphp
                 <tr class="hover:bg-gray-100 {{ $panier->status !== 'annulé' ? 'cursor-pointer' : 'opacity-60' }} panier-row"
@@ -137,7 +171,14 @@
                         @endphp
                         <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold {{ $modeClass }}">{{ $modeLabel }}</span>
                     </td>
-                    <td class="p-3">{{ number_format($panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * $p->prix_vente), 0, ',', ' ') }} $</td>
+                    @php
+                        if(($panier->status ?? '') === 'en_cours') {
+                            $displayMontant = $panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * (($p->pivot->prix ?? $p->prix_vente) ?? 0));
+                        } else {
+                            $displayMontant = $panier->total_ttc ?? ($panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * (($p->pivot->prix ?? $p->prix_vente) ?? 0)) - ($panier->remise ?? 0) + ($panier->total_tva ?? 0));
+                        }
+                    @endphp
+                    <td class="p-3">{{ number_format($displayMontant ?? 0, 0, ',', ' ') }} $</td>
                     <td class="p-3">
                         @if($panier->status === 'en_cours')
                             @if(!in_array(Auth::user()->role ?? null, ['comptoiriste','serveuse']))
@@ -148,7 +189,7 @@
                                     <button type="button" 
                                         class="bg-red-600 text-white rounded-full text-xs px-3 py-1 hover:bg-red-700 annuler-btn"
                                         data-table="{{ $panier->tableResto->nom ?? 'Table ' . $panier->table_id }}"
-                                        data-montant="{{ number_format($panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * $p->prix_vente), 0, ',', ' ') }} $">
+                                        data-montant="{{ number_format($displayMontant ?? 0, 0, ',', ' ') }} $">
                                         Annuler
                                     </button>
                                 </form>

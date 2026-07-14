@@ -22,7 +22,7 @@ class Produit extends Model
     public function paniers()
     {
         return $this->belongsToMany(Panier::class, 'panier_produit')
-            ->withPivot('quantite')
+            ->withPivot('quantite', 'prix')
             ->withTimestamps();
     }
     public function stockJournalier()

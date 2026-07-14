@@ -198,13 +198,13 @@
             @endphp
             @foreach($commande->panier->produits as $produit)
                 @php
-                    $totalProduit = $produit->pivot->quantite * $produit->prix_vente;
+                    $totalProduit = $produit->pivot->quantite * (($produit->pivot->prix ?? $produit->prix_vente) ?? 0);
                     $montantTotal += $totalProduit;
                 @endphp
                 <tr>
                     <td>{{ $produit->nom }}</td>
                     <td class="text-center">{{ $produit->pivot->quantite }}</td>
-                    <td class="text-right">{{ number_format($produit->prix_vente, 0, ',', ' ') }} $</td>
+                    <td class="text-right">{{ number_format(($produit->pivot->prix ?? $produit->prix_vente) ?? 0, 0, ',', ' ') }} $</td>
                     <td class="text-right">{{ number_format($totalProduit, 0, ',', ' ') }} $</td>
                 </tr>
             @endforeach

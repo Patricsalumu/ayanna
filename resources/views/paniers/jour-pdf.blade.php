@@ -125,12 +125,40 @@
         <div class="clear"></div>
     </div>
 
+    @php
+        $totalPaniersCount = $paniers->count();
+        $totalMontantsCalc = $paniers->sum(function($panier) {
+            return $panier->total_ttc ?? (
+                $panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * (($p->pivot->prix ?? $p->prix_vente) ?? 0))
+                - ($panier->remise ?? 0)
+                + ($panier->total_tva ?? 0)
+            );
+        });
+        $totalPayeCalc = $paniers->sum(function($panier) {
+            if ($panier->commande && $panier->commande->paiements) return $panier->commande->paiements->sum('montant');
+            return 0;
+        });
+        $totalCreditCalc = $paniers->sum(function($panier) {
+            $modeRaw = $panier->commande?->mode_paiement ?? $panier->mode_paiement ?? 'compte_client';
+            $modeNorm = strtolower(str_replace(['_', '-', ' ', 'é', 'è', 'ê'], ['', '', '', 'e', 'e', 'e'], $modeRaw));
+            $isCredit = str_contains($modeNorm, 'compte') || in_array($modeNorm, ['credit', 'compteclient', 'compte_client'], true);
+            if (!$isCredit) return 0;
+            $montant = $panier->total_ttc ?? (
+                $panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * (($p->pivot->prix ?? $p->prix_vente) ?? 0))
+                - ($panier->remise ?? 0)
+                + ($panier->total_tva ?? 0)
+            );
+            $paye = ($panier->commande && $panier->commande->paiements) ? $panier->commande->paiements->sum('montant') : 0;
+            return max(0, $montant - $paye);
+        });
+    @endphp
+
     <table class="summary">
         <tr>
-            <td>Total paniers : {{ number_format($totalPaniers, 0, ',', ' ') }}</td>
-            <td class="amount">Total montant : {{ number_format($totalMontants ?? 0, 0, ',', ' ') }} $</td>
-            <td class="amount">Total payé : {{ number_format($totalPaye ?? 0, 0, ',', ' ') }} $</td>
-            <td class="amount">Total crédit : {{ number_format($totalCredit ?? 0, 0, ',', ' ') }} $</td>
+            <td>Total paniers : {{ number_format($totalPaniersCount, 0, ',', ' ') }}</td>
+            <td class="amount">Total montant : {{ number_format($totalMontantsCalc ?? 0, 0, ',', ' ') }} $</td>
+            <td class="amount">Total payé : {{ number_format($totalPayeCalc ?? 0, 0, ',', ' ') }} $</td>
+            <td class="amount">Total crédit : {{ number_format($totalCreditCalc ?? 0, 0, ',', ' ') }} $</td>
         </tr>
     </table>
 
@@ -149,7 +177,15 @@
         <tbody>
             @forelse($paniers as $panier)
                 @php
-                    $montant = $panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * $p->prix_vente);
+                    if(($panier->status ?? '') === 'en_cours') {
+                        $montant = $panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * (($p->pivot->prix ?? $p->prix_vente) ?? 0));
+                    } else {
+                        $montant = $panier->total_ttc ?? (
+                            $panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * (($p->pivot->prix ?? $p->prix_vente) ?? 0))
+                            - ($panier->remise ?? 0)
+                            + ($panier->total_tva ?? 0)
+                        );
+                    }
                 @endphp
                 <tr>
                     <td>{{ $panier->tableResto->numero ?? $panier->table_id }}</td>
