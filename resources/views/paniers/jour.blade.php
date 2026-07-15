@@ -26,35 +26,10 @@
         </div>
         @php
             $totalPaniersCount = $paniers->count();
-            $totalMontantsCalc = $paniers->sum(function($panier) {
-                $montant = $panier->total_ttc ?? (
-                    $panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * (($p->pivot->prix ?? $p->prix_vente) ?? 0))
-                    - ($panier->remise ?? 0)
-                    + ($panier->total_tva ?? 0)
-                );
-                return $montant;
-            });
+            $totalMontantsCalc = $totalMontants ?? 0;
 
-            $totalPayeCalc = $paniers->sum(function($panier) {
-                if ($panier->commande && $panier->commande->paiements) {
-                    return $panier->commande->paiements->sum('montant');
-                }
-                return 0;
-            });
-
-            $totalCreditCalc = $paniers->sum(function($panier) {
-                $modeRaw = $panier->commande?->mode_paiement ?? $panier->mode_paiement ?? 'compte_client';
-                $modeNorm = strtolower(str_replace(['_', '-', ' ', 'é', 'è', 'ê'], ['', '', '', 'e', 'e', 'e'], $modeRaw));
-                $isCredit = str_contains($modeNorm, 'compte') || in_array($modeNorm, ['credit', 'compteclient', 'compte_client'], true);
-                if (!$isCredit) return 0;
-                $montant = $panier->total_ttc ?? (
-                    $panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * (($p->pivot->prix ?? $p->prix_vente) ?? 0))
-                    - ($panier->remise ?? 0)
-                    + ($panier->total_tva ?? 0)
-                );
-                $paye = ($panier->commande && $panier->commande->paiements) ? $panier->commande->paiements->sum('montant') : 0;
-                return max(0, $montant - $paye);
-            });
+            $totalPayeCalc = $totalPaye ?? 0;
+            $totalCreditCalc = $totalCredit ?? 0;
         @endphp
 
         <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">

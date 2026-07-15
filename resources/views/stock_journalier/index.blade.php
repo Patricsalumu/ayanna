@@ -84,25 +84,41 @@
             </div>
             
             <!-- Export PDF -->
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-2">&nbsp;</label>
+            <div class="w-full lg:w-auto">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Catégories à exporter</label>
+                <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 mb-3 max-w-xl">
+                    <div class="flex flex-wrap gap-3">
+                        @foreach(($categories ?? collect()) as $categorie)
+                            <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" name="categories[]" value="{{ $categorie->id }}" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span>{{ $categorie->nom }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
                 <div class="flex flex-col gap-2">
-                    <a href="{{ route('stock_journalier.export_pdf', ['pointDeVente' => $pointDeVenteId, 'date' => $date, 'session' => $session ?? '']) }}" 
-                       target="_blank" 
-                       class="inline-flex items-center justify-center px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 shadow transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Exporter PDF
-                    </a>
-                    <a href="{{ route('stock_journalier.export_opening_pdf', ['pointDeVente' => $pointDeVenteId, 'session' => $session ?? '']) }}" 
-                       target="_blank" 
-                       class="inline-flex items-center justify-center px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 shadow transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Exporter inventaire d'ouverture
-                    </a>
+                    <form method="GET" action="{{ route('stock_journalier.export_pdf', ['pointDeVente' => $pointDeVenteId, 'date' => $date, 'session' => $session ?? '']) }}" target="_blank" class="w-full" id="exportPdfForm">
+                        <input type="hidden" name="date" value="{{ $date }}">
+                        <input type="hidden" name="session" value="{{ $session ?? '' }}">
+                        <input type="hidden" name="export_form" value="1">
+                        <button type="submit" class="w-full inline-flex items-center justify-center px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 shadow transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Exporter PDF
+                        </button>
+                    </form>
+                    <form method="GET" action="{{ route('stock_journalier.export_opening_pdf', ['pointDeVente' => $pointDeVenteId, 'session' => $session ?? '']) }}" target="_blank" class="w-full" id="exportOpeningForm">
+                        <input type="hidden" name="date" value="{{ $date }}">
+                        <input type="hidden" name="session" value="{{ $session ?? '' }}">
+                        <input type="hidden" name="export_form" value="1">
+                        <button type="submit" class="w-full inline-flex items-center justify-center px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 shadow transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Exporter inventaire d'ouverture
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -354,6 +370,48 @@
     document.getElementById('modal-stock').addEventListener('click', function(e) {
         if (e.target === this) {
             closeModal();
+        }
+    });
+
+    // Collecte les catégories cochées et les ajoute au formulaire d'export
+    function appendSelectedCategoriesToForm(form) {
+        // Supprimer anciennes entrées categories[] si présentes
+        form.querySelectorAll('input[name="categories[]"]').forEach(n => n.remove());
+
+        const checks = Array.from(document.querySelectorAll('input[name="categories[]"]'));
+        const checked = checks.filter(c => c.checked).map(c => c.value);
+
+        if (checked.length > 0) {
+            checked.forEach(val => {
+                const inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = 'categories[]';
+                inp.value = val;
+                form.appendChild(inp);
+            });
+        } else {
+            // Indique une sélection explicite vide pour que le contrôleur traite [] et n'exporte rien
+            const inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = 'categories[]';
+            inp.value = '__NONE__';
+            form.appendChild(inp);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const exportPdfForm = document.getElementById('exportPdfForm');
+        const exportOpeningForm = document.getElementById('exportOpeningForm');
+
+        if (exportPdfForm) {
+            exportPdfForm.addEventListener('submit', function(e) {
+                appendSelectedCategoriesToForm(exportPdfForm);
+            });
+        }
+        if (exportOpeningForm) {
+            exportOpeningForm.addEventListener('submit', function(e) {
+                appendSelectedCategoriesToForm(exportOpeningForm);
+            });
         }
     });
 </script>

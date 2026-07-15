@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Historiquepdv;
 use App\Models\PointDeVente;
+use App\Models\Entreprise;
 use App\Models\Produit;
 use App\Models\StockJournalier;
 use Illuminate\Http\Request;
@@ -38,14 +39,19 @@ class StockJournalierController extends Controller
             ]);
         }
 
-        $data = $this->getStockJournalierSessionData($pointDeVenteId, $session);
+        $selectedCategoryIds = $request->exists('categories')
+            ? array_values(array_filter(array_map('intval', (array) $request->input('categories', []))))
+            : null;
+
+        $data = $this->getStockJournalierSessionData($pointDeVenteId, $session, $selectedCategoryIds);
         return view('stock_journalier.index', $data);
     }
 
-    private function getStockJournalierSessionData($pointDeVenteId, $session = null)
+    private function getStockJournalierSessionData($pointDeVenteId, $session = null, ?array $selectedCategoryIds = null)
     {
         $pointDeVente = PointDeVente::find($pointDeVenteId);
         $nomPointDeVente = $pointDeVente ? $pointDeVente->nom : null;
+        $categories = $pointDeVente ? $pointDeVente->categories()->orderBy('nom')->get() : collect();
         $sessions = StockJournalier::where('point_de_vente_id', $pointDeVenteId)
             ->orderByDesc('session')
             ->pluck('session')
@@ -63,7 +69,16 @@ class StockJournalierController extends Controller
             })
             ->get();
 
-        $produits = $pointDeVente ? $pointDeVente->produits()->with('categorie')->orderBy('nom')->get() : collect();
+        $produitsQuery = $pointDeVente ? $pointDeVente->produits()->with('categorie')->orderBy('nom') : null;
+        if ($selectedCategoryIds !== null) {
+            if (empty($selectedCategoryIds)) {
+                $produits = collect();
+            } else {
+                $produits = $produitsQuery?->whereIn('categorie_id', $selectedCategoryIds)->get() ?? collect();
+            }
+        } else {
+            $produits = $produitsQuery?->get() ?? collect();
+        }
 
         $date = $stocks->first()?->date ?? now()->toDateString();
         $sessionLabel = null;
@@ -152,10 +167,14 @@ class StockJournalierController extends Controller
 
         $totalVente = $categoryTotals->sum();
 
+        $entreprise = $pointDeVente?->entreprise ?? Entreprise::first();
+
         return compact(
             'pointDeVente',
             'nomPointDeVente',
+            'entreprise',
             'pointDeVenteId',
+            'categories',
             'sessions',
             'stocks',
             'produits',
@@ -273,7 +292,11 @@ class StockJournalierController extends Controller
                 'message' => 'Aucun point de vente disponible.'
             ]);
         }
-        $data = $this->getStockJournalierSessionData($pointDeVenteId, $session);
+        $selectedCategoryIds = $request->exists('categories')
+            ? array_values(array_filter(array_map('intval', (array) $request->input('categories', []))))
+            : null;
+
+        $data = $this->getStockJournalierSessionData($pointDeVenteId, $session, $selectedCategoryIds);
 
         $fileName = 'stock_journalier_'.$data['date'];
         if ($session) {
@@ -286,7 +309,15 @@ class StockJournalierController extends Controller
         }
         $fileName .= '.pdf';
 
-        return Pdf::loadView('stock_journalier.pdf', $data)->download($fileName);
+        $pdf = Pdf::loadView('stock_journalier.pdf', $data)
+            ->setPaper('a4', 'portrait');
+
+        $pdf->getDomPDF()->set_option('isPhpEnabled', true);
+        $pdf->getDomPDF()->set_option('isRemoteEnabled', true);
+        $pdf->getDomPDF()->set_option('defaultFont', 'DejaVu Sans');
+        $pdf->getDomPDF()->set_option('enable_unicode', true);
+
+        return $pdf->download($fileName);
     }
 
     public function exportOpeningPdf(Request $request, $pointDeVenteId)
@@ -306,7 +337,11 @@ class StockJournalierController extends Controller
             return redirect()->back()->with('message', 'Aucun point de vente disponible pour l’export inventaire.');
         }
 
-        $data = $this->getStockJournalierOpeningData($pointDeVenteId, $session);
+        $selectedCategoryIds = $request->exists('categories')
+            ? array_values(array_filter(array_map('intval', (array) $request->input('categories', []))))
+            : null;
+
+        $data = $this->getStockJournalierOpeningData($pointDeVenteId, $session, $selectedCategoryIds);
 
         $fileName = 'inventaire_ouverture_'.$data['date'];
         if ($data['session']) {
@@ -318,10 +353,11 @@ class StockJournalierController extends Controller
         return Pdf::loadView('stock_journalier.opening_inventaire_pdf', $data)->download($fileName);
     }
 
-    private function getStockJournalierOpeningData($pointDeVenteId, $session = null)
+    private function getStockJournalierOpeningData($pointDeVenteId, $session = null, ?array $selectedCategoryIds = null)
     {
         $pointDeVente = PointDeVente::find($pointDeVenteId);
         $nomPointDeVente = $pointDeVente ? $pointDeVente->nom : null;
+        $categories = $pointDeVente ? $pointDeVente->categories()->orderBy('nom')->get() : collect();
         $sessions = StockJournalier::where('point_de_vente_id', $pointDeVenteId)
             ->orderByDesc('session')
             ->pluck('session')
@@ -364,7 +400,16 @@ class StockJournalierController extends Controller
                 ->get();
         }
 
-        $produits = $pointDeVente ? $pointDeVente->produits()->with('categorie')->orderBy('nom')->get() : collect();
+        $produitsQuery = $pointDeVente ? $pointDeVente->produits()->with('categorie')->orderBy('nom') : null;
+        if ($selectedCategoryIds !== null) {
+            if (empty($selectedCategoryIds)) {
+                $produits = collect();
+            } else {
+                $produits = $produitsQuery?->whereIn('categorie_id', $selectedCategoryIds)->get() ?? collect();
+            }
+        } else {
+            $produits = $produitsQuery?->get() ?? collect();
+        }
         $date = $currentStocks->first()?->date ?? now()->toDateString();
 
         $produitsData = $produits->map(function ($produit) use ($currentStocks, $previousStocks) {
@@ -393,6 +438,7 @@ class StockJournalierController extends Controller
         return compact(
             'pointDeVente',
             'nomPointDeVente',
+            'categories',
             'sessions',
             'date',
             'session',

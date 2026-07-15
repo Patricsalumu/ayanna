@@ -339,23 +339,19 @@ class PanierController extends Controller
 
         $paniersActifs = $paniers->reject(fn($panier) => $panier->status === 'annulé');
         $totalPaniers = $paniersActifs->count();
-        $totalMontants = $paniersActifs->sum(fn($panier) => $this->montantPanier($panier));
-        // Total payé = somme des montants des paniers dont le mode de paiement est 'especes'
+        $totalMontants = $paniersActifs->sum(fn($panier) => $this->montantPanierAffiche($panier));
+
         $totalPaye = $paniersActifs
-            ->filter(function($panier) {
-                $modeRaw = $panier->commande?->mode_paiement ?? $panier->mode_paiement ?? 'compte_client';
-                $modeNorm = $this->normalizeModePaiement($modeRaw);
-                return str_contains($modeNorm, 'especes');
+            ->filter(function ($panier) {
+                return !$this->estModeCreditPaiement($panier->commande?->mode_paiement ?? $panier->mode_paiement);
             })
-            ->sum(fn($panier) => $this->montantPanier($panier));
-        // Total crédit = somme des montants des paniers dont le mode de paiement est crédit
+            ->sum(fn($panier) => $this->montantPanierAffiche($panier));
+
         $totalCredit = $paniersActifs
-            ->filter(function($panier) {
-                $modeRaw = $panier->commande?->mode_paiement ?? $panier->mode_paiement ?? 'compte_client';
-                $modeNorm = $this->normalizeModePaiement($modeRaw);
-                return str_contains($modeNorm, 'compte') || in_array($modeNorm, ['credit', 'compteclient', 'compte_client'], true);
+            ->filter(function ($panier) {
+                return $this->estModeCreditPaiement($panier->commande?->mode_paiement ?? $panier->mode_paiement);
             })
-            ->sum(fn($panier) => $this->montantPanier($panier));
+            ->sum(fn($panier) => $this->montantPanierAffiche($panier));
 
         return compact('paniers', 'sessions', 'selectedSession', 'totalPaniers', 'totalMontants', 'totalPaye', 'totalCredit');
     }
@@ -367,11 +363,28 @@ class PanierController extends Controller
         return $mode;
     }
 
+    private function estModeCreditPaiement(?string $mode): bool
+    {
+        $modeNorm = $this->normalizeModePaiement($mode);
+
+        return str_contains($modeNorm, 'compte')
+            || in_array($modeNorm, ['credit', 'compteclient', 'compte_client'], true);
+    }
+
     private function montantPanier(Panier $panier): float
     {
         return (float) $panier->produits->sum(function ($produit) {
             return max(0, $produit->pivot->quantite) * (($produit->pivot->prix ?? $produit->prix_vente) ?? 0);
         });
+    }
+
+    private function montantPanierAffiche(Panier $panier): float
+    {
+        if (($panier->status ?? '') === 'en_cours') {
+            return $this->montantPanier($panier);
+        }
+
+        return (float) ($panier->total_ttc ?? $this->montantPanier($panier));
     }
 
     private function roleNePeutPasDiminuerPanier(): bool
