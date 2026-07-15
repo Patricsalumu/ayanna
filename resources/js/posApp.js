@@ -513,13 +513,13 @@ function posApp() {
       panier.filter(item=>item.qte>0).forEach(item => {
         const lineTotal = item.qte * item.prix;
         total += lineTotal;
-        html += `<tr><td style='word-break:break-all;'>${item.nom}</td><td style='text-align:center;'>${item.qte}</td><td style='text-align:right;'>${Math.round(item.prix).toLocaleString()} $</td><td style='text-align:right;'>${lineTotal.toLocaleString()} $</td></tr>`;
+        html += `<tr><td style='word-break:break-all;'>${item.nom}</td><td style='text-align:center;'>${item.qte}</td><td style='text-align:right;'>${item.prix.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $</td><td style='text-align:right;'>${lineTotal.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $</td></tr>`;
       });
       html += `</tbody></table>`;
       html += `<div style='border-top:1px dashed #222;margin:6px 0;'></div>`;
-      html += `<div style='text-align:right;font-size:12px;'>Sous-total : ${this.totalHt.toLocaleString()} $</div>`;
-      html += `<div style='text-align:right;font-size:12px;'>Remise : ${this.totalRemise.toLocaleString()} $</div>`;
-      html += `<div style='text-align:right;font-size:14px;font-weight:bold;'>Net à payer : ${this.total.toLocaleString()} $</div>`;
+      html += `<div style='text-align:right;font-size:12px;'>Sous-total : ${this.totalHt.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $</div>`;
+      html += `<div style='text-align:right;font-size:12px;'>Remise : ${this.totalRemise.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $</div>`;
+      html += `<div style='text-align:right;font-size:14px;font-weight:bold;'>Net à payer : ${this.total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $</div>`;
       html += `<div style='text-align:center;font-size:11px;margin-top:10px;'>Merci pour votre visite !</div>`;
       html += `<div style='text-align:center;font-size:10px;margin-top:8px;'>Généré par Ayanna &copy; | ${dateStr} ${heureStr}</div>`;
       html += `</div>`;
@@ -556,7 +556,7 @@ function posApp() {
     },
     formatMoney(val) {
       if (typeof val !== 'number') val = parseFloat(val) || 0;
-      return val.toLocaleString('fr-FR', { minimumFractionDigits: 0 });
+      return val.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     },
     async printBonCommande(bonId) {
       try {

@@ -88,8 +88,8 @@
                                     <tr class="border-b hover:bg-gray-50 transition">
                                         <td class="px-4 py-3 font-medium text-gray-900">{{ $item['nom'] }}</td>
                                         <td class="px-2 py-3 text-center">{{ $item['qte'] }}</td>
-                                        <td class="px-2 py-3 text-right">{{ number_format($item['prix'], 0, ',', ' ') }} $</td>
-                                        <td class="px-4 py-3 text-right font-semibold">{{ number_format($ligne, 0, ',', ' ') }} $</td>
+                                        <td class="px-2 py-3 text-right">{{ number_format($item['prix'], 2, ',', ' ') }} $</td>
+                                        <td class="px-4 py-3 text-right font-semibold">{{ number_format($ligne, 2, ',', ' ') }} $</td>
                                     </tr>
                                 @endif
                             @endforeach
@@ -100,7 +100,7 @@
                             @endif
                             <tr class="bg-gray-100 font-bold">
                                 <td colspan="3" class="text-right px-4 py-3">Total</td>
-                                <td class="px-4 py-3 text-right">{{ number_format($total, 0, ',', ' ') }} $</td>
+                                <td class="px-4 py-3 text-right">{{ number_format($total, 2, ',', ' ') }} $</td>
                             </tr>
                         </tbody>
                     </table>
