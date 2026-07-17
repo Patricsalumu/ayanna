@@ -255,7 +255,7 @@
                     <tr class="total-row">
                         <td><strong>TOTAL ACTIF</strong></td>
                         <td class="montant">
-                            {{ number_format($totalActif, 0, ',', ' ') }} $
+                            {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalActif, true, 0) }}
                         </td>
                     </tr>
                 </tbody>
@@ -307,7 +307,7 @@
                     <tr class="total-row">
                         <td><strong>TOTAL PASSIF</strong></td>
                         <td class="montant">
-                            {{ number_format($totalPassif, 0, ',', ' ') }} $
+                            {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalPassif, true, 0) }}
                         </td>
                     </tr>
                 </tbody>
@@ -318,7 +318,7 @@
     <!-- Vérification d'équilibre -->
     <div class="equilibre-check {{ abs($totalActif - $totalPassif) >= 0.01 ? 'equilibre-warning' : '' }}">
         @if(abs($totalActif - $totalPassif) < 0.01)
-            ✓ BILAN ÉQUILIBRÉ - Actif = Passif ({{ number_format($totalActif, 0, ',', ' ') }} $)
+            ✓ BILAN ÉQUILIBRÉ - Actif = Passif ({{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalActif, true, 0) }})
         @else
             ⚠ DÉSÉQUILIBRE DÉTECTÉ - Écart de {{ number_format(abs($totalActif - $totalPassif), 0, ',', ' ') }} $
             <br>Actif: {{ number_format($totalActif, 0, ',', ' ') }} $ - Passif: {{ number_format($totalPassif, 0, ',', ' ') }} $

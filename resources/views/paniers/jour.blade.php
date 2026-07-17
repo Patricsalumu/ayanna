@@ -39,15 +39,15 @@
             </div>
             <div class="rounded-xl border border-indigo-100 bg-indigo-50 px-5 py-4">
                 <div class="text-sm font-medium text-indigo-700">Total montant (TTC)</div>
-                <div class="mt-1 text-2xl font-bold text-indigo-900">{{ number_format($totalMontantsCalc ?? 0, 2, ',', ' ') }} $</div>
+                <div class="mt-1 text-2xl font-bold text-indigo-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalMontantsCalc ?? 0, true, 2) }}</div>
             </div>
             <div class="rounded-xl border border-green-100 bg-green-50 px-5 py-4">
                 <div class="text-sm font-medium text-green-700">Total payé</div>
-                <div class="mt-1 text-2xl font-bold text-green-900">{{ number_format($totalPayeCalc ?? 0, 2, ',', ' ') }} $</div>
+                <div class="mt-1 text-2xl font-bold text-green-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalPayeCalc ?? 0, true, 2) }}</div>
             </div>
             <div class="rounded-xl border border-yellow-100 bg-yellow-50 px-5 py-4">
                 <div class="text-sm font-medium text-yellow-700">Total crédit</div>
-                <div class="mt-1 text-2xl font-bold text-yellow-900">{{ number_format($totalCreditCalc ?? 0, 2, ',', ' ') }} $</div>
+                <div class="mt-1 text-2xl font-bold text-yellow-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalCreditCalc ?? 0, true, 2) }}</div>
             </div>
         </div>
         <div class="mb-6 flex justify-center">
@@ -81,7 +81,7 @@
                 <div id="detailProduits" class="space-y-2"></div>
             </div>
             <div class="mt-4 border-t pt-4 text-right text-base font-semibold text-gray-900">
-                Total : <span id="detailTotal"></span> $
+                Total : <span id="detailTotal"></span>
             </div>
         </div>
         <table class="w-full table-auto rounded-xl overflow-hidden border">
@@ -153,7 +153,7 @@
                             $displayMontant = $panier->total_ttc ?? ($panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * (($p->pivot->prix ?? $p->prix_vente) ?? 0)) - ($panier->remise ?? 0) + ($panier->total_tva ?? 0));
                         }
                     @endphp
-                    <td class="p-3">{{ number_format($displayMontant ?? 0, 2, ',', ' ') }} $</td>
+                    <td class="p-3">{{ optional(auth()->user()?->entreprise)->formatAmount($displayMontant ?? 0, true, 2) }}</td>
                     <td class="p-3">
                         @if($panier->status === 'en_cours')
                             @if(!in_array(Auth::user()->role ?? null, ['comptoiriste','serveuse']))
@@ -164,7 +164,7 @@
                                     <button type="button" 
                                         class="bg-red-600 text-white rounded-full text-xs px-3 py-1 hover:bg-red-700 annuler-btn"
                                         data-table="{{ $panier->tableResto->nom ?? 'Table ' . $panier->table_id }}"
-                                        data-montant="{{ number_format($displayMontant ?? 0, 2, ',', ' ') }} $">
+                                        data-montant="{{ optional(auth()->user()?->entreprise)->formatAmount($displayMontant ?? 0, true, 2) }}">
                                         Annuler
                                     </button>
                                 </form>
@@ -359,6 +359,13 @@
         }
     }
 
+    const currencySymbol = @json(optional(auth()->user()?->entreprise)->devise ?? '$');
+
+    function formatCurrency(value) {
+        const amount = Number(value || 0);
+        return `${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currencySymbol}`;
+    }
+
     function showPanierDetails(panier) {
         document.getElementById('detailTable').textContent = panier.table;
         document.getElementById('detailClient').textContent = panier.client;
@@ -375,14 +382,14 @@
             produitRow.innerHTML = `
                 <div>
                     <div class="font-semibold text-gray-900">${item.nom}</div>
-                    <div class="text-xs text-gray-500">x${item.quantite} · ${item.prix.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $</div>
+                    <div class="text-xs text-gray-500">x${item.quantite} · ${formatCurrency(item.prix)}</div>
                 </div>
-                <div class="font-semibold text-gray-900">${item.total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $</div>
+                <div class="font-semibold text-gray-900">${formatCurrency(item.total)}</div>
             `;
             produitsContainer.appendChild(produitRow);
         });
 
-        document.getElementById('detailTotal').textContent = panier.total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('detailTotal').textContent = formatCurrency(panier.total);
         document.getElementById('panierDetails').classList.remove('hidden');
         document.getElementById('panierDetails').scrollIntoView({ behavior: 'smooth' });
     }

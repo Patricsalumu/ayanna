@@ -45,13 +45,13 @@
                     <td style="padding:8px; border:1px solid #dbeafe; text-align:center;">{{ $produit['q_total'] }}</td>
                     <td style="padding:8px; border:1px solid #dbeafe; text-align:center;">{{ $produit['q_vendue'] }}</td>
                     <td style="padding:8px; border:1px solid #dbeafe; text-align:center;">{{ $produit['q_reste'] }}</td>
-                    <td style="padding:8px; border:1px solid #dbeafe; text-align:right;">{{ number_format($produit['prix'], 2, ',', ' ') }} $</td>
-                    <td style="padding:8px; border:1px solid #dbeafe; text-align:right; font-weight:700;">{{ number_format($produit['total'], 2, ',', ' ') }} $</td>
+                    <td style="padding:8px; border:1px solid #dbeafe; text-align:right;">{{ $company?->formatAmount($produit['prix'], true, 2) }}</td>
+                    <td style="padding:8px; border:1px solid #dbeafe; text-align:right; font-weight:700;">{{ $company?->formatAmount($produit['total'], true, 2) }}</td>
                 </tr>
             @endforeach
             <tr style="background:#dbeafe; color:#0f172a; font-weight:700;">
                 <td colspan="7" style="padding:10px 12px; border:1px solid #bfdbfe; text-align:right;">Total catégorie {{ $categorie }}</td>
-                <td style="padding:10px 12px; border:1px solid #bfdbfe; text-align:right;">{{ number_format($categoryTotals[$categorie] ?? 0, 0, ',', ' ') }} $</td>
+                <td style="padding:10px 12px; border:1px solid #bfdbfe; text-align:right;">{{ $company?->formatAmount($categoryTotals[$categorie] ?? 0, true, 2) }}</td>
             </tr>
         @endforeach
         </tbody>
@@ -59,6 +59,6 @@
 
     <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border:1px solid #bfdbfe; border-radius:12px; background:#eff6ff;">
         <div style="font-size:13px; color:#1f2937;">Total catégories : {{ count($produitsByCategory) }}</div>
-        <div style="font-size:16px; font-weight:700; color:#1d4ed8;">Total vente session : {{ number_format($totalVente ?? 0, 2, ',', ' ') }} $</div>
+        <div style="font-size:16px; font-weight:700; color:#1d4ed8;">Total vente session : {{ $company?->formatAmount($totalVente ?? 0, true, 2) }}</div>
     </div>
 </div>

@@ -39,8 +39,8 @@
                   <tr @click="selectItem(i)" :class="{'bg-blue-50': selectedIndex===i}" class="hover:bg-blue-100 cursor-pointer">
                     <td x-text="item.nom" class="py-1"></td>
                     <td class="text-center" x-text="item.qte"></td>
-                    <td class="text-right" x-text="item.prix.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' $'"></td>
-                    <td class="text-right" x-text="(item.qte * item.prix).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' $'"></td>
+                    <td class="text-right" x-text="formatMoney(item.prix)"></td>
+                    <td class="text-right" x-text="formatMoney(item.qte * item.prix)"></td>
                   </tr>
                 </template>
               </tbody>
@@ -50,7 +50,7 @@
             <tbody>
               <tr class="border-t">
                 <td colspan="3" class="text-right py-1">Sous-total</td>
-                <td class="text-right" x-text="totalHt.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' $'"></td>
+                <td class="text-right" x-text="formatMoney(totalHt)"></td>
               </tr>
               <tr class="border-t">
                 <td colspan="3" class="text-right py-1">Remise</td>
@@ -60,7 +60,7 @@
               </tr>
               <tr class="font-bold border-t">
                 <td colspan="3" class="text-right py-1">Net à payer</td>
-                <td class="text-right" x-text="total.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' $'"></td>
+                <td class="text-right" x-text="formatMoney(total)"></td>
               </tr>
             </tbody>
           </table>
@@ -289,7 +289,7 @@
         </div>
         <div class="mb-2 text-center">
           <span class="text-gray-600">Rendu monnaie :</span>
-          <span class="text-xl font-bold text-green-700" x-text="formatMoney(paiement.monnaie) + ' $'"></span>
+          <span class="text-xl font-bold text-green-700" x-text="formatMoney(paiement.monnaie)"></span>
         </div>
         <div class="flex justify-between mt-4 gap-2">
           <button @click="mode = 'commande'" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Retour</button>

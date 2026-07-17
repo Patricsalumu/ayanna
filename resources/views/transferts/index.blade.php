@@ -38,7 +38,7 @@
                                         <div class="card-body">
                                             <h6 class="text-info font-weight-bold">{{ $pdv->nom }}</h6>
                                             <p class="text-sm text-muted mb-2">
-                                                Solde: <span class="font-weight-bold">{{ number_format($pdv->compteCaisse->solde ?? 0, 0, ',', ' ') }} $</span>
+                                                Solde: <span class="font-weight-bold">{{ optional(auth()->user()?->entreprise)->formatAmount($pdv->compteCaisse->solde ?? 0, true, 0) }}</span>
                                             </p>
                                             <div class="btn-group w-100" role="group">
                                                 <button type="button" class="btn btn-sm btn-outline-primary btn-transfert-rapide" 
@@ -117,7 +117,7 @@
                                     @endif
                                 </td>
                                 <td class="text-right font-weight-bold">
-                                    {{ number_format($transfert->montant_total, 0, ',', ' ') }} F
+                                    {{ optional(auth()->user()?->entreprise)->formatAmount($transfert->montant_total, true, 0) }}
                                 </td>
                                 <td>{{ $transfert->libelle }}</td>
                                 <td>

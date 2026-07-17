@@ -63,7 +63,7 @@
 
                     @if(isset($table->montant_total) && $table->montant_total > 0)
                         <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 shadow">
-                            {{ number_format($table->montant_total, 2, ',', ' ') }} $
+                            {{ $entreprise->formatAmount($table->montant_total, true, 2) }}
                         </span>
                     @endif
 

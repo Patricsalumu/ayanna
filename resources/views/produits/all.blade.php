@@ -527,8 +527,8 @@
                 </div>
                 {{-- Ligne prix --}}
                 <div class="text-gray-600 text-sm mt-1 flex gap-4">
-                    <span>Prix achat : <span class="font-semibold">{{ number_format($produit->prix_achat, 2, ',', ' ') }} $</span></span>
-                    <span>Prix vente : <span class="font-semibold">{{ number_format($produit->prix_vente, 2, ',', ' ') }} $</span></span>
+                    <span>Prix achat : <span class="font-semibold">{{ optional(auth()->user()?->entreprise)->formatAmount($produit->prix_achat, true, 2) }}</span></span>
+                    <span>Prix vente : <span class="font-semibold">{{ optional(auth()->user()?->entreprise)->formatAmount($produit->prix_vente, true, 2) }}</span></span>
                 </div>
             </div>
         </div>
@@ -573,10 +573,10 @@
                             <td class="p-3">
                                 {{ optional($produit->categorie)->nom ?? '-' }}
                             </td>
-                            <td class="p-3">{{ number_format($produit->prix_achat, 0, ',', ' ') }} $</td>
-                            <td class="p-3">{{ number_format($produit->prix_vente, 0, ',', ' ') }} $</td>
-                            <td class="p-3 font-medium text-blue-600">{{ number_format($valeurAchat, 0, ',', ' ') }} $</td>
-                            <td class="p-3 font-medium text-green-600">{{ number_format($valeurVente, 0, ',', ' ') }} $</td>
+                            <td class="p-3">{{ optional(auth()->user()?->entreprise)->formatAmount($produit->prix_achat, true, 0) }}</td>
+                            <td class="p-3">{{ optional(auth()->user()?->entreprise)->formatAmount($produit->prix_vente, true, 0) }}</td>
+                            <td class="p-3 font-medium text-blue-600">{{ optional(auth()->user()?->entreprise)->formatAmount($valeurAchat, true, 0) }}</td>
+                            <td class="p-3 font-medium text-green-600">{{ optional(auth()->user()?->entreprise)->formatAmount($valeurVente, true, 0) }}</td>
                             <td class="p-3 flex gap-2">
                                 <a href="#" @click.prevent="openEdit({
                                     id: {{ $produit->id }},
@@ -616,19 +616,19 @@
                         <div class="text-center">
                             <div class="text-sm text-gray-600 mb-1">Total Valeur Achat</div>
                             <div id="totalAchatDisplay" class="text-xl font-bold text-blue-600">
-                                {{ number_format($totalAchat, 0, ',', ' ') }} F
+                                {{ optional(auth()->user()?->entreprise)->formatAmount($totalAchat, true, 0) }}
                             </div>
                         </div>
                         <div class="text-center">
                             <div class="text-sm text-gray-600 mb-1">Total Valeur Vente</div>
                             <div id="totalVenteDisplay" class="text-xl font-bold text-green-600">
-                                {{ number_format($totalVente, 0, ',', ' ') }} F
+                                {{ optional(auth()->user()?->entreprise)->formatAmount($totalVente, true, 0) }}
                             </div>
                         </div>
                         <div class="text-center">
                             <div class="text-sm text-gray-600 mb-1">Marge Potentielle</div>
                             <div id="margeDisplay" class="text-xl font-bold {{ ($totalVente - $totalAchat) >= 0 ? 'text-emerald-600' : 'text-red-600' }}">
-                                {{ number_format($totalVente - $totalAchat, 0, ',', ' ') }} F
+                                {{ optional(auth()->user()?->entreprise)->formatAmount($totalVente - $totalAchat, true, 0) }}
                             </div>
                         </div>
                     </div>

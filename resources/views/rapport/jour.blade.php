@@ -62,28 +62,28 @@
                 <!-- Total Recettes -->
                 <div class="text-center">
                     <div class="text-sm font-medium text-gray-600 mb-1">Total Recettes</div>
-                    <div class="text-2xl font-bold text-green-600">{{ number_format($totalRecettes, 0, ',', ' ') }} $</div>
+                    <div class="text-2xl font-bold text-green-600">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalRecettes, true, 0) }}</div>
                     <div class="text-xs text-gray-500 mt-1">Ventes + Créances + Entrées</div>
                 </div>
                 
                 <!-- Créances en cours -->
                 <div class="text-center">
                     <div class="text-sm font-medium text-gray-600 mb-1">Créances en cours</div>
-                    <div class="text-2xl font-bold text-orange-600">{{ number_format($totalCreance, 0, ',', ' ') }} $</div>
+                    <div class="text-2xl font-bold text-orange-600">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalCreance, true, 0) }}</div>
                     <div class="text-xs text-gray-500 mt-1">À recouvrer</div>
                 </div>
                 
                 <!-- Dépenses -->
                 <div class="text-center">
                     <div class="text-sm font-medium text-gray-600 mb-1">Total Dépenses</div>
-                    <div class="text-2xl font-bold text-red-600">{{ number_format($depenses, 0, ',', ' ') }} $</div>
+                    <div class="text-2xl font-bold text-red-600">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($depenses, true, 0) }}</div>
                     <div class="text-xs text-gray-500 mt-1">Sorties de caisse</div>
                 </div>
                 
                 <!-- Solde -->
                 <div class="text-center bg-blue-100 rounded-lg p-4">
                     <div class="text-sm font-medium text-blue-700 mb-1">Solde Final</div>
-                    <div class="text-3xl font-extrabold text-blue-900">{{ number_format($solde, 0, ',', ' ') }} $</div>
+                    <div class="text-3xl font-extrabold text-blue-900">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($solde, true, 0) }}</div>
                     <div class="text-xs text-blue-600 mt-1">Recettes - Créances - Dépenses</div>
                 </div>
             </div>
@@ -98,14 +98,14 @@
                 <!-- 1. Ventes -->
                 <div class="bg-green-50 rounded-lg p-4 border border-green-200">
                     <h4 class="font-bold text-green-700 mb-3">🛒 Ventes du jour</h4>
-                    <div class="text-2xl font-bold text-green-600 mb-2">{{ number_format($recettesVentes, 0, ',', ' ') }} $</div>
+                    <div class="text-2xl font-bold text-green-600 mb-2">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($recettesVentes, true, 0) }}</div>
                     
                     @if($ventesParMode->isNotEmpty())
                         <div class="space-y-1">
                             @foreach($ventesParMode as $mode => $data)
                                 <div class="flex justify-between text-sm">
                                     <span class="text-gray-600">{{ $data['mode'] }} ({{ $data['count'] }})</span>
-                                    <span class="font-medium">{{ number_format($data['total'], 0, ',', ' ') }} $</span>
+                                    <span class="font-medium">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($data['total'], true, 0) }}</span>
                                 </div>
                             @endforeach
                         </div>
@@ -115,13 +115,13 @@
                 <!-- 2. Paiements créances -->
                 <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
                     <h4 class="font-bold text-blue-700 mb-3">🏦 Paiements créances</h4>
-                    <div class="text-2xl font-bold text-blue-600 mb-2">{{ number_format($recettesPaiementsCreances, 0, ',', ' ') }} $</div>
+                    <div class="text-2xl font-bold text-blue-600 mb-2">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($recettesPaiementsCreances, true, 0) }}</div>
                     
                     @if($paiementsCreances->isNotEmpty())
                         <div class="space-y-1 max-h-20 overflow-y-auto">
                             @foreach($paiementsCreances as $paiement)
                                 <div class="text-sm text-gray-600">
-                                    {{ \Carbon\Carbon::parse($paiement->created_at)->format('H:i') }} - {{ number_format($paiement->montant, 0, ',', ' ') }} $
+                                    {{ \Carbon\Carbon::parse($paiement->created_at)->format('H:i') }} - {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($paiement->montant, true, 0) }}
                                 </div>
                             @endforeach
                         </div>
@@ -133,13 +133,13 @@
                 <!-- 3. Entrées diverses -->
                 <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
                     <h4 class="font-bold text-purple-700 mb-3">📥 Entrées diverses</h4>
-                    <div class="text-2xl font-bold text-purple-600 mb-2">{{ number_format($recettesEntreesDiverses, 0, ',', ' ') }} $</div>
+                    <div class="text-2xl font-bold text-purple-600 mb-2">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($recettesEntreesDiverses, true, 0) }}</div>
                     
                     @if($entresDiverses->isNotEmpty())
                         <div class="space-y-1 max-h-20 overflow-y-auto">
                             @foreach($entresDiverses as $entree)
                                 <div class="text-sm text-gray-600">
-                                    {{ substr($entree->libele, 0, 20) }}{{ strlen($entree->libele) > 20 ? '...' : '' }} - {{ number_format($entree->montant, 0, ',', ' ') }} $
+                                    {{ substr($entree->libele, 0, 20) }}{{ strlen($entree->libele) > 20 ? '...' : '' }} - {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($entree->montant, true, 0) }}
                                 </div>
                             @endforeach
                         </div>
@@ -178,7 +178,7 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 text-right font-bold text-orange-600">
-                                    {{ number_format($detail['total'], 0, ',', ' ') }} $
+                                    {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($detail['total'], true, 0) }}
                                 </td>
                             </tr>
                         @empty
@@ -221,7 +221,7 @@
                                     {{ $dep->libele ?? $dep->motif ?? '' }}
                                 </td>
                                 <td class="px-4 py-3 text-right font-bold text-red-600">
-                                    -{{ number_format($dep->montant, 0, ',', ' ') }} $
+                                    -{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($dep->montant, true, 0) }}
                                     
                                 </td>
                             </tr>

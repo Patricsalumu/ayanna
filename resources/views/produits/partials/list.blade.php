@@ -14,8 +14,8 @@
                 <tr class="{{ $index % 2 === 0 ? 'bg-gray-50' : 'bg-white' }}">
                     <td class="px-4 py-2">{{ $produit->nom }}</td>
                     <td class="px-4 py-2">{{ $produit->categorie->nom ?? '-' }}</td>
-                    <td class="px-4 py-2">{{ number_format($produit->prix_achat, 0, ',', ' ') }} $</td>
-                    <td class="px-4 py-2">{{ number_format($produit->prix_vente, 0, ',', ' ') }} $</td>
+                    <td class="px-4 py-2">{{ optional(auth()->user()?->entreprise)->formatAmount($produit->prix_achat, true, 0) }}</td>
+                    <td class="px-4 py-2">{{ optional(auth()->user()?->entreprise)->formatAmount($produit->prix_vente, true, 0) }}</td>
                     <td class="px-4 py-2">
                         <a href="{{ route('produits.edit', [$produit->categorie->entreprise_id, $produit->id]) }}" class="text-indigo-600 hover:underline">Modifier</a>
                         <form action="{{ route('produits.duplicate', [$produit->categorie->entreprise_id, $produit->id]) }}" method="POST" class="inline">

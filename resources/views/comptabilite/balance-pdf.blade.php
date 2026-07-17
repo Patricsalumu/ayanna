@@ -348,7 +348,7 @@
         @if(abs($totalDebit - $totalCredit) >= 0.01)
             <p style="color: #dc3545; font-weight: bold; margin-top: 10px;">
                 ⚠ ATTENTION: La balance n'est pas équilibrée. 
-                Écart de {{ number_format(abs($totalDebit - $totalCredit), 0, ',', ' ') }} $
+                Écart de {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount(abs($totalDebit - $totalCredit), true, 0) }}
             </p>
         @else
             <p style="color: #28a745; font-weight: bold; margin-top: 10px;">

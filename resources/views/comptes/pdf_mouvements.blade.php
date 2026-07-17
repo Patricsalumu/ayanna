@@ -51,7 +51,7 @@
         @forelse($mouvements as $mvt)
             <tr>
                 <td>{{ $mvt->created_at->format('d/m/Y H:i') }}</td>
-                <td class="{{ $mvt->type }}">{{ number_format($mvt->montant, 2, ',', ' ') }} $</td>
+                <td class="{{ $mvt->type }}">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($mvt->montant, true, 2) }}</td>
                 <td>{{ ucfirst($mvt->type) }}</td>
                 <td>{{ $mvt->libele }}</td>
             </tr>

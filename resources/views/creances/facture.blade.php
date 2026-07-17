@@ -234,7 +234,7 @@
                     @foreach($commande->paiements as $paiement)
                         <tr>
                             <td>{{ \Carbon\Carbon::parse($paiement->date_paiement)->format('d/m/Y H:i') }}</td>
-                            <td class="text-right">{{ number_format($paiement->montant, 2, ',', ' ') }} $</td>
+                            <td class="text-right">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($paiement->montant, true, 2) }}</td>
                             <td class="text-center">{{ ucfirst($paiement->mode) }}</td>
                             <td>{{ $paiement->notes ?: '-' }}</td>
                         </tr>

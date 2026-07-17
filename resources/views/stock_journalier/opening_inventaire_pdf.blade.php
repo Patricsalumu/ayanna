@@ -42,6 +42,6 @@
 
     <div style="margin-top:20px; padding:14px 16px; border:1px solid #bfdbfe; border-radius:12px; background:#eff6ff; display:flex; justify-content:space-between; align-items:center;">
         <div style="font-size:13px; color:#1f2937;">Candité catégories : {{ count($produitsByCategory) }}</div>
-        <div style="font-size:16px; font-weight:700; color:#1d4ed8;">Écart total : {{ number_format($totalDifference ?? 0, 0, ',', ' ') }} $</div>
+        <div style="font-size:16px; font-weight:700; color:#1d4ed8;">Écart total : {{ optional(auth()->user()?->entreprise)->formatAmount($totalDifference ?? 0, true, 2) }}</div>
     </div>
 </div>

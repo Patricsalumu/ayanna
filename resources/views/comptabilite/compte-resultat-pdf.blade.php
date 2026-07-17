@@ -291,7 +291,7 @@
                     <tr class="total-row">
                         <td><strong>TOTAL CHARGES</strong></td>
                         <td class="montant charges">
-                            {{ number_format($totalCharges, 0, ',', ' ') }} $
+                            {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalCharges, true, 0) }}
                         </td>
                     </tr>
                 </tbody>
@@ -327,7 +327,7 @@
                     <tr class="total-row">
                         <td><strong>TOTAL PRODUITS</strong></td>
                         <td class="montant produits">
-                            {{ number_format($totalProduits, 0, ',', ' ') }} $
+                            {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalProduits, true, 0) }}
                         </td>
                     </tr>
                 </tbody>
@@ -341,7 +341,7 @@
             {{ $resultat >= 0 ? '🎉 RÉSULTAT BÉNÉFICIAIRE' : '⚠ RÉSULTAT DÉFICITAIRE' }}
         </div>
         <div class="resultat-montant">
-            {{ number_format(abs($resultat), 0, ',', ' ') }} $
+            {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount(abs($resultat), true, 0) }}
         </div>
         <div style="font-size: 12px; margin-top: 8px;">
             @if($resultat >= 0)
@@ -366,7 +366,7 @@
         <div style="display: flex; justify-content: space-between; border-top: 1px solid #dee2e6; padding-top: 8px;">
             <span><strong>Résultat net :</strong></span>
             <strong class="{{ $resultat >= 0 ? 'produits' : 'charges' }}">
-                {{ $resultat >= 0 ? '+' : '-' }} {{ number_format(abs($resultat), 0, ',', ' ') }} $
+                {{ $resultat >= 0 ? '+' : '-' }} {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount(abs($resultat), true, 0) }}
             </strong>
         </div>
         @if($totalProduits > 0)

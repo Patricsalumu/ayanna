@@ -27,31 +27,31 @@
                     {{-- RECAP GENERAL --}}
                     <tr>
                         <td style="padding: 12px 16px; font-weight: 600; border: 1px solid #d1d5db;">Total Recettes</td>
-                        <td colspan="2" style="padding: 12px 16px; text-align: right; font-weight: bold; color: #059669; border: 1px solid #d1d5db;">{{ number_format($totalRecettes, 0, ',', ' ') }} $</td>
+                        <td colspan="2" style="padding: 12px 16px; text-align: right; font-weight: bold; color: #059669; border: 1px solid #d1d5db;">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalRecettes, true, 0) }}</td>
                     </tr>
                     <tr>
                         <td style="padding: 8px 24px; font-size: 0.9em; border: 1px solid #d1d5db;">• Ventes du jour</td>
-                        <td colspan="2" style="padding: 8px 16px; text-align: right; font-size: 0.9em; color: #059669; border: 1px solid #d1d5db;">{{ number_format($recettesVentes, 0, ',', ' ') }} $</td>
+                        <td colspan="2" style="padding: 8px 16px; text-align: right; font-size: 0.9em; color: #059669; border: 1px solid #d1d5db;">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($recettesVentes, true, 0) }}</td>
                     </tr>
                     <tr>
                         <td style="padding: 8px 24px; font-size: 0.9em; border: 1px solid #d1d5db;">• Paiements créances</td>
-                        <td colspan="2" style="padding: 8px 16px; text-align: right; font-size: 0.9em; color: #2563eb; border: 1px solid #d1d5db;">{{ number_format($recettesPaiementsCreances, 0, ',', ' ') }} $</td>
+                        <td colspan="2" style="padding: 8px 16px; text-align: right; font-size: 0.9em; color: #2563eb; border: 1px solid #d1d5db;">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($recettesPaiementsCreances, true, 0) }}</td>
                     </tr>
                     <tr>
                         <td style="padding: 8px 24px; font-size: 0.9em; border: 1px solid #d1d5db;">• Entrées diverses</td>
-                        <td colspan="2" style="padding: 8px 16px; text-align: right; font-size: 0.9em; color: #7c3aed; border: 1px solid #d1d5db;">{{ number_format($recettesEntreesDiverses, 0, ',', ' ') }} $</td>
+                        <td colspan="2" style="padding: 8px 16px; text-align: right; font-size: 0.9em; color: #7c3aed; border: 1px solid #d1d5db;">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($recettesEntreesDiverses, true, 0) }}</td>
                     </tr>
                     <tr>
                         <td style="padding: 12px 16px; font-weight: 600; border: 1px solid #d1d5db;">Créances en cours</td>
-                        <td colspan="2" style="padding: 12px 16px; text-align: right; font-weight: bold; color: #ea580c; border: 1px solid #d1d5db;">{{ number_format($totalCreance, 0, ',', ' ') }} $</td>
+                        <td colspan="2" style="padding: 12px 16px; text-align: right; font-weight: bold; color: #ea580c; border: 1px solid #d1d5db;">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalCreance, true, 0) }}</td>
                     </tr>
                     <tr>
                         <td style="padding: 12px 16px; font-weight: 600; border: 1px solid #d1d5db;">Total Dépenses</td>
-                        <td colspan="2" style="padding: 12px 16px; text-align: right; font-weight: bold; color: #b91c1c; border: 1px solid #d1d5db;">{{ number_format($depenses, 0, ',', ' ') }} $</td>
+                        <td colspan="2" style="padding: 12px 16px; text-align: right; font-weight: bold; color: #b91c1c; border: 1px solid #d1d5db;">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($depenses, true, 0) }}</td>
                     </tr>
                     <tr>
                         <td colspan="2" style="padding: 12px 16px; font-weight: bold; color: #1e3a8a; border: 1px solid #d1d5db; background: #e0e7ff;">Solde Final</td>
-                        <td style="padding: 12px 16px; text-align: right; font-weight: bold; color: #1e3a8a; font-size: 1.2em; border: 1px solid #d1d5db; background: #e0e7ff;">{{ number_format($solde, 0, ',', ' ') }} $</td>
+                        <td style="padding: 12px 16px; text-align: right; font-weight: bold; color: #1e3a8a; font-size: 1.2em; border: 1px solid #d1d5db; background: #e0e7ff;">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($solde, true, 0) }}</td>
                     </tr>
                     <tr>
                         <td colspan="3" style="padding: 10px 16px; font-weight: bold; color: #c2410c; border: 1px solid #d1d5db; background: #fef3c7;">Détail des Créances</td>
@@ -69,7 +69,7 @@
                                     <span style="display: inline-block; background: #dbeafe; color: #1e40af; border-radius: 8px; padding: 2px 8px; font-size: 0.95em; margin: 2px;">{{ $serv }}</span>
                                 @endforeach
                             </td>
-                            <td style="padding: 8px 16px; border: 1px solid #d1d5db; text-align: right; color: #ea580c; font-weight: 600;">{{ number_format($detail['total'], 0, ',', ' ') }} $</td>
+                            <td style="padding: 8px 16px; border: 1px solid #d1d5db; text-align: right; color: #ea580c; font-weight: 600;">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($detail['total'], true, 0) }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="3" style="padding: 8px 16px; color: #9ca3af; font-style: italic; text-align: right; border: 1px solid #d1d5db;">Aucune créance ce jour</td></tr>
@@ -92,7 +92,7 @@
                         <tr>
                             <td style="padding: 8px 16px; border: 1px solid #d1d5db;"><span style="font-weight: 600;">{{ $dep->compte->nom ?? '' }}</span></td>
                             <td style="padding: 8px 16px; border: 1px solid #d1d5db;"><span style="color: #6b7280; font-size: 0.97em;">{{ $dep->libele ?? $dep->motif ?? '' }}</span></td>
-                            <td style="padding: 8px 16px; border: 1px solid #d1d5db; text-align: right; color: #b91c1c; font-weight: 600;">-{{ number_format($dep->montant, 0, ',', ' ') }} $</td>
+                            <td style="padding: 8px 16px; border: 1px solid #d1d5db; text-align: right; color: #b91c1c; font-weight: 600;">-{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($dep->montant, true, 0) }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="3" style="padding: 8px 16px; color: #9ca3af; font-style: italic; text-align: right; border: 1px solid #d1d5db;">Aucune dépense ce jour</td></tr>

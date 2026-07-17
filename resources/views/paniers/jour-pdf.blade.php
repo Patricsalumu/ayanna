@@ -135,9 +135,9 @@
     <table class="summary">
         <tr>
             <td>Total paniers : {{ number_format($totalPaniersCount, 0, ',', ' ') }}</td>
-            <td class="amount">Total montant : {{ number_format($totalMontantsCalc ?? 0, 0, ',', ' ') }} $</td>
-            <td class="amount">Total payé : {{ number_format($totalPayeCalc ?? 0, 0, ',', ' ') }} $</td>
-            <td class="amount">Total crédit : {{ number_format($totalCreditCalc ?? 0, 0, ',', ' ') }} $</td>
+            <td class="amount">Total montant : {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalMontantsCalc ?? 0, true, 0) }}</td>
+            <td class="amount">Total payé : {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalPayeCalc ?? 0, true, 0) }}</td>
+            <td class="amount">Total crédit : {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalCreditCalc ?? 0, true, 0) }}</td>
         </tr>
     </table>
 
@@ -173,7 +173,7 @@
                     <td>{{ $panier->pointDeVente->nom ?? 'N/A' }}</td>
                     <td>{{ $panier->created_at->format('d/m/Y H:i') }}</td>
                     <td>{{ $panier->status }}</td>
-                    <td class="right">{{ number_format($montant, 0, ',', ' ') }} $</td>
+                    <td class="right">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($montant, true, 0) }}</td>
                 </tr>
             @empty
                 <tr>
@@ -182,7 +182,7 @@
             @endforelse
             <tr class="footer-total">
                 <td colspan="6" class="right">Total</td>
-                <td class="right">{{ number_format($totalMontants ?? 0, 0, ',', ' ') }} $</td>
+                <td class="right">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalMontants ?? 0, true, 0) }}</td>
             </tr>
         </tbody>
     </table>
