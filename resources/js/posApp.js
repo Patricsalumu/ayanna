@@ -520,6 +520,9 @@ function posApp() {
       html += `<div style='text-align:right;font-size:12px;'>Sous-total : ${this.formatMoney(this.totalHt)}</div>`;
       html += `<div style='text-align:right;font-size:12px;'>Remise : ${this.formatMoney(this.totalRemise)}</div>`;
       html += `<div style='text-align:right;font-size:14px;font-weight:bold;'>Net à payer : ${this.formatMoney(this.total)}</div>`;
+      if (this.showFEquivalent(this.total)) {
+        html += `<div style='text-align:right;font-size:12px;color:#6b7280;'>Équivalent F : ${this.formatFEquivalent(this.total)}</div>`;
+      }
       html += `<div style='text-align:center;font-size:11px;margin-top:10px;'>Merci pour votre visite !</div>`;
       html += `<div style='text-align:center;font-size:10px;margin-top:8px;'>Généré par Ayanna &copy; | ${dateStr} ${heureStr}</div>`;
       html += `</div>`;
@@ -558,6 +561,17 @@ function posApp() {
       if (typeof val !== 'number') val = parseFloat(val) || 0;
       const symbol = window.ENTREPRISE?.devise || '$';
       return `${val.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${symbol}`;
+    },
+    showFEquivalent(val) {
+      const devise = window.ENTREPRISE?.devise || '$';
+      const taux = Number(window.ENTREPRISE?.taux || 0);
+      return devise === '$' && Number.isFinite(taux) && taux > 0 && Number(val) > 0;
+    },
+    formatFEquivalent(val) {
+      if (typeof val !== 'number') val = parseFloat(val) || 0;
+      const taux = Number(window.ENTREPRISE?.taux || 0);
+      const montantF = val * taux;
+      return `${montantF.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} F`;
     },
     async printBonCommande(bonId) {
       try {

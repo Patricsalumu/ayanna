@@ -62,6 +62,12 @@
                 <td colspan="3" class="text-right py-1">Net à payer</td>
                 <td class="text-right" x-text="formatMoney(total)"></td>
               </tr>
+              <template x-if="showFEquivalent(total)">
+                <tr class="border-t text-xs text-gray-600">
+                  <td colspan="3" class="text-right py-1">Équivalent F</td>
+                  <td class="text-right" x-text="formatFEquivalent(total)"></td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
