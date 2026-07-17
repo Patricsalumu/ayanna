@@ -190,10 +190,10 @@
                             </span>
                         </td>
                         <td class="px-4 py-4 text-right">
-                            <span class="text-gray-900 font-semibold">{{ number_format($prix, 0, ',', ' ') }} <span class="text-sm text-gray-500">$</span></span>
+                            <span class="text-gray-900 font-semibold">{{ number_format($prix, 2, ',', ' ') }} <span class="text-sm text-gray-500">$</span></span>
                         </td>
                         <td class="px-4 py-4 text-right">
-                            <span class="text-lg font-bold text-gray-900">{{ number_format($total, 0, ',', ' ') }} <span class="text-sm text-gray-500">$</span></span>
+                            <span class="text-lg font-bold text-gray-900">{{ number_format($total, 2, ',', ' ') }} <span class="text-sm text-gray-500">$</span></span>
                         </td>
                         <td class="px-4 py-4 text-center">
                             <form method="POST" action="{{ url('stock-journalier/qtajoute') }}" class="inline-flex items-center gap-2">
@@ -226,7 +226,7 @@
         <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
             <div class="text-right">
                 <span class="text-xl font-bold text-blue-700">
-                    Total vente session : {{ number_format($totalVente ?? 0, 0, ',', ' ') }} $
+                    Total vente session : {{ number_format($totalVente ?? 0, 2, ',', ' ') }} $
                 </span>
             </div>
         </div>
