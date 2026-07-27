@@ -16,13 +16,55 @@ class RapportController extends Controller
     public function rapportJour(Request $request, $pointDeVenteId)
     {
         $date = $request->get('date', now()->toDateString());
-        
-        // 1.A. Recettes VENTES : toutes les ventes du jour (tous modes de paiement)
-        $commandes = Commande::whereDate('created_at', $date)
-            ->whereHas('panier', function($q) use ($pointDeVenteId) {
-                $q->where('point_de_vente_id', $pointDeVenteId);
-            })
+        $selectedSessionFrom = $request->get('session_from', null);
+        $selectedSessionTo = $request->get('session_to', null);
+
+        // Récupérer les sessions disponibles pour ce point de vente
+        $sessionStocks = \App\Models\StockJournalier::where('point_de_vente_id', $pointDeVenteId)
+            ->orderByDesc('session')
             ->get();
+        $sessions = $sessionStocks->groupBy('session')->map(function($stocks, $session) {
+            $first = $stocks->sortBy('validated_at')->first();
+            return (object)[
+                'session' => $session,
+                'validated_at' => $first->validated_at ?? $first->created_at,
+                'point_de_vente_id' => $first->point_de_vente_id,
+            ];
+        })->values();
+        
+        // Déterminer bornes temporelles selon sessions selectionnées ou date
+        $start = null;
+        $end = null;
+        if ($selectedSessionFrom || $selectedSessionTo) {
+            $fromInfo = $sessions->firstWhere('session', $selectedSessionFrom);
+            $toInfo = $sessions->firstWhere('session', $selectedSessionTo);
+            $start = $fromInfo->validated_at ?? null;
+            $end = $toInfo->validated_at ?? null;
+            if ($start && $end && $start > $end) {
+                [$start, $end] = [$end, $start];
+            }
+            // si toInfo a closed_at enregistré, l'utiliser comme fin
+            if ($toInfo) {
+                $closedAtTo = \App\Models\Historiquepdv::where('point_de_vente_id', $toInfo->point_de_vente_id)
+                    ->where('etat', 'ferme')
+                    ->where('opened_at', $toInfo->validated_at)
+                    ->value('closed_at');
+                if ($closedAtTo) $end = $closedAtTo;
+                else if ($end) $end = Carbon::parse($end)->endOfDay();
+                else if ($end) $end = Carbon::parse($end)->endOfDay();
+            }
+        }
+
+        // 1.A. Recettes VENTES : ventes dans l'intervalle ou sur la date
+        $commandesQuery = Commande::whereHas('panier', function($q) use ($pointDeVenteId) {
+                $q->where('point_de_vente_id', $pointDeVenteId);
+            });
+        if ($start && $end) {
+            $commandesQuery = $commandesQuery->whereBetween('created_at', [$start, $end]);
+        } else {
+            $commandesQuery = $commandesQuery->whereDate('created_at', $date);
+        }
+        $commandes = $commandesQuery->get();
             
         $recettesVentes = $commandes->sum(function($cmd) {
             return $cmd->montant ?? ($cmd->panier ? $cmd->panier->produits->sum(function($p) { return $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0); }) : 0);
@@ -41,20 +83,28 @@ class RapportController extends Controller
         });
 
         // 1.B. Recettes PAIEMENTS CRÉANCES : règlements de créances du jour
-        $paiementsCreances = EntreeSortie::whereDate('created_at', $date)
-            ->where('point_de_vente_id', $pointDeVenteId)
+        $paiementsCreancesQuery = EntreeSortie::where('point_de_vente_id', $pointDeVenteId)
             ->where('type', 'entree')
-            ->where('libele', 'LIKE', '%Règlement créance%')
-            ->get();
+            ->where('libele', 'LIKE', '%Règlement créance%');
+        if ($start && $end) {
+            $paiementsCreancesQuery = $paiementsCreancesQuery->whereBetween('created_at', [$start, $end]);
+        } else {
+            $paiementsCreancesQuery = $paiementsCreancesQuery->whereDate('created_at', $date);
+        }
+        $paiementsCreances = $paiementsCreancesQuery->get();
             
         $recettesPaiementsCreances = $paiementsCreances->sum('montant');
         
         // 1.C. Recettes ENTRÉES DIVERSES : autres entrées du jour (boss, réservations, etc.)
-        $entresDiverses = EntreeSortie::whereDate('created_at', $date)
-            ->where('point_de_vente_id', $pointDeVenteId)
+        $entresDiversesQuery = EntreeSortie::where('point_de_vente_id', $pointDeVenteId)
             ->where('type', 'entree')
-            ->where('libele', 'NOT LIKE', '%Règlement créance%')
-            ->get();
+            ->where('libele', 'NOT LIKE', '%Règlement créance%');
+        if ($start && $end) {
+            $entresDiversesQuery = $entresDiversesQuery->whereBetween('created_at', [$start, $end]);
+        } else {
+            $entresDiversesQuery = $entresDiversesQuery->whereDate('created_at', $date);
+        }
+        $entresDiverses = $entresDiversesQuery->get();
             
         $recettesEntreesDiverses = $entresDiverses->sum('montant');
 
@@ -84,10 +134,14 @@ class RapportController extends Controller
         });
 
         // 3. Dépenses : total des sorties du jour
-        $depenses = EntreeSortie::whereDate('created_at', $date)
-            ->where('point_de_vente_id', $pointDeVenteId)
-            ->where('type', 'sortie')
-            ->sum('montant');
+        $depensesQuery = EntreeSortie::where('point_de_vente_id', $pointDeVenteId)
+            ->where('type', 'sortie');
+        if ($start && $end) {
+            $depensesQuery = $depensesQuery->whereBetween('created_at', [$start, $end]);
+        } else {
+            $depensesQuery = $depensesQuery->whereDate('created_at', $date);
+        }
+        $depenses = $depensesQuery->sum('montant');
 
         // 4. Solde = Total recettes - Créances en cours - Dépenses
         $solde = $totalRecettes - $totalCreance - $depenses;
@@ -95,7 +149,7 @@ class RapportController extends Controller
         return view('rapport.jour', compact(
             'totalRecettes', 'recettesVentes', 'recettesPaiementsCreances', 'recettesEntreesDiverses',
             'ventesParMode', 'paiementsCreances', 'entresDiverses',
-            'totalCreance', 'detailsCreance', 'depenses', 'solde', 'date'
+            'totalCreance', 'detailsCreance', 'depenses', 'solde', 'date', 'sessions', 'selectedSessionFrom', 'selectedSessionTo'
         ));
     }
 
@@ -105,15 +159,38 @@ class RapportController extends Controller
     public function exportPdf(Request $request, $pointDeVenteId)
     {
         $date = $request->get('date', now()->toDateString());
+        $selectedSessionFrom = $request->get('session_from', null);
+        $selectedSessionTo = $request->get('session_to', null);
+        $start = null; $end = null;
+        if ($selectedSessionFrom || $selectedSessionTo) {
+            $sessionStocks = \App\Models\StockJournalier::where('point_de_vente_id', $pointDeVenteId)->get();
+            $sessions = $sessionStocks->groupBy('session')->map(function($stocks, $session) {
+                $first = $stocks->sortBy('validated_at')->first();
+                return (object)['session'=>$session,'validated_at'=>$first->validated_at ?? $first->created_at,'point_de_vente_id'=>$first->point_de_vente_id];
+            })->values();
+            $fromInfo = $sessions->firstWhere('session', $selectedSessionFrom);
+            $toInfo = $sessions->firstWhere('session', $selectedSessionTo);
+            $start = $fromInfo->validated_at ?? null;
+            $end = $toInfo->validated_at ?? null;
+            if ($start && $end && $start > $end) { [$start, $end] = [$end, $start]; }
+            if ($toInfo) {
+                $closedAtTo = \App\Models\Historiquepdv::where('point_de_vente_id', $toInfo->point_de_vente_id)
+                    ->where('etat', 'ferme')
+                    ->where('opened_at', $toInfo->validated_at)
+                    ->value('closed_at');
+                if ($closedAtTo) $end = $closedAtTo;
+            }
+        }
         $pointDeVente = \App\Models\PointDeVente::with('entreprise')->findOrFail($pointDeVenteId);
         $entreprise = $pointDeVente->entreprise;
         
         // 1.A. Recettes VENTES
-        $commandes = Commande::whereDate('created_at', $date)
-            ->whereHas('panier', function($q) use ($pointDeVenteId) {
+        $commandesQuery = Commande::whereHas('panier', function($q) use ($pointDeVenteId) {
                 $q->where('point_de_vente_id', $pointDeVenteId);
-            })
-            ->get();
+            });
+        if ($start && $end) $commandesQuery = $commandesQuery->whereBetween('created_at', [$start, $end]);
+        else $commandesQuery = $commandesQuery->whereDate('created_at', $date);
+        $commandes = $commandesQuery->get();
             
         $recettesVentes = $commandes->sum(function($cmd) {
             return $cmd->montant ?? ($cmd->panier ? $cmd->panier->produits->sum(function($p) { return $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0); }) : 0);
@@ -131,20 +208,22 @@ class RapportController extends Controller
         });
 
         // 1.B. Recettes PAIEMENTS CRÉANCES
-        $paiementsCreances = EntreeSortie::whereDate('created_at', $date)
-            ->where('point_de_vente_id', $pointDeVenteId)
+        $paiementsCreancesQuery = EntreeSortie::where('point_de_vente_id', $pointDeVenteId)
             ->where('type', 'entree')
-            ->where('libele', 'LIKE', '%Règlement créance%')
-            ->get();
+            ->where('libele', 'LIKE', '%Règlement créance%');
+        if ($start && $end) $paiementsCreancesQuery = $paiementsCreancesQuery->whereBetween('created_at', [$start, $end]);
+        else $paiementsCreancesQuery = $paiementsCreancesQuery->whereDate('created_at', $date);
+        $paiementsCreances = $paiementsCreancesQuery->get();
             
         $recettesPaiementsCreances = $paiementsCreances->sum('montant');
         
         // 1.C. Recettes ENTRÉES DIVERSES
-        $entresDiverses = EntreeSortie::whereDate('created_at', $date)
-            ->where('point_de_vente_id', $pointDeVenteId)
+        $entresDiversesQuery = EntreeSortie::where('point_de_vente_id', $pointDeVenteId)
             ->where('type', 'entree')
-            ->where('libele', 'NOT LIKE', '%Règlement créance%')
-            ->get();
+            ->where('libele', 'NOT LIKE', '%Règlement créance%');
+        if ($start && $end) $entresDiversesQuery = $entresDiversesQuery->whereBetween('created_at', [$start, $end]);
+        else $entresDiversesQuery = $entresDiversesQuery->whereDate('created_at', $date);
+        $entresDiverses = $entresDiversesQuery->get();
             
         $recettesEntreesDiverses = $entresDiverses->sum('montant');
         $totalRecettes = $recettesVentes + $recettesPaiementsCreances + $recettesEntreesDiverses;
@@ -171,10 +250,11 @@ class RapportController extends Controller
         });
         
         // 3. Dépenses
-        $depenses = EntreeSortie::whereDate('created_at', $date)
-            ->where('point_de_vente_id', $pointDeVenteId)
-            ->where('type', 'sortie')
-            ->sum('montant');
+        $depensesQuery = EntreeSortie::where('point_de_vente_id', $pointDeVenteId)
+            ->where('type', 'sortie');
+        if ($start && $end) $depensesQuery = $depensesQuery->whereBetween('created_at', [$start, $end]);
+        else $depensesQuery = $depensesQuery->whereDate('created_at', $date);
+        $depenses = $depensesQuery->sum('montant');
             
         $solde = $totalRecettes - $totalCreance - $depenses;
         

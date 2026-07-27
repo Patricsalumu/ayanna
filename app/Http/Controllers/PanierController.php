@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Client;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Carbon;
 use App\Models\PointDeVente;
 use App\Models\StockJournalier;
 use App\Models\Historiquepdv;
@@ -284,6 +285,7 @@ class PanierController extends Controller
         $selectedSession = $request->get('session', null);
         $selectedSessionFrom = $request->get('session_from', null);
         $selectedSessionTo = $request->get('session_to', null);
+        $selectedPaymentType = $request->get('payment_type', null); // 'all'|'credit'|'cash' (or null)
 
         $pointDeVenteIds = PointDeVente::where('entreprise_id', $entrepriseId)->pluck('id');
         // Récupérer toutes les sessions disponibles en base pour les points de vente de l'entreprise
@@ -334,8 +336,12 @@ class PanierController extends Controller
                         ->where('opened_at', $toInfo->validated_at)
                         ->value('closed_at');
                 }
-                $endTimestamp = $closedAtTo ?? $end;
-                $paniersQuery = $paniersQuery->whereBetween('created_at', [$start, $endTimestamp]);
+                $endTimestamp = $closedAtTo ?? ($end ? Carbon::parse($end)->endOfDay() : null);
+                if ($endTimestamp) {
+                    $paniersQuery = $paniersQuery->whereBetween('created_at', [$start, $endTimestamp]);
+                } else {
+                    $paniersQuery = $paniersQuery->where('created_at', '>=', $start);
+                }
             } elseif ($start) {
                 $paniersQuery = $paniersQuery->where('created_at', '>=', $start);
             } elseif ($end) {
@@ -371,6 +377,16 @@ class PanierController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
+        // Si un filtre payment_type est fourni, filtrer la collection en mémoire (valeurs hétérogènes possible)
+        if ($selectedPaymentType && $selectedPaymentType !== 'all') {
+            $paniers = $paniers->filter(function ($panier) use ($selectedPaymentType) {
+                $isCredit = $this->estModeCreditPaiement($panier->commande?->mode_paiement ?? $panier->mode_paiement);
+                if ($selectedPaymentType === 'credit') return $isCredit;
+                if ($selectedPaymentType === 'cash' || $selectedPaymentType === 'especes' || $selectedPaymentType === 'espace') return !$isCredit;
+                return true;
+            })->values();
+        }
+
         $paniersActifs = $paniers->reject(fn($panier) => $panier->status === 'annulé');
         $totalPaniers = $paniersActifs->count();
         $totalMontants = $paniersActifs->sum(fn($panier) => $this->montantPanierAffiche($panier));
@@ -387,7 +403,7 @@ class PanierController extends Controller
             })
             ->sum(fn($panier) => $this->montantPanierAffiche($panier));
 
-        return compact('paniers', 'sessions', 'selectedSession', 'selectedSessionFrom', 'selectedSessionTo', 'totalPaniers', 'totalMontants', 'totalPaye', 'totalCredit');
+        return compact('paniers', 'sessions', 'selectedSession', 'selectedSessionFrom', 'selectedSessionTo', 'selectedPaymentType', 'totalPaniers', 'totalMontants', 'totalPaye', 'totalCredit');
     }
 
     private function normalizeModePaiement(?string $mode): string

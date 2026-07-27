@@ -29,6 +29,15 @@
                 </select>
 
                 <button type="submit" class="bg-blue-600 text-white rounded-full px-5 py-2 text-sm font-semibold hover:bg-blue-700 transition">Filtrer</button>
+
+                <div class="ml-3">
+                    <label for="payment_type" class="sr-only">Type de paiement</label>
+                    <select name="payment_type" id="payment_type" class="border rounded-full px-4 py-2 focus:outline-none">
+                        <option value="all" {{ (isset($selectedPaymentType) && $selectedPaymentType === 'all') ? 'selected' : (!isset($selectedPaymentType) ? 'selected' : '') }}>Tous</option>
+                        <option value="cash" {{ (isset($selectedPaymentType) && $selectedPaymentType === 'cash') ? 'selected' : '' }}>Espèces</option>
+                        <option value="credit" {{ (isset($selectedPaymentType) && $selectedPaymentType === 'credit') ? 'selected' : '' }}>Crédit</option>
+                    </select>
+                </div>
             </form>
             <a href="{{ route('paniers.jour.export-pdf') }}?session_from={{ $selectedSessionFrom ?? '' }}&session_to={{ $selectedSessionTo ?? '' }}&session={{ $selectedSession ?? '' }}"
                 class="inline-flex items-center justify-center rounded-full bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 transition">
@@ -46,19 +55,19 @@
         <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="rounded-xl border border-blue-100 bg-blue-50 px-5 py-4">
                 <div class="text-sm font-medium text-blue-700">Total paniers</div>
-                <div class="mt-1 text-2xl font-bold text-blue-900">{{ number_format($totalPaniersCount, 0, ',', ' ') }}</div>
+                <div id="totalPaniersDisplay" class="mt-1 text-2xl font-bold text-blue-900">{{ number_format($totalPaniersCount, 0, ',', ' ') }}</div>
             </div>
             <div class="rounded-xl border border-indigo-100 bg-indigo-50 px-5 py-4">
                 <div class="text-sm font-medium text-indigo-700">Total montant (TTC)</div>
-                <div class="mt-1 text-2xl font-bold text-indigo-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalMontantsCalc ?? 0, true, 2) }}</div>
+                <div id="totalMontantDisplay" class="mt-1 text-2xl font-bold text-indigo-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalMontantsCalc ?? 0, true, 2) }}</div>
             </div>
             <div class="rounded-xl border border-green-100 bg-green-50 px-5 py-4">
                 <div class="text-sm font-medium text-green-700">Total payé</div>
-                <div class="mt-1 text-2xl font-bold text-green-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalPayeCalc ?? 0, true, 2) }}</div>
+                <div id="totalPayeDisplay" class="mt-1 text-2xl font-bold text-green-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalPayeCalc ?? 0, true, 2) }}</div>
             </div>
             <div class="rounded-xl border border-yellow-100 bg-yellow-50 px-5 py-4">
                 <div class="text-sm font-medium text-yellow-700">Total crédit</div>
-                <div class="mt-1 text-2xl font-bold text-yellow-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalCreditCalc ?? 0, true, 2) }}</div>
+                <div id="totalCreditDisplay" class="mt-1 text-2xl font-bold text-yellow-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalCreditCalc ?? 0, true, 2) }}</div>
             </div>
         </div>
         <div class="mb-6 flex justify-center">
@@ -361,13 +370,24 @@
                 const serveuse = tds[1]?.textContent.toLowerCase();
                 const tableNom = tds[0]?.textContent.toLowerCase();
                 const salle = tds[3]?.textContent.toLowerCase();
-                if (client.includes(filter) || serveuse.includes(filter) || produits.includes(filter) || tableNom.includes(filter) || salle.includes(filter)) {
+                // Respect payment type filter client-side
+                const paymentFilter = (document.querySelector('select[name="payment_type"]')?.value || '').toLowerCase();
+                const modeCellText = tds[6]?.textContent.toLowerCase() || '';
+                let paymentMatch = true;
+                if (paymentFilter && paymentFilter !== 'all') {
+                    if (paymentFilter === 'credit') paymentMatch = modeCellText.includes('crédit') || modeCellText.includes('credit');
+                    else paymentMatch = ! (modeCellText.includes('crédit') || modeCellText.includes('credit'));
+                }
+
+                if ((client.includes(filter) || serveuse.includes(filter) || produits.includes(filter) || tableNom.includes(filter) || salle.includes(filter)) && paymentMatch) {
                     trs[i].style.display = "";
                 } else {
                     trs[i].style.display = "none";
                 }
             }
         }
+        // Mettre à jour les KPI après filtrage
+        updateKpisFromVisibleRows();
     }
 
     const currencySymbol = @json(optional(auth()->user()?->entreprise)->devise ?? '$');
@@ -403,6 +423,40 @@
         document.getElementById('detailTotal').textContent = formatCurrency(panier.total);
         document.getElementById('panierDetails').classList.remove('hidden');
         document.getElementById('panierDetails').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Met à jour les KPI (totaux) en fonction des lignes visibles
+    function updateKpisFromVisibleRows() {
+        const table = document.querySelector('table');
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        let visibleCount = 0;
+        let totalMontant = 0;
+        let totalPaye = 0;
+        let totalCredit = 0;
+
+        rows.forEach(row => {
+            if (row.style.display === 'none') return;
+            const tds = row.querySelectorAll('td');
+            if (!tds.length) return;
+            // Montant is in column index 7 (0-based)
+            const montantText = tds[7]?.textContent.trim() || '0';
+            const montant = parseFloat(montantText.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0;
+            const modeText = (tds[6]?.textContent || '').toLowerCase();
+
+            visibleCount += 1;
+            totalMontant += montant;
+            if (modeText.includes('crédit') || modeText.includes('credit')) {
+                totalCredit += montant;
+            } else {
+                totalPaye += montant;
+            }
+        });
+
+        // Mettre à jour l'affichage
+        document.getElementById('totalPaniersDisplay').textContent = new Intl.NumberFormat('fr-FR').format(visibleCount);
+        document.getElementById('totalMontantDisplay').textContent = formatCurrency(totalMontant);
+        document.getElementById('totalPayeDisplay').textContent = formatCurrency(totalPaye);
+        document.getElementById('totalCreditDisplay').textContent = formatCurrency(totalCredit);
     }
 
     function hidePanierDetails() {
