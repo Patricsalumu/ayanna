@@ -12,7 +12,7 @@
                 <select name="session_from" id="session_from" class="border rounded-full px-4 py-2 w-full md:w-auto focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">-- Aucune --</option>
                     @foreach($sessions as $session)
-                        <option value="{{ $session->session }}" {{ (isset($selectedSessionFrom) && $selectedSessionFrom === $session->session) ? 'selected' : '' }}>
+                        <option value="{{ $session->session }}" {{ (isset($selectedSessionFrom) && $selectedSessionFrom == $session->session) ? 'selected' : '' }}>
                             {{ $session->session }} - {{ $session->point_de_vente_nom }} - {{ optional($session->validated_at)->format('H:i') ?? 'N/A' }}
                         </option>
                     @endforeach
@@ -22,7 +22,7 @@
                 <select name="session_to" id="session_to" class="border rounded-full px-4 py-2 w-full md:w-auto focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">-- Aucune --</option>
                     @foreach($sessions as $session)
-                        <option value="{{ $session->session }}" {{ (isset($selectedSessionTo) && $selectedSessionTo === $session->session) ? 'selected' : '' }}>
+                        <option value="{{ $session->session }}" {{ (isset($selectedSessionTo) && $selectedSessionTo == $session->session) ? 'selected' : '' }}>
                             {{ $session->session }} - {{ $session->point_de_vente_nom }} - {{ optional($session->validated_at)->format('H:i') ?? 'N/A' }}
                         </option>
                     @endforeach
