@@ -282,6 +282,8 @@ class PanierController extends Controller
         $entrepriseId = $user->entreprise_id ?? ($user->entreprise->id ?? null);
         $today = now()->toDateString();
         $selectedSession = $request->get('session', null);
+        $selectedSessionFrom = $request->get('session_from', null);
+        $selectedSessionTo = $request->get('session_to', null);
 
         $pointDeVenteIds = PointDeVente::where('entreprise_id', $entrepriseId)->pluck('id');
         // Récupérer toutes les sessions disponibles en base pour les points de vente de l'entreprise
@@ -302,7 +304,7 @@ class PanierController extends Controller
             ];
         })->values();
 
-        if (!$selectedSession && $sessions->count() > 0) {
+        if (!$selectedSession && !$selectedSessionFrom && !$selectedSessionTo && $sessions->count() > 0) {
             $selectedSession = $sessions->first()->session;
         }
 
@@ -310,7 +312,39 @@ class PanierController extends Controller
                 $q->where('entreprise_id', $entrepriseId);
             });
 
-        if ($selectedSession && $selectedSession !== 'all') {
+        // Filtrage par intervalle de sessions (session_from & session_to) si fournis
+        if ($selectedSessionFrom || $selectedSessionTo) {
+            $fromInfo = $sessions->firstWhere('session', $selectedSessionFrom);
+            $toInfo = $sessions->firstWhere('session', $selectedSessionTo);
+
+            // Déterminer bornes temporelles
+            $start = $fromInfo->validated_at ?? null;
+            $end = $toInfo->validated_at ?? null;
+
+            if ($start && $end) {
+                // s'assurer que start <= end
+                if ($start > $end) {
+                    [$start, $end] = [$end, $start];
+                }
+                // inclure la fin de session (si fermeture enregistrée pour la session to et même PDV)
+                $closedAtTo = null;
+                if ($toInfo) {
+                    $closedAtTo = Historiquepdv::where('point_de_vente_id', $toInfo->point_de_vente_id)
+                        ->where('etat', 'ferme')
+                        ->where('opened_at', $toInfo->validated_at)
+                        ->value('closed_at');
+                }
+                $endTimestamp = $closedAtTo ?? $end;
+                $paniersQuery = $paniersQuery->whereBetween('created_at', [$start, $endTimestamp]);
+            } elseif ($start) {
+                $paniersQuery = $paniersQuery->where('created_at', '>=', $start);
+            } elseif ($end) {
+                $paniersQuery = $paniersQuery->where('created_at', '<=', $end);
+            } else {
+                // si aucune info de session valide, filtre par aujourd'hui
+                $paniersQuery = $paniersQuery->whereDate('created_at', $today);
+            }
+        } elseif ($selectedSession && $selectedSession !== 'all') {
             $sessionInfo = $sessions->firstWhere('session', $selectedSession);
             if ($sessionInfo) {
                 $paniersQuery = $paniersQuery
@@ -353,7 +387,7 @@ class PanierController extends Controller
             })
             ->sum(fn($panier) => $this->montantPanierAffiche($panier));
 
-        return compact('paniers', 'sessions', 'selectedSession', 'totalPaniers', 'totalMontants', 'totalPaye', 'totalCredit');
+        return compact('paniers', 'sessions', 'selectedSession', 'selectedSessionFrom', 'selectedSessionTo', 'totalPaniers', 'totalMontants', 'totalPaye', 'totalCredit');
     }
 
     private function normalizeModePaiement(?string $mode): string
