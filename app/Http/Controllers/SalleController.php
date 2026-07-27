@@ -66,6 +66,31 @@ class SalleController extends Controller
             'nom' => $validated['nom'],
         ]);
 
+        // Copie des prix produits depuis la première salle de l'entreprise
+        $referenceSalle = $entreprise->salles()
+            ->where('id', '<>', $salle->id)
+            ->orderBy('id')
+            ->first();
+
+        if ($referenceSalle) {
+            $produits = \App\Models\Produit::whereHas('categorie', function ($q) use ($entreprise) {
+                $q->where('entreprise_id', $entreprise->id);
+            })->get();
+
+            $attach = [];
+            foreach ($produits as $produit) {
+                $prix = $produit->salles()
+                    ->where('salle_id', $referenceSalle->id)
+                    ->value('produit_salle.prix');
+
+                $attach[$produit->id] = ['prix' => $prix ?? 0];
+            }
+
+            if (!empty($attach)) {
+                $salle->produits()->attach($attach);
+            }
+        }
+
         // Si AJAX ou JSON attendu, on retourne la salle en JSON
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json(['id' => $salle->id, 'nom' => $salle->nom]);
@@ -124,7 +149,8 @@ class SalleController extends Controller
                 foreach ($panier->produits as $prod) {
                     if ($prod->pivot->quantite > 0) {
                         $qte += $prod->pivot->quantite;
-                        $montant += $prod->pivot->quantite * $prod->prix_vente;
+                        $prixProduit = $prod->pivot->prix ?? $prod->prixPourSalle($salle->id);
+                        $montant += $prod->pivot->quantite * $prixProduit;
                     }
                 }
             }

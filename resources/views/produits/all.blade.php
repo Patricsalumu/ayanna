@@ -1,120 +1,167 @@
 @extends('layouts.appsalle')
 @section('content')
-<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-6"
-     x-data='{
-        showAddModal: false,
-        showEditModal: false,
-        showDeleteModal: false,
-        loading: false,
-        errors: {},
-        categories: JSON.parse(`@json(\App\Models\Categorie::where("entreprise_id", $entreprise->id)->get(["id","nom"]))`),
-        form: { categorie_id: "", nom: "", image: null, description: "", prix_achat: "", prix_vente: "" },
-        editForm: { id: null, categorie_id: "", nom: "", image: null, description: "", prix_achat: "", prix_vente: "" },
-        deleteId: null,
-        openAdd() {
-            this.form = { categorie_id: "", nom: "", image: null, description: "", prix_achat: "", prix_vente: "" };
-            this.errors = {};
-            this.showAddModal = true;
-        },
-        openEdit(produit) {
-            this.editForm = {
-                id: produit.id,
-                categorie_id: produit.categorie_id,
-                nom: produit.nom,
-                image: null,
-                description: produit.description,
-                prix_achat: produit.prix_achat,
-                prix_vente: produit.prix_vente
-            };
-            this.errors = {};
-            this.showEditModal = true;
-        },
-        openDelete(id) {
-            this.deleteId = id;
-            this.showDeleteModal = true;
-        },
-        submitProduit() {
-            this.loading = true;
-            this.errors = {};
-            let formData = new FormData();
-            for (const key in this.form) {
-                if (key === "image" && this.form.image) formData.append("image", this.form.image);
-                else if (key !== "image") formData.append(key, this.form[key]);
-            }
-            fetch(`{{ route("produits.store", $entreprise) }}`, {
-                method: "POST",
-                headers: {
-                    "X-CSRF-TOKEN": "{{ csrf_token() }}",
-                    "Accept": "application/json"
-                },
-                body: formData
-            })
-            .then(async res => {
-                const contentType = res.headers.get("content-type");
-                if (contentType && contentType.includes("application/json")) {
-                    const data = await res.json();
-                    if(data.errors) {
-                        this.errors = data.errors;
+<script>
+    function produitsData() {
+        return {
+            showAddModal: false,
+            showEditModal: false,
+            showDeleteModal: false,
+            loading: false,
+            errors: {},
+            categories: {!! json_encode(\App\Models\Categorie::where("entreprise_id", $entreprise->id)->get(["id","nom"]), JSON_HEX_APOS | JSON_HEX_QUOT) !!},
+            salles: {!! json_encode(\App\Models\Salle::where("entreprise_id", $entreprise->id)->get(["id","nom"]), JSON_HEX_APOS | JSON_HEX_QUOT) !!},
+            form: { categorie_id: "", nom: "", image: null, description: "", prix_achat: "", default_price: 0, salle_prices: {} },
+            editForm: { id: null, categorie_id: "", nom: "", image: null, description: "", prix_achat: "", default_price: 0, salle_prices: {} },
+            deleteId: null,
+            openAdd() {
+                this.form = { categorie_id: "", nom: "", image: null, description: "", prix_achat: "", default_price: 0, salle_prices: {} };
+                this.salles.forEach(salle => { this.form.salle_prices[salle.id] = ""; });
+                this.errors = {};
+                this.showAddModal = true;
+            },
+            openEdit(produit) {
+                console.log('openEdit payload', produit);
+                const sallePrices = produit.salle_prices || {};
+                this.salles.forEach(salle => {
+                   if (!(salle.id in sallePrices)) {
+                        sallePrices[salle.id] = "";
+                    }
+                });
+                this.editForm = {
+                    id: produit.id,
+                    categorie_id: produit.categorie_id,
+                    nom: produit.nom,
+                    image: null,
+                    description: produit.description,
+                    prix_achat: produit.prix_achat,
+                    default_price: produit.default_price ?? 0,
+                    salle_prices: sallePrices
+                };
+                this.errors = {};
+                this.showEditModal = true;
+                console.log('showEditModal', this.showEditModal);
+            },
+            openEditById(id) {
+                try {
+                    const prod = (window.PRODUITS_EDIT || []).find(p => p.id == id);
+                    if (!prod) {
+                        console.error('Produit introuvable pour id', id);
+                        return;
+                    }
+                    this.openEdit(prod);
+                } catch (e) {
+                    console.error('Erreur openEditById', e);
+                }
+            },
+            openDelete(id) {
+                this.deleteId = id;
+                this.showDeleteModal = true;
+            },
+            submitProduit() {
+                this.loading = true;
+                this.errors = {};
+                let formData = new FormData();
+                for (const key in this.form) {
+                    if (key === "image" && this.form.image) {
+                        formData.append("image", this.form.image);
+                    } else if (key === "salle_prices") {
+                        for (const salleId in this.form.salle_prices) {
+                            const prix = this.form.salle_prices[salleId];
+                            if (prix !== null && prix !== undefined && prix !== "") {
+                                formData.append(`salle_prices[${salleId}]`, prix);
+                            }
+                        }
+                    } else if (key !== "image") {
+                        formData.append(key, this.form[key]);
+                    }
+                }
+                fetch(`{{ route("produits.store", $entreprise) }}`, {
+                    method: "POST",
+                    headers: {
+                        "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                        "Accept": "application/json"
+                    },
+                    body: formData
+                })
+                .then(async res => {
+                    const contentType = res.headers.get("content-type");
+                    if (contentType && contentType.includes("application/json")) {
+                        const data = await res.json();
+                        if(data.errors) {
+                            this.errors = data.errors;
+                        } else {
+                            window.location.reload();
+                        }
                     } else {
                         window.location.reload();
                     }
-                } else {
-                    window.location.reload();
+                })
+                .catch(() => alert("Erreur lors de la création."))
+                .finally(() => this.loading = false);
+            },
+            submitEditProduit() {
+                this.loading = true;
+                this.errors = {};
+                let formData = new FormData();
+                for (const key in this.editForm) {
+                    if (key === "image" && this.editForm.image) {
+                        formData.append("image", this.editForm.image);
+                    } else if (key === "salle_prices") {
+                        for (const salleId in this.editForm.salle_prices) {
+                            const prix = this.editForm.salle_prices[salleId];
+                            if (prix !== null && prix !== undefined && prix !== "") {
+                                formData.append(`salle_prices[${salleId}]`, prix);
+                            }
+                        }
+                    } else if (key !== "image") {
+                        formData.append(key, this.editForm[key]);
+                    }
                 }
-            })
-            .catch(() => alert("Erreur lors de la création."))
-            .finally(() => this.loading = false);
-        },
-        submitEditProduit() {
-            this.loading = true;
-            this.errors = {};
-            let formData = new FormData();
-            for (const key in this.editForm) {
-                if (key === "image" && this.editForm.image) formData.append("image", this.editForm.image);
-                else if (key !== "image") formData.append(key, this.editForm[key]);
-            }
-            formData.append("_method", "PUT");
-            fetch(`/entreprises/{{$entreprise->id}}/produits/${this.editForm.id}`, {
-                method: "POST",
-                headers: {
-                    "X-CSRF-TOKEN": "{{ csrf_token() }}",
-                    "Accept": "application/json"
-                },
-                body: formData
-            })
-            .then(async res => {
-                const contentType = res.headers.get("content-type");
-                if (contentType && contentType.includes("application/json")) {
-                    const data = await res.json();
-                    if(data.errors) {
-                        this.errors = data.errors;
+                formData.append("_method", "PUT");
+                fetch(`/entreprises/{{$entreprise->id}}/produits/${this.editForm.id}`, {
+                    method: "POST",
+                    headers: {
+                        "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                        "Accept": "application/json"
+                    },
+                    body: formData
+                })
+                .then(async res => {
+                    const contentType = res.headers.get("content-type");
+                    if (contentType && contentType.includes("application/json")) {
+                        const data = await res.json();
+                        if(data.errors) {
+                            this.errors = data.errors;
+                        } else {
+                            window.location.reload();
+                        }
                     } else {
                         window.location.reload();
                     }
-                } else {
-                    window.location.reload();
-                }
-            })
-            .catch(() => alert("Erreur lors de la modification."))
-            .finally(() => this.loading = false);
-        },
-        submitDeleteProduit() {
-            this.loading = true;
-            fetch(`/entreprises/{{$entreprise->id}}/produits/${this.deleteId}`, {
-                method: "DELETE",
-                headers: {
-                    "X-CSRF-TOKEN": "{{ csrf_token() }}",
-                    "Accept": "application/json"
-                }
-            })
-            .then(() => window.location.reload())
-            .catch(() => alert("Erreur lors de la suppression."))
-            .finally(() => {
-                this.loading = false;
-                this.showDeleteModal = false;
-            });
-        }
-    }'
+                })
+                .catch(() => alert("Erreur lors de la modification."))
+                .finally(() => this.loading = false);
+            },
+            submitDeleteProduit() {
+                this.loading = true;
+                fetch(`/entreprises/{{$entreprise->id}}/produits/${this.deleteId}`, {
+                    method: "DELETE",
+                    headers: {
+                        "X-CSRF-TOKEN": "{{ csrf_token() }}",
+                        "Accept": "application/json"
+                    }
+                })
+                .then(() => window.location.reload())
+                .catch(() => alert("Erreur lors de la suppression."))
+                .finally(() => {
+                    this.loading = false;
+                    this.showDeleteModal = false;
+                });
+            }
+        };
+    }
+</script>
+<div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-6" x-data="produitsData()">
 >
     <!-- Barre de contrôle -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -206,10 +253,21 @@
                             </div>
                             
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">Prix de vente *</label>
-                                <input type="number" step="0.01" x-model="form.prix_vente" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500" required placeholder="0.00">
-                                <template x-if="errors.prix_vente">
-                                    <div class="text-red-600 text-xs mt-1" x-text="errors.prix_vente[0]"></div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Prix de vente par défaut</label>
+                                <input type="number" step="0.01" x-model="form.default_price" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="0.00">
+                                <p class="text-xs text-gray-500 mt-1">Utilisé si aucun prix individuel n'est spécifié pour une salle.</p>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Prix par salle</label>
+                                <template x-for="salle in salles" :key="salle.id">
+                                    <div class="mb-3">
+                                        <label class="block text-xs font-medium text-gray-700 mb-1" x-text="salle.nom"></label>
+                                        <input type="number" step="0.01" :name="`salle_prices[${salle.id}]`" :id="`salle_prices_${salle.id}`" x-model.number="form.salle_prices[salle.id]" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    </div>
+                                </template>
+                                <template x-if="errors.salle_prices">
+                                    <div class="text-red-600 text-xs mt-1" x-text="errors.salle_prices[0]"></div>
                                 </template>
                             </div>
                             
@@ -316,10 +374,21 @@
                             </div>
                             
                             <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">Prix de vente *</label>
-                                <input type="number" step="0.01" x-model="editForm.prix_vente" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required placeholder="0.00">
-                                <template x-if="errors.prix_vente">
-                                    <div class="text-red-600 text-xs mt-1" x-text="errors.prix_vente[0]"></div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Prix de vente par défaut</label>
+                                <input type="number" step="0.01" x-model="editForm.default_price" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="0.00">
+                                <p class="text-xs text-gray-500 mt-1">Utilisé pour les salles sans prix individuel.</p>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Prix par salle</label>
+                                <template x-for="salle in salles" :key="salle.id">
+                                    <div class="mb-3">
+                                        <label class="block text-xs font-medium text-gray-700 mb-1" x-text="salle.nom"></label>
+                                        <input type="number" step="0.01" :name="`salle_prices[${salle.id}]`" :id="`edit_salle_prices_${salle.id}`" x-model.number="editForm.salle_prices[salle.id]" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                    </div>
+                                </template>
+                                <template x-if="errors.salle_prices">
+                                    <div class="text-red-600 text-xs mt-1" x-text="errors.salle_prices[0]"></div>
                                 </template>
                             </div>
                             
@@ -491,15 +560,8 @@
                             class="absolute right-0 mt-2 w-40 bg-white border rounded-xl shadow-lg z-10"
                         >
                             <a href="#" 
-                               @click.prevent="openEdit({
-                                   id: {{ $produit->id }},
-                                   categorie_id: '{{ $produit->categorie_id }}',
-                                   nom: '{{ addslashes($produit->nom) }}',
-                                   image: '{{ $produit->image ?? '' }}',
-                                   description: '{{ addslashes($produit->description) }}',
-                                   prix_achat: '{{ $produit->prix_achat }}',
-                                   prix_vente: '{{ $produit->prix_vente }}'
-                               })"
+                               @click.stop.prevent="openEditById({{ $produit->id }}); open = false"
+                                
                                class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" 
@@ -536,6 +598,24 @@
         <div class="col-span-full text-center text-gray-500 p-4">Aucun produit trouvé.</div>
     @endforelse
 </div>
+
+@php
+    $produitsEdit = [];
+    foreach ($produits as $p) {
+        $produitsEdit[] = [
+            'id' => $p->id,
+            'categorie_id' => $p->categorie_id,
+            'nom' => $p->nom,
+            'description' => $p->description ?? '',
+            'prix_achat' => $p->prix_achat,
+            'default_price' => $p->default_price ?? 0,
+            'salle_prices' => $p->salles->pluck('pivot.prix', 'id')->toArray(),
+        ];
+    }
+@endphp
+<script>
+    window.PRODUITS_EDIT = {!! json_encode($produitsEdit, JSON_HEX_APOS | JSON_HEX_QUOT) !!};
+</script>
 
     <!-- Vue liste -->
     <div id="listView" class="hidden relative">
@@ -578,15 +658,7 @@
                             <td class="p-3 font-medium text-blue-600">{{ optional(auth()->user()?->entreprise)->formatAmount($valeurAchat, true, 0) }}</td>
                             <td class="p-3 font-medium text-green-600">{{ optional(auth()->user()?->entreprise)->formatAmount($valeurVente, true, 0) }}</td>
                             <td class="p-3 flex gap-2">
-                                <a href="#" @click.prevent="openEdit({
-                                    id: {{ $produit->id }},
-                                    categorie_id: '{{ $produit->categorie_id }}',
-                                    nom: '{{ addslashes($produit->nom) }}',
-                                    image: null,
-                                    description: '{{ addslashes($produit->description) }}',
-                                    prix_achat: '{{ $produit->prix_achat }}',
-                                    prix_vente: '{{ $produit->prix_vente }}'
-                                })" class="inline-flex items-center gap-1 bg-indigo-600 text-white px-3 py-1 rounded-md text-sm hover:bg-indigo-700">
+                                <a href="#" @click.stop.prevent="openEditById({{ $produit->id }}); open = false" class="inline-flex items-center gap-1 bg-indigo-600 text-white px-3 py-1 rounded-md text-sm hover:bg-indigo-700">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z" /></svg>
                                     Modifier
                                 </a>

@@ -24,7 +24,7 @@ class VenteController extends Controller
             $categorieActive = $request->get('categorie');
             $search = $request->get('search');
 
-            $produitsQuery = \App\Models\Produit::query();
+            $produitsQuery = \App\Models\Produit::with('salles');
             if ($categorieActive) {
                 $produitsQuery->where('categorie_id', $categorieActive);
             } else {
@@ -46,12 +46,12 @@ class VenteController extends Controller
                 Log::debug('[CATALOGUE] Panier trouvé ?', ['panier_id' => $panier ? $panier->id : null]);
                 if ($panier) {
                     $panier->load('produits');
-                    $produitsPanier = $panier->produits->map(function($prod) {
+                    $produitsPanier = $panier->produits->map(function($prod) use ($tableCourante) {
                         return [
                             'id' => $prod->id,
                             'nom' => $prod->nom,
                             'qte' => $prod->pivot->quantite,
-                            'prix' => $prod->pivot->prix ?? $prod->prix_vente,
+                            'prix' => $prod->pivot->prix ?? $prod->prixPourSalle(\App\Models\TableResto::find($tableCourante)?->salle_id),
                             'image' => $prod->image ? asset('storage/'.$prod->image) : null,
                             'cat_id' => $prod->categorie_id,
                         ];
@@ -81,11 +81,12 @@ class VenteController extends Controller
                 ->get();
 
             // Formater les produits pour JavaScript
-            $produitsArray = $produits->map(function($produit) {
+            $tableSalleId = $tableCourante ? \App\Models\TableResto::find($tableCourante)?->salle_id : null;
+            $produitsArray = $produits->map(function($produit) use ($tableSalleId) {
                 return [
                     'id' => $produit->id,
                     'nom' => $produit->nom,
-                    'prix' => $produit->prix_vente,
+                    'prix' => $produit->prixPourSalle($tableSalleId),
                     'image' => $produit->image ? asset('storage/'.$produit->image) : null,
                     'categorie_id' => $produit->categorie_id,
                 ];
@@ -151,13 +152,14 @@ class VenteController extends Controller
                     ->where('status', 'en_cours')
                     ->first();
                 if ($panier) {
+                    $salleId = \App\Models\TableResto::find($tableCourante)?->salle_id;
                     $panier->load('produits');
-                    $produitsPanier = $panier->produits->map(function($prod) {
+                    $produitsPanier = $panier->produits->map(function($prod) use ($salleId) {
                         return [
                             'id' => $prod->id,
                             'nom' => $prod->nom,
                             'qte' => $prod->pivot->quantite,
-                            'prix' => $prod->pivot->prix ?? $prod->prix_vente,
+                            'prix' => $prod->pivot->prix ?? $prod->prixPourSalle($salleId),
                             'image' => $prod->image ? asset('storage/'.$prod->image) : null,
                             'cat_id' => $prod->categorie_id,
                         ];
@@ -216,7 +218,9 @@ class VenteController extends Controller
 
             // 2. Vérifier si le produit est déjà dans le panier
             $produitModel = \App\Models\Produit::find($produitId);
-            $prix = $produitModel?->prix_vente ?? 0;
+            $table = \App\Models\TableResto::find($tableId);
+            $salleId = $table?->salle_id;
+            $prix = $produitModel?->prixPourSalle($salleId) ?? 0;
             $existant = $panier->produits()->where('produit_id', $produitId)->first();
             if ($existant) {
                 $nouvelleQte = $existant->pivot->quantite + 1;
@@ -230,11 +234,12 @@ class VenteController extends Controller
 
             // 3. Retourner le panier actualisé (structure attendue par le JS/vue)
             $panier->load('produits');
-            $panierArray = $panier->produits->map(function($prod){
+            $salleId = \App\Models\TableResto::find($panier->table_id)?->salle_id;
+            $panierArray = $panier->produits->map(function($prod) use ($salleId) {
                 return [
                     'id' => $prod->id,
                     'nom' => $prod->nom,
-                    'prix' => $prod->pivot->prix ?? $prod->prix_vente,
+                    'prix' => $prod->pivot->prix ?? $prod->prixPourSalle($salleId),
                     'qte' => $prod->pivot->quantite,
                     'image' => $prod->image ? asset('storage/'.$prod->image) : null,
                     'cat_id' => $prod->categorie_id,

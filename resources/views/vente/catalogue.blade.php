@@ -114,15 +114,18 @@
         </select>
         <select class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-yellow-400 text-gray-800 font-bold shadow cursor-not-allowed text-center mx-1 px-2 py-0.5 appearance-none" style="height:40px;" disabled>
           @if(isset($tableCourante))
-            @php $table = $tables->firstWhere('id', $tableCourante); @endphp
+            @php
+              $table = $tables->firstWhere('id', $tableCourante);
+              $salleName = $table?->salle?->nom ?? null;
+            @endphp
             <option selected>
               @if($table)
                 @if(!empty($table->numero))
-                  T{{ $table->numero }}
+                  T{{ $table->numero }}@if($salleName) - {{ $salleName }}@endif
                 @elseif(!empty($table->nom))
-                  {{ $table->nom }}
+                  {{ $table->nom }}@if($salleName) - {{ $salleName }}@endif
                 @else
-                  Table {{ $table->id }}
+                  Table {{ $table->id }}@if($salleName) - {{ $salleName }}@endif
                 @endif
               @else
                 Table inconnue
@@ -325,8 +328,25 @@ window.ENTREPRISE = @json($pointDeVente->entreprise);
 window.CLIENTS = @json($clientsArray ?? []);
 window.SERVEUSES = @json($serveusesArray ?? []);
 window.MODES_PAIEMENT = @json($modesPaiementArray ?? []);
-window.TABLE_COURANTE_LABEL = "{{ $tables->firstWhere('id', $tableCourante)->numero ?? $tables->firstWhere('id', $tableCourante)->nom ?? $tableCourante }}";
-window.POINT_DE_VENTE_NOM = "{{ $pointDeVente->nom ?? '' }}";
+@php
+  $tableLabel = '';
+  if ($table = $tables->firstWhere('id', $tableCourante)) {
+      if (!empty($table->numero)) {
+          $tableLabel = 'T' . $table->numero;
+      } elseif (!empty($table->nom)) {
+          $tableLabel = $table->nom;
+      } else {
+          $tableLabel = 'Table ' . $table->id;
+      }
+      if ($table->salle?->nom) {
+          $tableLabel .= ' - ' . $table->salle->nom;
+      }
+  } else {
+      $tableLabel = $tableCourante ? $tableCourante : '';
+  }
+@endphp
+window.TABLE_COURANTE_LABEL = @json($tableLabel);
+window.POINT_DE_VENTE_NOM = @json($pointDeVente->nom ?? '');
 
 // Mapping des couleurs des catégories
 window.CATEGORY_COLORS = {

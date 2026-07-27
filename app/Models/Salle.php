@@ -28,6 +28,14 @@ class Salle extends Model
     {
         return $this->belongsTo(\App\Models\Entreprise::class);
     }
+
+    public function produits()
+    {
+        return $this->belongsToMany(\App\Models\Produit::class, 'produit_salle')
+            ->withPivot('prix')
+            ->withTimestamps();
+    }
+
     public function tables()
     {
         return $this->hasMany(\App\Models\TableResto::class);

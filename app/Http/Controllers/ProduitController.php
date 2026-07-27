@@ -20,7 +20,7 @@ class ProduitController extends Controller
         $produits = Produit::whereHas('categorie', function ($q) use ($entreprise) {
             $q->where('entreprise_id', $entreprise->id);
         })
-        ->with('categorie')
+        ->with(['categorie', 'salles'])
         ->orderBy($sort, $direction)
         ->get();
 
@@ -38,7 +38,8 @@ class ProduitController extends Controller
         }
         // Récupération des catégories de l'entreprise
         $categories = \App\Models\Categorie::where('entreprise_id', $entreprise->id)->get();
-        return view('produits.create', compact('entreprise', 'categories'));
+        $salles = \App\Models\Salle::where('entreprise_id', $entreprise->id)->get();
+        return view('produits.create', compact('entreprise', 'categories', 'salles'));
     }
 
     /**
@@ -51,7 +52,9 @@ class ProduitController extends Controller
             'nom' => 'required|string|max:255',
             'description' => 'nullable|string',
             'prix_achat' => 'nullable|numeric|min:0',
-            'prix_vente' => 'required|numeric|min:0',
+            'default_price' => 'required|numeric|min:0',
+            'salle_prices' => 'nullable|array',
+            'salle_prices.*' => 'nullable|numeric|min:0',
             'image' => 'nullable|image|max:2048', // validation de l'image
         ]);
 
@@ -64,7 +67,6 @@ class ProduitController extends Controller
             'nom' => $request->nom,
             'description' => $request->description,
             'prix_achat' => $request->prix_achat,
-            'prix_vente' => $request->prix_vente,
         ];
 
         // Gestion de l'image
@@ -72,7 +74,20 @@ class ProduitController extends Controller
             $data['image'] = $request->file('image')->store('produits', 'public');
         }
 
-        \App\Models\Produit::create($data);
+        $produit = \App\Models\Produit::create($data);
+
+        $salles = \App\Models\Salle::where('entreprise_id', $entreprise->id)->get();
+        $defaultPrice = $request->input('default_price', 0);
+        $inputPrices = $request->input('salle_prices', []);
+        $prices = [];
+        foreach ($salles as $salle) {
+            $prix = $inputPrices[$salle->id] ?? null;
+            if ($prix === null || $prix === '') {
+                $prix = $defaultPrice;
+            }
+            $prices[$salle->id] = ['prix' => $prix];
+        }
+        $produit->salles()->sync($prices);
 
         return redirect()->route('produits.entreprise', $entreprise->id)->with('success', 'Produit ajouté avec succès');
     }
@@ -87,7 +102,10 @@ class ProduitController extends Controller
             abort(403);
         }
         $categories = Categorie::where('entreprise_id', $entreprise->id)->get();
-        return view('produits.edit', compact('entreprise', 'produit', 'categories'));
+        $salles = \App\Models\Salle::where('entreprise_id', $entreprise->id)->get();
+        $produit->load('salles');
+        $sallePrices = $produit->salles->pluck('pivot.prix', 'id')->toArray();
+        return view('produits.edit', compact('entreprise', 'produit', 'categories', 'salles', 'sallePrices'));
     }
 
     /**
@@ -100,7 +118,9 @@ class ProduitController extends Controller
             'nom' => 'required|string|max:255',
             'description' => 'nullable|string',
             'prix_achat' => 'nullable|numeric|min:0',
-            'prix_vente' => 'required|numeric|min:0',
+            'default_price' => 'nullable|numeric|min:0',
+            'salle_prices' => 'nullable|array',
+            'salle_prices.*' => 'nullable|numeric|min:0',
             'image' => 'nullable|image|max:2048',
         ]);
 
@@ -114,7 +134,6 @@ class ProduitController extends Controller
             'nom' => $request->nom,
             'description' => $request->description,
             'prix_achat' => $request->prix_achat,
-            'prix_vente' => $request->prix_vente,
         ];
 
         if ($request->hasFile('image')) {
@@ -122,6 +141,24 @@ class ProduitController extends Controller
         }
 
         $produit->update($data);
+
+        $salles = \App\Models\Salle::where('entreprise_id', $entreprise->id)->get();
+        $defaultPrice = $request->input('default_price');
+        $inputPrices = $request->input('salle_prices', []);
+        $existingPrices = $produit->salles->pluck('pivot.prix', 'id')->toArray();
+        $prices = [];
+        foreach ($salles as $salle) {
+            $prix = $inputPrices[$salle->id] ?? null;
+            if ($prix === null || $prix === '') {
+                if (array_key_exists($salle->id, $existingPrices)) {
+                    $prix = $existingPrices[$salle->id];
+                } else {
+                    $prix = $defaultPrice ?? 0;
+                }
+            }
+            $prices[$salle->id] = ['prix' => $prix];
+        }
+        $produit->salles()->sync($prices);
 
         return redirect()->route('produits.entreprise', $entreprise->id)->with('success', 'Produit mis à jour');
     }
@@ -174,7 +211,8 @@ class ProduitController extends Controller
             'nom' => 'required|string|max:255',
             'description' => 'nullable|string',
             'prix_achat' => 'required|numeric|min:0',
-            'prix_vente' => 'required|numeric|min:0',
+            'salle_prices' => 'required|array',
+            'salle_prices.*' => 'nullable|numeric|min:0',
         ]);
     }
 
