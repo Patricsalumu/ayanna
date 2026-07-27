@@ -44,6 +44,30 @@
                 </div>
             @endif
 
+            <!-- Filtres : période et recherche -->
+            <form method="GET" class="mb-6 flex flex-col lg:flex-row lg:items-end gap-3">
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-gray-600">De :</label>
+                    <input type="date" name="date_from" value="{{ request('date_from') }}" class="border rounded-lg px-3 py-2">
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-gray-600">À :</label>
+                    <input type="date" name="date_to" value="{{ request('date_to') }}" class="border rounded-lg px-3 py-2">
+                </div>
+
+                <div class="flex-1">
+                    <label class="sr-only">Recherche</label>
+                    <input type="search" name="q" placeholder="Rechercher compte, libellé, numéro de compte..." value="{{ request('q') }}" class="w-full border rounded-lg px-4 py-2">
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Filtrer</button>
+                    <a href="{{ route('mouvements.pdv.export_pdf', $pointDeVente->id) }}?date_from={{ request('date_from') }}&date_to={{ request('date_to') }}&q={{ urlencode(request('q')) }}" class="px-4 py-2 bg-gray-800 text-white rounded-lg">Exporter PDF</a>
+                    <a href="{{ url()->current() }}" class="px-4 py-2 border rounded-lg text-gray-700">Réinitialiser</a>
+                </div>
+            </form>
+
             <!-- Cartes de statistiques - Version sur une ligne -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
                 <!-- Total Entrées -->
@@ -116,11 +140,12 @@
                                 <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Montant</th>
                                 <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Heure</th>
                                 <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
+                                <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             @forelse($mouvements as $mvt)
-                                <tr class="hover:bg-gray-50 transition-colors duration-200">
+                                <tr class="hover:bg-gray-50 transition-colors duration-200 {{ $mvt->annule ? 'opacity-50' : '' }}">
                                     <td class="px-4 py-3 whitespace-nowrap">
                                         <div class="flex flex-col">
                                             <span class="text-sm font-medium text-gray-900">
@@ -157,6 +182,17 @@
                                             </span>
                                         @endif
                                     </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-center">
+                                        @if(!$mvt->annule)
+                                            <form method="POST" action="{{ route('mouvements.pdv.annuler', ['pointDeVente' => $pointDeVente->id, 'mouvement' => $mvt->id]) }}" onsubmit="return confirm('Confirmer annulation (soft) ?');">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" class="text-xs px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200 hover:bg-yellow-200">Annuler</button>
+                                            </form>
+                                        @else
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">Annulé</span>
+                                        @endif
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
@@ -178,7 +214,7 @@
 
     <!-- Modal Ajouter Mouvement -->
     <div id="addModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden z-[60] flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all duration-300 scale-95 opacity-0" id="addModalContent">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[80vh] overflow-y-auto transform transition-all duration-300 scale-95 opacity-0" id="addModalContent">
             <div class="p-6 border-b border-gray-100">
                 <div class="flex items-center justify-between">
                     <h3 class="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -212,8 +248,10 @@
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Compte</label>
+                        <input type="search" id="accountSearch" placeholder="Rechercher un compte..." class="w-full px-3 py-2 border rounded-lg mb-2">
                         <select name="compte_id" 
                                 required
+                                id="compteSelect"
                                 class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
                             <option value="">-- Sélectionner un compte --</option>
                             @foreach($comptes as $compte)
@@ -333,5 +371,51 @@
         card.style.transition = 'all 0.6s ease-out';
         observer.observe(card);
     });
+
+    // Filtre dynamique côté client pour le select des comptes dans la modal
+    (function(){
+        const accountSearch = document.getElementById('accountSearch');
+        const compteSelect = document.getElementById('compteSelect');
+        if (!accountSearch || !compteSelect) return;
+
+        // Sauvegarder toutes les options (sauf le placeholder) pour reconstruction
+        const placeholder = Array.from(compteSelect.options).find(o => o.value === '' )?.outerHTML || '<option value="">-- Sélectionner un compte --</option>';
+        const optionsData = Array.from(compteSelect.options)
+            .filter(o => o.value !== '')
+            .map(o => ({ value: o.value, text: o.textContent.trim() }));
+
+        function rebuild(matches, q) {
+            compteSelect.innerHTML = placeholder + matches.map(m => `<option value="${m.value}">${m.text}</option>`).join('');
+            // Préselection : préférer ceux qui commencent par la query, sinon le premier match
+            if (matches.length > 0 && q) {
+                const qLower = q.toLowerCase();
+                const startMatch = matches.find(m => m.text.toLowerCase().startsWith(qLower));
+                const best = startMatch || matches[0];
+                compteSelect.value = best.value;
+            } else {
+                // si vide, ne rien préselectionner (laisser placeholder)
+                compteSelect.value = '';
+            }
+        }
+
+        accountSearch.addEventListener('input', function() {
+            const q = (this.value || '').trim();
+            if (!q) {
+                // restaurer
+                compteSelect.innerHTML = placeholder + optionsData.map(m => `<option value="${m.value}">${m.text}</option>`).join('');
+                compteSelect.value = '';
+                return;
+            }
+
+            const qLower = q.toLowerCase();
+            // matches: those that include the query; show all starting with first letter if short query
+            let matches = optionsData.filter(o => o.text.toLowerCase().includes(qLower));
+            if (matches.length === 0 && q.length === 1) {
+                // if single letter, show those that start with letter
+                matches = optionsData.filter(o => o.text.toLowerCase().startsWith(qLower));
+            }
+            rebuild(matches, q);
+        });
+    })();
     </script>
 @endsection

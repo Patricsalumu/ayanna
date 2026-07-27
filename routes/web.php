@@ -160,6 +160,8 @@ Route::middleware(['auth'])->group(function ()
 // Mouvements (entrées/sorties) d'un point de vente
 Route::get('/points-de-vente/{pointDeVente}/mouvements', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'index'])->name('mouvements.pdv');
 Route::post('/points-de-vente/{pointDeVente}/mouvements', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'store'])->name('mouvements.pdv.store');
+Route::patch('/points-de-vente/{pointDeVente}/mouvements/{mouvement}/annuler', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'annuler'])->name('mouvements.pdv.annuler');
+Route::get('/points-de-vente/{pointDeVente}/mouvements/export-pdf', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'exportPdf'])->name('mouvements.pdv.export_pdf');
 
 
 // Stock journalier

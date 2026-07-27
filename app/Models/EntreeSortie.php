@@ -3,6 +3,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 class EntreeSortie extends Model
 {
     protected $table = 'entrees_sorties';
@@ -11,6 +12,7 @@ class EntreeSortie extends Model
         'montant', 
         'libele',
         'type',
+        'annule',
         'user_id', 
         'point_de_vente_id',
         'journal_id',
@@ -19,6 +21,7 @@ class EntreeSortie extends Model
 
     protected $casts = [
         'comptabilise' => 'boolean',
+        'annule' => 'boolean',
     ];
 
     public function compte()
