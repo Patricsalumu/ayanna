@@ -35,7 +35,7 @@
                     <select id="session_from" name="session_from" class="border border-gray-300 rounded-lg px-3 py-2">
                         <option value="">-- Aucune --</option>
                         @foreach($sessions ?? [] as $s)
-                            <option value="{{ $s->session }}" {{ (isset($selectedSessionFrom) && $selectedSessionFrom == $s->session) ? 'selected' : '' }}>{{ $s->session }} - {{ \Carbon\Carbon::parse($s->validated_at)->format('d/m H:i') }}</option>
+                            <option value="{{ $s->session }}" {{ (isset($selectedSessionFrom) && $selectedSessionFrom == $s->session) ? 'selected' : '' }}>{{ \Carbon\Carbon::parse($s->validated_at)->format('d-m-y H:i') }} - {{ $s->session }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -44,7 +44,7 @@
                     <select id="session_to" name="session_to" class="border border-gray-300 rounded-lg px-3 py-2">
                         <option value="">-- Aucune --</option>
                         @foreach($sessions ?? [] as $s)
-                            <option value="{{ $s->session }}" {{ (isset($selectedSessionTo) && $selectedSessionTo == $s->session) ? 'selected' : '' }}>{{ $s->session }} - {{ \Carbon\Carbon::parse($s->validated_at)->format('d/m H:i') }}</option>
+                            <option value="{{ $s->session }}" {{ (isset($selectedSessionTo) && $selectedSessionTo == $s->session) ? 'selected' : '' }}>{{ \Carbon\Carbon::parse($s->validated_at)->format('d-m-y H:i') }} - {{ $s->session }}</option>
                         @endforeach
                     </select>
                 </div>

@@ -13,7 +13,7 @@
                     <option value="">-- Aucune --</option>
                     @foreach($sessions as $session)
                         <option value="{{ $session->session }}" {{ (isset($selectedSessionFrom) && $selectedSessionFrom == $session->session) ? 'selected' : '' }}>
-                            {{ $session->session }} - {{ $session->point_de_vente_nom }} - {{ optional($session->validated_at)->format('H:i') ?? 'N/A' }}
+                            {{ $session->validated_at ? \Carbon\Carbon::parse($session->validated_at)->format('d-m-y H:i') : $session->session }} - {{ $session->point_de_vente_nom }}
                         </option>
                     @endforeach
                 </select>
@@ -23,7 +23,7 @@
                     <option value="">-- Aucune --</option>
                     @foreach($sessions as $session)
                         <option value="{{ $session->session }}" {{ (isset($selectedSessionTo) && $selectedSessionTo == $session->session) ? 'selected' : '' }}>
-                            {{ $session->session }} - {{ $session->point_de_vente_nom }} - {{ optional($session->validated_at)->format('H:i') ?? 'N/A' }}
+                            {{ $session->validated_at ? \Carbon\Carbon::parse($session->validated_at)->format('d-m-y H:i') : $session->session }} - {{ $session->point_de_vente_nom }}
                         </option>
                     @endforeach
                 </select>
