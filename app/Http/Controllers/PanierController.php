@@ -6,6 +6,7 @@ use App\Models\Panier;
 use App\Models\User;
 use App\Models\Client;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Carbon;
 use App\Models\PointDeVente;
@@ -94,8 +95,8 @@ class PanierController extends Controller
 
             $existant = $panier->produits()->where('produit_id', $produit_id)->first();
             $ancienneQuantite = $existant?->pivot?->quantite ?? 0;
-            if ($this->roleNePeutPasDiminuerPanier() && $quantite < $ancienneQuantite) {
-                return response()->json(['success' => false, 'error' => 'Vous n\'etes pas autorise a diminuer la quantite d\'un produit.'], 403);
+            if ($this->doitExigerMotDePasseAdmin($ancienneQuantite, $quantite) && !$this->verifierMotDePasseAdmin($request)) {
+                return response()->json(['success' => false, 'error' => 'Mot de passe administrateur requis pour diminuer ou supprimer un produit.'], 403);
             }
 
             if ($existant) {
@@ -135,8 +136,8 @@ class PanierController extends Controller
         if (!$panier) return response()->json(['error' => 'Panier non trouvé'], 404);
 
         // Marquer le produit comme supprimé (quantité 0 ans la table pivot)
-        if ($this->roleNePeutPasDiminuerPanier()) {
-            return response()->json(['success' => false, 'error' => 'Vous n\'etes pas autorise a supprimer un produit du panier.'], 403);
+        if ($this->roleNePeutPasDiminuerPanier() && !$this->verifierMotDePasseAdmin($request)) {
+            return response()->json(['success' => false, 'error' => 'Mot de passe administrateur requis pour supprimer un produit.'], 403);
         }
 
         $existant = $panier->produits()->where('produit_id', $produit_id)->first();
@@ -159,6 +160,69 @@ class PanierController extends Controller
             })->values()->toArray();
 
         return response()->json(['success' => true, 'panier' => $panierArray]);
+    }
+
+    public function verifierMotDePasseAdminPourAction(Request $request)
+    {
+        if (!$this->roleNePeutPasDiminuerPanier()) {
+            return response()->json(['success' => true]);
+        }
+
+        $password = (string) $request->input('password_admin', '');
+        if ($password === '') {
+            return response()->json(['success' => false, 'error' => 'Mot de passe administrateur requis.'], 422);
+        }
+
+        $user = Auth::user();
+        $adminUsers = User::where('entreprise_id', $user?->entreprise_id)
+            ->whereIn('role', ['admin', 'super_admin'])
+            ->get();
+
+        foreach ($adminUsers as $adminUser) {
+            if ($adminUser->id === $user?->id || Hash::check($password, $adminUser->password)) {
+                return response()->json(['success' => true]);
+            }
+        }
+
+        return response()->json(['success' => false, 'error' => 'Mot de passe administrateur incorrect.'], 403);
+    }
+
+    private function doitExigerMotDePasseAdmin(?int $ancienneQuantite, ?int $nouvelleQuantite): bool
+    {
+        if (!$this->roleNePeutPasDiminuerPanier()) {
+            return false;
+        }
+
+        if ($ancienneQuantite === null || $nouvelleQuantite === null) {
+            return false;
+        }
+
+        return $nouvelleQuantite < $ancienneQuantite || $nouvelleQuantite === 0;
+    }
+
+    private function verifierMotDePasseAdmin(Request $request): bool
+    {
+        if (!$this->roleNePeutPasDiminuerPanier()) {
+            return true;
+        }
+
+        $password = (string) $request->input('password_admin', '');
+        if ($password === '') {
+            return false;
+        }
+
+        $user = Auth::user();
+        $adminUsers = User::where('entreprise_id', $user?->entreprise_id)
+            ->whereIn('role', ['admin', 'super_admin'])
+            ->get();
+
+        foreach ($adminUsers as $adminUser) {
+            if ($adminUser->id === $user?->id || Hash::check($password, $adminUser->password)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // Met à jour le client du panier (pivot DB)

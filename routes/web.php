@@ -201,6 +201,7 @@ require __DIR__.'/auth.php';
     Route::post('/panier/set-client', [\App\Http\Controllers\PanierController::class, 'setClient'])->name('panier.setClient');
     Route::post('/panier/set-serveuse', [\App\Http\Controllers\PanierController::class, 'setServeuse'])->name('panier.setServeuse');
     Route::post('/panier/liberer', [\App\Http\Controllers\PanierController::class, 'libererTable'])->name('panier.libererTable');
+    Route::post('/panier/valider-admin', [\App\Http\Controllers\PanierController::class, 'verifierMotDePasseAdminPourAction'])->name('panier.validerAdmin');
 });
 
 // Panier (AJAX)

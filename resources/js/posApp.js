@@ -82,8 +82,38 @@ function posApp() {
       return this.isQuantityRestricted() && ['C', 'x', '-'].includes(action);
     },
     isKeyDisabled(btn) {
-      return (this.mode === 'paiement' && btn.disabledEnPaiement)
-        || (this.mode !== 'paiement' && this.isRestrictedQuantityAction(btn.action));
+      return this.mode === 'paiement' && btn.disabledEnPaiement;
+    },
+    async demanderAutorisationAdmin(actionLabel) {
+      if (!this.isQuantityRestricted()) {
+        return null;
+      }
+
+      const password = window.prompt(`Mot de passe administrateur requis pour ${actionLabel}.`);
+      if (password === null || password === '') {
+        return null;
+      }
+
+      try {
+        const response = await fetch('/panier/valider-admin', {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': window.CSRF_TOKEN,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ password_admin: password })
+        });
+        const data = await response.json();
+        if (!data.success) {
+          alert(data.error || 'Mot de passe administrateur invalide.');
+          return null;
+        }
+        return password;
+      } catch (error) {
+        console.error('Erreur validation admin:', error);
+        alert('Erreur de connexion avec le serveur.');
+        return null;
+      }
     },
     selectCat(id){
       this.currentCat = id;
@@ -202,11 +232,17 @@ function posApp() {
       .catch(() => alert('Erreur de connexion avec le serveur'));
     },
     // --- Actions pavé numérique rétablies ---
-    handleKey(action) {
+    async handleKey(action) {
       if(this.selectedIndex===null) return;
       const item=this.panier[this.selectedIndex];
       if(!item) return;
-      if(this.isRestrictedQuantityAction(action)) return;
+
+      const passwordAdmin = this.isRestrictedQuantityAction(action)
+        ? await this.demanderAutorisationAdmin('réduire ou supprimer un produit')
+        : null;
+
+      if(this.isRestrictedQuantityAction(action) && !passwordAdmin) return;
+
       let oldQte = item.qte;
       if(!isNaN(action)){
         // Saisie d'un chiffre
@@ -238,7 +274,8 @@ function posApp() {
               },
               body: JSON.stringify({
                 table_id: window.TABLE_COURANTE,
-                point_de_vente_id: window.POINT_DE_VENTE_ID
+                point_de_vente_id: window.POINT_DE_VENTE_ID,
+                password_admin: passwordAdmin
               })
             })
             .then(res => res.json())
@@ -271,7 +308,8 @@ function posApp() {
               },
               body: JSON.stringify({
                 table_id: window.TABLE_COURANTE,
-                point_de_vente_id: window.POINT_DE_VENTE_ID
+                point_de_vente_id: window.POINT_DE_VENTE_ID,
+                password_admin: passwordAdmin
               })
             })
             .then(res => res.json())
@@ -304,7 +342,8 @@ function posApp() {
               },
               body: JSON.stringify({
                 table_id: window.TABLE_COURANTE,
-                point_de_vente_id: window.POINT_DE_VENTE_ID
+                point_de_vente_id: window.POINT_DE_VENTE_ID,
+                password_admin: passwordAdmin
               })
             })
             .then(res => res.json())
@@ -329,7 +368,7 @@ function posApp() {
       }
       // Appel AJAX pour MAJ la base si la quantité a changé
       if(item.qte !== oldQte) {
-        if(this.isQuantityRestricted() && item.qte < oldQte) {
+        if(this.isQuantityRestricted() && item.qte < oldQte && !passwordAdmin) {
           item.qte = oldQte;
           return;
         }
@@ -342,7 +381,8 @@ function posApp() {
           body: JSON.stringify({
             quantite: item.qte,
             table_id: window.TABLE_COURANTE,
-            point_de_vente_id: window.POINT_DE_VENTE_ID
+            point_de_vente_id: window.POINT_DE_VENTE_ID,
+            password_admin: passwordAdmin
           })
         })
         .then(res => res.json())
