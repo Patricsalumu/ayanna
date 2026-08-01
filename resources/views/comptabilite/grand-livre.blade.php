@@ -5,7 +5,7 @@
 @section('content')
 @include('comptabilite.partials.nav')
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="{ search: '{{ $search ?? '' }}' }">
     <div class="bg-white shadow-lg rounded-lg overflow-hidden">
         <!-- En-tête -->
         <div class="bg-gradient-to-r from-green-600 to-teal-600 text-white px-6 py-4">
@@ -27,21 +27,17 @@
             </div>
         </div>
 
-        <!-- Filtres de période -->
+        <!-- Filtres de recherche -->
         <div class="bg-gray-50 px-6 py-4 border-b">
             <form method="GET" class="flex flex-wrap gap-4 items-end">
-                <div class="flex-1 min-w-48">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Date début</label>
-                    <input type="date" name="date_debut" value="{{ $dateDebut }}" 
-                           class="w-full border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
-                </div>
-                <div class="flex-1 min-w-48">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Date fin</label>
-                    <input type="date" name="date_fin" value="{{ $dateFin }}" 
+                <div class="flex-1 min-w-72">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Recherche compte</label>
+                    <input type="search" name="search" x-model.debounce.250ms="search"
+                           placeholder="Rechercher un compte par numéro ou nom"
                            class="w-full border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
                 </div>
                 <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors">
-                    <i class="fas fa-search mr-2"></i>Actualiser
+                    <i class="fas fa-search mr-2"></i>Rechercher
                 </button>
             </form>
         </div>
@@ -71,7 +67,8 @@
                         $soldeColor = $solde >= 0 ? 'text-green-600' : 'text-red-600';
                     @endphp
                     
-                    <div class="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow {{ $mouvements > 0 ? 'border-green-200' : 'border-gray-200' }}">
+                    <div x-show="search.trim() === '' || ('{{ strtolower($compte->numero . ' ' . $compte->nom) }}').includes(search.toLowerCase())"
+                         class="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow {{ $mouvements > 0 ? 'border-green-200' : 'border-gray-200' }}">
                         <div class="flex justify-between items-start mb-3">
                             <div>
                                 <h3 class="font-semibold text-gray-900">{{ $compte->numero }}</h3>
@@ -81,22 +78,25 @@
                                 {{ ucfirst($compte->type) }}
                             </span>
                         </div>
-                        
+
                         <div class="space-y-2 text-sm">
                             <div class="flex justify-between">
                                 <span class="text-gray-600">Débit période:</span>
-                                    <span class="font-medium text-red-600">@currency($debitTotal)</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Crédit période:</span>
-                                    <span class="font-medium text-green-600">@currency($creditTotal)</span>
-                                </div>
-                                <div class="flex justify-between border-t pt-2">
-                                    <span class="text-gray-900 font-medium">Solde actuel:</span>
-                                    <span class="font-bold {{ $soldeColor }}">@currency($solde)</span>
+                                <span class="font-medium text-red-600">@currency($debitTotal)</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Crédit période:</span>
+                                <span class="font-medium text-green-600">@currency($creditTotal)</span>
+                            </div>
+                            <div class="flex justify-between border-t pt-2">
+                                <span class="text-gray-900 font-medium">Solde actuel:</span>
+                                <span class="font-bold {{ $soldeColor }}">@currency($solde)</span>
+                            </div>
+                        </div>
+
                         @if($mouvements > 0)
                             <div class="mt-4">
-                                <a href="{{ route('comptabilite.grand-livre', $compte->id) }}?date_debut={{ $dateDebut }}&date_fin={{ $dateFin }}" 
+                                <a href="{{ route('comptabilite.grand-livre', ['compteId' => $compte->id, 'date_debut' => $dateDebut, 'date_fin' => $dateFin]) }}"
                                    class="w-full bg-green-600 text-white text-center py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors block">
                                     <i class="fas fa-list mr-2"></i>Voir les détails
                                 </a>

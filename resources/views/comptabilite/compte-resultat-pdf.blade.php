@@ -283,7 +283,7 @@
                                 <small>{{ $compte->nom }}</small>
                             </td>
                             <td class="montant charges">
-                                {{ number_format($compte->montant, 0, ',', ' ') }} $
+                                {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($compte->montant, true, 0) }}
                             </td>
                         </tr>
                         @endif
@@ -319,7 +319,7 @@
                                 <small>{{ $compte->nom }}</small>
                             </td>
                             <td class="montant produits">
-                                {{ number_format($compte->montant, 0, ',', ' ') }} $
+                                {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($compte->montant, true, 0) }}
                             </td>
                         </tr>
                         @endif
@@ -357,11 +357,11 @@
         <h3 style="color: #059669; margin: 0 0 10px 0; font-size: 14px;">📊 Analyse de performance</h3>
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
             <span>Total des produits :</span>
-            <strong style="color: #16a34a;">{{ number_format($totalProduits, 0, ',', ' ') }} $</strong>
+            <strong style="color: #16a34a;">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalProduits, true, 0) }}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
             <span>Total des charges :</span>
-            <strong style="color: #dc2626;">{{ number_format($totalCharges, 0, ',', ' ') }} $</strong>
+            <strong style="color: #dc2626;">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalCharges, true, 0) }}</strong>
         </div>
         <div style="display: flex; justify-content: space-between; border-top: 1px solid #dee2e6; padding-top: 8px;">
             <span><strong>Résultat net :</strong></span>

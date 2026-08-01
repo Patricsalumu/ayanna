@@ -53,6 +53,28 @@ class ComptabiliteController extends Controller
         return view('comptabilite.journal', compact('journaux', 'pointsDeVente', 'dateDebut', 'dateFin', 'pointDeVenteId', 'typeOperation'));
     }
 
+    public function validerJournal(JournalComptable $journal)
+    {
+        if ($journal->statut !== 'brouillon') {
+            return back()->with('error', 'Seules les écritures en brouillon peuvent être validées.');
+        }
+
+        $journal->update(['statut' => 'valide']);
+
+        return back()->with('success', 'L’écriture a été validée avec succès.');
+    }
+
+    public function annulerJournal(JournalComptable $journal)
+    {
+        if ($journal->statut !== 'brouillon') {
+            return back()->with('error', 'Seules les écritures en brouillon peuvent être annulées.');
+        }
+
+        $journal->update(['statut' => 'annule']);
+
+        return back()->with('success', 'L’écriture a été annulée et grisée sans création d’écriture inverse.');
+    }
+
     /**
      * Grand livre - Mouvements par compte
      */
@@ -63,8 +85,18 @@ class ComptabiliteController extends Controller
         
         $dateDebut = $request->get('date_debut', now()->startOfMonth()->toDateString());
         $dateFin = $request->get('date_fin', now()->toDateString());
+        $search = trim($request->get('search', ''));
         
-        $comptes = Compte::where('entreprise_id', $entrepriseId)->orderBy('numero')->get();
+        $queryComptes = Compte::where('entreprise_id', $entrepriseId);
+
+        if (!empty($search)) {
+            $queryComptes->where(function ($q) use ($search) {
+                $q->where('numero', 'like', "%{$search}%")
+                  ->orWhere('nom', 'like', "%{$search}%");
+            });
+        }
+
+        $comptes = $queryComptes->orderBy('numero')->get();
         
         if ($compteId) {
             $compte = Compte::with('classeComptable')->findOrFail($compteId);
@@ -72,16 +104,33 @@ class ComptabiliteController extends Controller
             $ecritures = EcritureComptable::with(['journal', 'client', 'produit'])
                 ->parCompte($compteId)
                 ->whereHas('journal', function($q) use ($dateDebut, $dateFin) {
-                    $q->whereBetween('date_ecriture', [$dateDebut, $dateFin]);
+                    $q->whereBetween('date_ecriture', [$dateDebut, $dateFin])
+                      ->where('statut', '!=', 'annule');
                 })
                 ->orderBy('created_at')
                 ->get();
+
+            if (!empty($search)) {
+                $rechercheMin = strtolower($search);
+                $ecritures = $ecritures->filter(function ($ecriture) use ($rechercheMin) {
+                    $libelle = strtolower($ecriture->libelle_ecriture ?: ($ecriture->journal->libelle ?? ''));
+                    $reference = strtolower($ecriture->journal->reference ?? '');
+                    $numeroCompte = strtolower($ecriture->compte->numero ?? '');
+                    $nomCompte = strtolower($ecriture->compte->nom ?? '');
+
+                    return str_contains($libelle, $rechercheMin)
+                        || str_contains($reference, $rechercheMin)
+                        || str_contains($numeroCompte, $rechercheMin)
+                        || str_contains($nomCompte, $rechercheMin);
+                })->values();
+            }
 
             // Calcul du solde initial
             $soldeInitial = $compte->solde_initial;
             $mouvementsAnterieurs = EcritureComptable::parCompte($compteId)
                 ->whereHas('journal', function($q) use ($dateDebut) {
-                    $q->where('date_ecriture', '<', $dateDebut);
+                    $q->where('date_ecriture', '<', $dateDebut)
+                      ->where('statut', '!=', 'annule');
                 })
                 ->get();
 
@@ -96,7 +145,7 @@ class ComptabiliteController extends Controller
             return view('comptabilite.grand-livre-detail', compact('compte', 'ecritures', 'soldeInitial', 'dateDebut', 'dateFin', 'comptes'));
         }
 
-        return view('comptabilite.grand-livre', compact('comptes', 'dateDebut', 'dateFin'));
+        return view('comptabilite.grand-livre', compact('comptes', 'dateDebut', 'dateFin', 'search'));
     }
 
     /**
@@ -228,7 +277,8 @@ class ComptabiliteController extends Controller
             })
             ->with(['ecritures' => function($q) use ($date) {
                 $q->whereHas('journal', function($j) use ($date) {
-                    $j->where('date_ecriture', '<=', $date);
+                    $j->where('date_ecriture', '<=', $date)
+                      ->where('statut', '!=', 'annule');
                 });
             }])
             ->get();
@@ -240,7 +290,8 @@ class ComptabiliteController extends Controller
             })
             ->with(['ecritures' => function($q) use ($date) {
                 $q->whereHas('journal', function($j) use ($date) {
-                    $j->where('date_ecriture', '<=', $date);
+                    $j->where('date_ecriture', '<=', $date)
+                      ->where('statut', '!=', 'annule');
                 });
             }])
             ->get();
@@ -463,7 +514,8 @@ class ComptabiliteController extends Controller
         $ecritures = EcritureComptable::with(['journal', 'client', 'produit'])
             ->parCompte($compteId)
             ->whereHas('journal', function($q) use ($dateDebut, $dateFin) {
-                $q->whereBetween('date_ecriture', [$dateDebut, $dateFin]);
+                $q->whereBetween('date_ecriture', [$dateDebut, $dateFin])
+                  ->where('statut', '!=', 'annule');
             })
             ->orderBy('created_at')
             ->get();
@@ -472,7 +524,8 @@ class ComptabiliteController extends Controller
         $soldeInitial = $compte->solde_initial;
         $mouvementsAnterieurs = EcritureComptable::parCompte($compteId)
             ->whereHas('journal', function($q) use ($dateDebut) {
-                $q->where('date_ecriture', '<', $dateDebut);
+                $q->where('date_ecriture', '<', $dateDebut)
+                  ->where('statut', '!=', 'annule');
             })
             ->get();
 

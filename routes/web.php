@@ -124,6 +124,8 @@ Route::middleware(['auth'])->group(function ()
     // Routes comptabilité
         Route::prefix('comptabilite')->name('comptabilite.')->group(function () {
         Route::get('/journal', [\App\Http\Controllers\ComptabiliteController::class, 'journal'])->name('journal');
+        Route::patch('/journal/{journal}/valider', [\App\Http\Controllers\ComptabiliteController::class, 'validerJournal'])->name('journal.valider');
+        Route::patch('/journal/{journal}/annuler', [\App\Http\Controllers\ComptabiliteController::class, 'annulerJournal'])->name('journal.annuler');
         Route::get('/grand-livre/{compteId?}', [\App\Http\Controllers\ComptabiliteController::class, 'grandLivre'])->name('grand-livre');
         Route::get('/balance', [\App\Http\Controllers\ComptabiliteController::class, 'balance'])->name('balance');
         Route::get('/bilan', [\App\Http\Controllers\ComptabiliteController::class, 'bilan'])->name('bilan');

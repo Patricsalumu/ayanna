@@ -3,7 +3,14 @@
 @section('title', 'Grand Livre - ' . $compte->nom)
 
 @section('content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="{
+    search: '{{ request('search') ?? '' }}',
+    matches(text) {
+        const needle = (this.search || '').toLowerCase();
+        const haystack = (text || '').toLowerCase();
+        return needle === '' || haystack.includes(needle);
+    }
+}">
     <div class="bg-white shadow-lg rounded-lg overflow-hidden">
         <!-- En-tête -->
         <div class="bg-gradient-to-r from-green-600 to-teal-600 text-white px-6 py-4">
@@ -23,6 +30,32 @@
                     </a>
                 </div>
             </div>
+        </div>
+
+        <!-- Filtres de détail -->
+        <div class="bg-gray-50 px-6 py-4 border-b">
+            <form method="GET" class="flex flex-wrap gap-4 items-end">
+                <input type="hidden" name="compteId" value="{{ $compte->id }}">
+                <div class="flex-1 min-w-48">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Date début</label>
+                    <input type="date" name="date_debut" value="{{ $dateDebut }}"
+                           class="w-full border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
+                </div>
+                <div class="flex-1 min-w-48">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Date fin</label>
+                    <input type="date" name="date_fin" value="{{ $dateFin }}"
+                           class="w-full border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
+                </div>
+                <div class="flex-1 min-w-72">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Recherche</label>
+                    <input type="search" name="search" x-model.debounce.250ms="search" value="{{ request('search') }}"
+                           placeholder="Rechercher libellé, référence..."
+                           class="w-full border-gray-300 rounded-lg focus:ring-green-500 focus:border-green-500">
+                </div>
+                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                    <i class="fas fa-search mr-2"></i>Actualiser
+                </button>
+            </form>
         </div>
 
         <!-- Informations du compte -->
@@ -99,8 +132,13 @@
                             } else {
                                 $soldeProgressif += $ecriture->credit - $ecriture->debit;
                             }
+                            $libelle = ($ecriture->libelle_ecriture ?: $ecriture->journal->libelle) ?? '';
+                            $reference = $ecriture->journal->reference ?? '';
+                            $client = $ecriture->client->nom ?? '';
+                            $produit = $ecriture->produit->nom ?? '';
+                            $rowText = trim($libelle . ' ' . $reference . ' ' . $client . ' ' . $produit);
                         @endphp
-                        <tr class="hover:bg-gray-50">
+                        <tr x-show="matches(@js($rowText))" class="hover:bg-gray-50">
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 {{ \Carbon\Carbon::parse($ecriture->journal->date_ecriture)->format('d/m/Y H:i') }}
                             </td>

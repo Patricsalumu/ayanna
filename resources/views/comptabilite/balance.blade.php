@@ -50,9 +50,15 @@
                 </div>
                 <div class="bg-white p-4 rounded-lg shadow-sm">
                     <div class="text-sm text-gray-600">Équilibre</div>
-                    @php $equilibre = $totalDebit - $totalCredit; @endphp
-                    <div class="text-2xl font-bold {{ abs($equilibre) < 0.01 ? 'text-green-600' : 'text-red-600' }}">
-                        {{ abs($equilibre) < 0.01 ? '✓ Équilibré' : '⚠ ' . @currency(abs($equilibre)) }}
+                    @php
+                        $equilibre = $totalDebit - $totalCredit;
+                        $equilibreLabel = abs($equilibre) < 0.01
+                            ? '✓ Équilibré'
+                            : '⚠ ' . number_format(abs($equilibre), 0, ',', ' ');
+                        $equilibreClass = abs($equilibre) < 0.01 ? 'text-green-600' : 'text-red-600';
+                    @endphp
+                    <div class="text-2xl font-bold {{ $equilibreClass }}">
+                        {{ $equilibreLabel }}
                     </div>
                 </div>
             </div>

@@ -247,17 +247,17 @@
     <div class="summary">
         <div class="summary-box debit">
             <div class="label">Total Débit</div>
-            <div class="value">{{ number_format($totalDebit, 0, ',', ' ') }} $</div>
+            <div class="value">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalDebit, true, 0) }}</div>
         </div>
         <div class="summary-box credit">
             <div class="label">Total Crédit</div>
-            <div class="value">{{ number_format($totalCredit, 0, ',', ' ') }} $</div>
+            <div class="value">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalCredit, true, 0) }}</div>
         </div>
         <div class="summary-box equilibre {{ abs($totalDebit - $totalCredit) >= 0.01 ? 'warning' : '' }}">
             <div class="label">Équilibre</div>
             @php $equilibre = $totalDebit - $totalCredit; @endphp
             <div class="value">
-                {{ abs($equilibre) < 0.01 ? '✓ Équilibré' : '⚠ ' . number_format(abs($equilibre), 0, ',', ' ') . ' $' }}
+                {{ abs($equilibre) < 0.01 ? '✓ Équilibré' : '⚠ ' . optional($entreprise ?? auth()->user()?->entreprise)->formatAmount(abs($equilibre), true, 0) }}
             </div>
         </div>
     </div>

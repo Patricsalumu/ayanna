@@ -241,46 +241,55 @@ class ComptabiliteService
     }
 
     /**
-     * Enregistre un transfert entre comptes
+     * Enregistre une écriture comptable manuelle entre comptes
      */
-    public function enregistrerTransfert($compteSource, $compteDestination, $montant, $libelle, $entrepriseId, $userId = null, $reference = null)
+    public function enregistrerTransfert($compteSource, $compteDestination, $montant, $libelle, $entrepriseId, $userId = null, $reference = null, $typeOperation = 'vente', $dateHeureEcriture = null)
     {
-        return DB::transaction(function () use ($compteSource, $compteDestination, $montant, $libelle, $entrepriseId, $userId, $reference) {
-            // Créer l'entrée journal
+        return DB::transaction(function () use ($compteSource, $compteDestination, $montant, $libelle, $entrepriseId, $userId, $reference, $typeOperation, $dateHeureEcriture) {
+            $typeOperation = in_array($typeOperation, ['vente', 'achat', 'od', 'caisse'], true)
+                ? $typeOperation
+                : 'vente';
+
+            $dateHeure = $dateHeureEcriture instanceof \Carbon\Carbon
+                ? $dateHeureEcriture
+                : now();
+
             $journal = JournalComptable::create([
-                'date_ecriture' => now()->toDateString(),
-                'numero_piece' => $reference ?? JournalComptable::genererNumeroPiece('transfert', $entrepriseId, now()),
+                'date_ecriture' => $dateHeure->toDateString(),
+                'heure_ecriture' => $dateHeure->format('H:i:s'),
+                'numero_piece' => $reference ?? JournalComptable::genererNumeroPiece($typeOperation, $entrepriseId, $dateHeure),
                 'libelle' => $libelle,
                 'montant_total' => $montant,
                 'entreprise_id' => $entrepriseId,
-                'point_de_vente_id' => null, // Transfert global
+                'point_de_vente_id' => null,
                 'user_id' => $userId ?? \Illuminate\Support\Facades\Auth::id(),
-                'type_operation' => 'transfert',
-                'statut' => 'valide'
+                'type_operation' => $typeOperation,
+                'statut' => 'brouillon',
+                'created_at' => $dateHeure,
+                'updated_at' => $dateHeure
             ]);
 
-            // Écriture de débit (compte de destination - reçoit l'argent)
             EcritureComptable::create([
                 'journal_id' => $journal->id,
-                'compte_id' => $compteDestination->id,
-                'libelle' => "Transfert reçu de {$compteSource->nom}",
+                'compte_id' => $compteSource->id,
+                'libelle' => "Débit - {$libelle}",
                 'debit' => $montant,
                 'credit' => 0,
                 'ordre' => 1
             ]);
 
-            // Écriture de crédit (compte source - donne l'argent)
             EcritureComptable::create([
                 'journal_id' => $journal->id,
-                'compte_id' => $compteSource->id,
-                'libelle' => "Transfert vers {$compteDestination->nom}",
+                'compte_id' => $compteDestination->id,
+                'libelle' => "Crédit - {$libelle}",
                 'debit' => 0,
                 'credit' => $montant,
                 'ordre' => 2
             ]);
 
-            Log::info('Transfert enregistré en comptabilité', [
+            Log::info('Écriture comptable enregistrée', [
                 'journal_id' => $journal->id,
+                'type_operation' => $typeOperation,
                 'source' => $compteSource->nom,
                 'destination' => $compteDestination->nom,
                 'montant' => $montant

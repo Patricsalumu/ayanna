@@ -17,7 +17,7 @@
                 <div class="flex space-x-2">
                     <button onclick="ouvrirModaleTransfert()" 
                             class="bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-emerald-600 transition-colors">
-                        <i class="fas fa-exchange-alt mr-2"></i>Nouveau transfert
+                        <i class="fas fa-edit mr-2"></i>Passer écriture
                     </button>
                     <a href="{{ route('comptabilite.journal.export-pdf', request()->query()) }}" 
                        class="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
@@ -56,6 +56,9 @@
                     <select name="type_operation" class="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                         <option value="">Toutes</option>
                         <option value="vente" {{ $typeOperation == 'vente' ? 'selected' : '' }}>Vente</option>
+                        <option value="achat" {{ $typeOperation == 'achat' ? 'selected' : '' }}>Achat</option>
+                        <option value="od" {{ $typeOperation == 'od' ? 'selected' : '' }}>OD</option>
+                        <option value="caisse" {{ $typeOperation == 'caisse' ? 'selected' : '' }}>Caisse</option>
                         <option value="paiement" {{ $typeOperation == 'paiement' ? 'selected' : '' }}>Paiement</option>
                         <option value="mouvement" {{ $typeOperation == 'mouvement' ? 'selected' : '' }}>Mouvement</option>
                     </select>
@@ -84,10 +87,17 @@
                         @php
                             $totalDebit = $journal->ecritures->sum('debit');
                             $totalCredit = $journal->ecritures->sum('credit');
+                            $estAnnule = $journal->statut === 'annule';
+                            $estBrouillon = $journal->statut === 'brouillon';
                         @endphp
-                        <tr class="hover:bg-gray-50">
+                        <tr class="hover:bg-gray-50 {{ $estAnnule ? 'bg-gray-100 opacity-60' : '' }}">
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {{ \Carbon\Carbon::parse($journal->date_ecriture)->format('d/m/Y H:i') }}
+                                <div>{{ \Carbon\Carbon::parse($journal->date_ecriture)->format('d/m/Y') }}</div>
+                                @if(!empty($journal->heure_ecriture))
+                                    <div class="text-gray-500 text-xs">
+                                        {{ \Carbon\Carbon::parse($journal->heure_ecriture)->format('H:i:s') }}
+                                    </div>
+                                @endif
                             </td>
                             <td class="px-6 py-4 text-sm text-gray-900">
                                 <div class="font-medium">{{ $journal->libelle }}</div>
@@ -102,6 +112,9 @@
                                 @php
                                     $typeColors = [
                                         'vente' => 'bg-green-100 text-green-800',
+                                        'achat' => 'bg-orange-100 text-orange-800',
+                                        'od' => 'bg-indigo-100 text-indigo-800',
+                                        'caisse' => 'bg-cyan-100 text-cyan-800',
                                         'paiement' => 'bg-blue-100 text-blue-800',
                                         'mouvement' => 'bg-purple-100 text-purple-800'
                                     ];
@@ -114,10 +127,30 @@
                                 @currency($journal->montant_total)
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <button onclick="voirDetail({{ $journal->id }})" 
-                                        class="text-blue-600 hover:text-blue-900 transition-colors">
-                                    <i class="fas fa-eye mr-1"></i>Détail
-                                </button>
+                                <div class="flex flex-col gap-2">
+                                    <button onclick="voirDetail({{ $journal->id }})" 
+                                            class="text-blue-600 hover:text-blue-900 transition-colors text-left">
+                                        <i class="fas fa-eye mr-1"></i>Détail
+                                    </button>
+                                    @if($estBrouillon)
+                                        <form method="POST" action="{{ route('comptabilite.journal.valider', $journal) }}" class="inline">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" class="text-emerald-600 hover:text-emerald-900 transition-colors text-left">
+                                                <i class="fas fa-check mr-1"></i>Valider
+                                            </button>
+                                        </form>
+                                        <button type="button"
+                                                onclick="ouvrirConfirmationAnnulation('{{ route('comptabilite.journal.annuler', $journal) }}', '{{ addslashes($journal->libelle) }}')"
+                                                class="text-red-600 hover:text-red-900 transition-colors text-left">
+                                            <i class="fas fa-times mr-1"></i>Annuler
+                                        </button>
+                                    @elseif($estAnnule)
+                                        <span class="text-gray-500">Annulée</span>
+                                    @else
+                                        <span class="text-green-600">Validée</span>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                         
@@ -195,13 +228,13 @@
 
 <!-- Modale de transfert inter-comptes -->
 <div id="modaleTransfert" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
-        <div class="mt-3">
+    <div class="relative top-12 mx-auto p-4 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
+        <div class="mt-1">
             <!-- En-tête de la modale -->
-            <div class="flex justify-between items-center pb-4 border-b">
+            <div class="flex justify-between items-center pb-3 border-b">
                 <h3 class="text-lg font-medium text-gray-900">
-                    <i class="fas fa-exchange-alt text-emerald-500 mr-2"></i>
-                    Nouveau transfert inter-comptes
+                    <i class="fas fa-edit text-emerald-500 mr-2"></i>
+                    Passer une écriture comptable
                 </h3>
                 <button onclick="fermerModaleTransfert()" class="text-gray-400 hover:text-gray-600">
                     <i class="fas fa-times text-xl"></i>
@@ -211,120 +244,138 @@
             <!-- Formulaire de transfert -->
             <form id="formTransfert" action="{{ route('transferts.store') }}" method="POST" class="mt-6">
                 @csrf
-                
-                <!-- Sélection du compte source -->
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-arrow-up text-red-500 mr-1"></i>
-                        Compte source (d'où vient l'argent)
-                    </label>
-                    <select name="compte_source_id" id="compteSource" required 
-                            class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
-                        <option value="">Sélectionner le compte source...</option>
-                        @php
-                            $user = Auth::user();
-                            $entrepriseId = $user->entreprise_id ?? $user->entreprise->id;
-                            $comptes = \App\Models\Compte::where('entreprise_id', $entrepriseId)
-                                ->orderBy('type')
-                                ->orderBy('nom')
-                                ->get();
-                        @endphp
-                        @foreach($comptes as $compte)
-                            <option value="{{ $compte->id }}" data-solde="{{ $compte->solde ?? 0 }}">
-                                {{ $compte->nom }} ({{ $compte->numero }})
-                                @if($compte->type === 'actif')
-                                    - Solde: @currency($compte->solde ?? 0)
-                                @endif
-                            </option>
-                        @endforeach
-                    </select>
-                    <p class="text-sm text-gray-500 mt-1">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Le compte sera débité (diminué)
-                    </p>
-                </div>
 
-                <!-- Sélection du compte destination -->
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-arrow-down text-green-500 mr-1"></i>
-                        Compte destination (où va l'argent)
-                    </label>
-                    <select name="compte_destination_id" id="compteDestination" required 
-                            class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
-                        <option value="">Sélectionner le compte destination...</option>
-                        @foreach($comptes as $compte)
-                            <option value="{{ $compte->id }}">
-                                {{ $compte->nom }} ({{ $compte->numero }})
-                            </option>
-                        @endforeach
-                    </select>
-                    <p class="text-sm text-gray-500 mt-1">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Le compte sera crédité (augmenté)
-                    </p>
-                </div>
+                @php
+                    $user = Auth::user();
+                    $entrepriseId = $user->entreprise_id ?? $user->entreprise->id;
+                    $comptes = \App\Models\Compte::where('entreprise_id', $entrepriseId)
+                        ->orderBy('type')
+                        ->orderBy('nom')
+                        ->get();
+                @endphp
 
-                <!-- Boutons de transfert rapide -->
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-bolt text-yellow-500 mr-1"></i>
-                        Transferts rapides
-                    </label>
-                    <div class="grid grid-cols-2 gap-2">
-                        @php
-                            $compteBanque = $comptes->where('nom', 'LIKE', '%banque%')->first() 
-                                ?? $comptes->where('numero', '512')->first();
-                            $caisseGenerale = $comptes->where('nom', 'LIKE', '%caisse générale%')->first()
-                                ?? $comptes->where('nom', 'LIKE', '%caisse%')->where('numero', '531')->first();
-                        @endphp
-                        
-                        @if($compteBanque)
-                        <button type="button" onclick="transfertRapide('banque', {{ $compteBanque->id }})" 
-                                class="flex items-center justify-center px-3 py-2 border border-blue-300 rounded-lg text-blue-700 hover:bg-blue-50 transition-colors">
-                            <i class="fas fa-university mr-2"></i>
-                            Vers banque
-                        </button>
-                        @endif
-                        
-                        @if($caisseGenerale)
-                        <button type="button" onclick="transfertRapide('caisse', {{ $caisseGenerale->id }})" 
-                                class="flex items-center justify-center px-3 py-2 border border-green-300 rounded-lg text-green-700 hover:bg-green-50 transition-colors">
-                            <i class="fas fa-cash-register mr-2"></i>
-                            Vers caisse générale
-                        </button>
-                        @endif
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <!-- Sélection du compte à débiter -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-arrow-up text-red-500 mr-1"></i>
+                            Compte à débiter
+                        </label>
+                        <input type="text" id="compteSourceSearch" list="compteSourceOptions" autocomplete="off"
+                               placeholder="Rechercher un compte à débiter..."
+                               class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                        <datalist id="compteSourceOptions">
+                            @foreach($comptes as $compte)
+                                <option value="{{ $compte->nom }} ({{ $compte->numero }})" data-id="{{ $compte->id }}"></option>
+                            @endforeach
+                        </datalist>
+                        <select name="compte_source_id" id="compteSource" required class="hidden">
+                            <option value="">Sélectionner le compte source...</option>
+                            @foreach($comptes as $compte)
+                                <option value="{{ $compte->id }}" data-solde="{{ $compte->solde ?? 0 }}">
+                                    {{ $compte->nom }} ({{ $compte->numero }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-sm text-gray-500 mt-1">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Le compte sera débité (diminué)
+                        </p>
                     </div>
-                </div>
 
-                <!-- Montant -->
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-coins text-yellow-600 mr-1"></i>
-                        Montant à transférer
-                    </label>
-                    <input type="number" name="montant" id="montantTransfert" min="1" step="1" required 
-                           placeholder="Ex: 50000"
-                           class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
-                    <div id="alerteSolde" class="hidden mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-sm">
-                        <i class="fas fa-exclamation-triangle mr-1"></i>
-                        <span id="messageSolde"></span>
+                    <!-- Sélection du compte à créditer -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-arrow-down text-green-500 mr-1"></i>
+                            Compte à créditer
+                        </label>
+                        <input type="text" id="compteDestinationSearch" list="compteDestinationOptions" autocomplete="off"
+                               placeholder="Rechercher un compte à créditer..."
+                               class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                        <datalist id="compteDestinationOptions">
+                            @foreach($comptes as $compte)
+                                <option value="{{ $compte->nom }} ({{ $compte->numero }})" data-id="{{ $compte->id }}"></option>
+                            @endforeach
+                        </datalist>
+                        <select name="compte_destination_id" id="compteDestination" required class="hidden">
+                            <option value="">Sélectionner le compte destination...</option>
+                            @foreach($comptes as $compte)
+                                <option value="{{ $compte->id }}">
+                                    {{ $compte->nom }} ({{ $compte->numero }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-sm text-gray-500 mt-1">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Le compte sera crédité (augmenté)
+                        </p>
                     </div>
                 </div>
 
                 <!-- Libellé -->
-                <div class="mb-6">
+                <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-edit text-blue-500 mr-1"></i>
-                        Libellé / Motif du transfert
+                        Libellé / Motif de l’écriture
                     </label>
                     <input type="text" name="libelle" id="libelleTransfert" required 
                            placeholder="Ex: Dépôt banque recettes du jour"
                            class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
                 </div>
 
-                <!-- Référence (optionnel) -->
-                <div class="mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                    <!-- Date -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-calendar text-gray-600 mr-1"></i>
+                            Date
+                        </label>
+                        <input type="date" name="date_ecriture" id="dateEcriture" required
+                               value="{{ now()->toDateString() }}"
+                               class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                    </div>
+
+                    <!-- Heure -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-clock text-gray-600 mr-1"></i>
+                            Heure
+                        </label>
+                        <input type="time" name="heure_ecriture" id="heureEcriture" required
+                               value="{{ now()->format('H:i') }}"
+                               class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                    </div>
+
+                    <!-- Montant -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-coins text-yellow-600 mr-1"></i>
+                            Montant
+                        </label>
+                        <input type="number" name="montant" id="montantTransfert" min="1" step="1" required 
+                               placeholder="Ex: 50000"
+                               class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                    </div>
+
+                    <!-- Type d'écriture -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-tag text-purple-500 mr-1"></i>
+                            Type journal
+                        </label>
+                        <select name="type_operation" id="typeOperation" required
+                                class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                            <option value="">Sélectionner le type...</option>
+                            <option value="vente">Vente</option>
+                            <option value="achat">Achat</option>
+                            <option value="od">OD</option>
+                            <option value="caisse">Caisse</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <!-- Référence (optionnel) -->
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-hashtag text-gray-500 mr-1"></i>
                         Référence (optionnel)
@@ -333,29 +384,94 @@
                            class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
                 </div>
 
-                <!-- Résumé du transfert -->
-                <div id="resumeTransfert" class="hidden mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-                    <h4 class="font-medium text-emerald-800 mb-2">Résumé du transfert :</h4>
-                    <div class="text-sm text-emerald-700">
-                        <div>• Débit : <span id="resumeSource"></span></div>
-                        <div>• Crédit : <span id="resumeDestination"></span></div>
-                        <div>• Montant : <span id="resumeMontant"></span></div>
-                    </div>
-                </div>
-
                 <!-- Boutons d'action -->
                 <div class="flex justify-end space-x-3 pt-4 border-t">
                     <button type="button" onclick="fermerModaleTransfert()" 
                             class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
                         Annuler
                     </button>
-                    <button type="submit" 
+                    <button type="button" onclick="ouvrirConfirmationEcriture()"
                             class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
                         <i class="fas fa-check mr-2"></i>
-                        Effectuer le transfert
+                        Valider l'écriture
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Boîte de confirmation d'annulation de l’écriture -->
+<div id="modaleConfirmationAnnulation" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-[70]">
+    <div class="relative top-24 mx-auto p-4 border w-11/12 max-w-md shadow-lg rounded-md bg-white">
+        <div class="mt-1">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-lg font-medium text-gray-900">
+                    <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+                    Confirmer l’annulation
+                </h3>
+                <button onclick="fermerConfirmationAnnulation()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="mt-4 text-sm text-gray-700 space-y-2">
+                <p>Vous êtes sur le point d’annuler l’écriture suivante :</p>
+                <div class="bg-gray-50 rounded p-3">
+                    <div id="annulationJournalLibelle" class="font-medium text-gray-900"></div>
+                </div>
+                <p class="text-red-600">Cette action ne créera pas d’écriture inverse. Elle grise simplement l’écriture concernée.</p>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-4 border-t mt-4">
+                <button type="button" onclick="fermerConfirmationAnnulation()"
+                        class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                    Annuler
+                </button>
+                <form id="formAnnulationJournal" method="POST" class="inline">
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                        Confirmer l’annulation
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Boîte de confirmation compacte -->
+<div id="modaleConfirmationEcriture" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-[60]">
+    <div class="relative top-24 mx-auto p-4 border w-11/12 max-w-md shadow-lg rounded-md bg-white">
+        <div class="mt-1">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="text-lg font-medium text-gray-900">
+                    <i class="fas fa-check-circle text-emerald-500 mr-2"></i>
+                    Confirmation de l’écriture
+                </h3>
+                <button onclick="fermerConfirmationEcriture()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="mt-4 text-sm text-gray-700 space-y-2">
+                <div>• Débit : <span id="confirmDebit" class="font-medium"></span></div>
+                <div>• Crédit : <span id="confirmCredit" class="font-medium"></span></div>
+                <div>• Montant : <span id="confirmMontant" class="font-medium"></span></div>
+                <div>• Type : <span id="confirmType" class="font-medium"></span></div>
+                <div>• Date : <span id="confirmDate" class="font-medium"></span></div>
+            </div>
+
+            <div class="flex justify-end space-x-3 pt-4 border-t mt-4">
+                <button type="button" onclick="fermerConfirmationEcriture()"
+                        class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                    Annuler
+                </button>
+                <button type="button" onclick="confirmerEnregistrement()"
+                        class="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
+                    Confirmer
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -373,14 +489,62 @@ function voirDetail(journalId) {
 // Fonctions pour la modale de transfert
 function ouvrirModaleTransfert() {
     document.getElementById('modaleTransfert').classList.remove('hidden');
-    // Reset du formulaire
     document.getElementById('formTransfert').reset();
     document.getElementById('resumeTransfert').classList.add('hidden');
-    document.getElementById('alerteSolde').classList.add('hidden');
 }
 
 function fermerModaleTransfert() {
     document.getElementById('modaleTransfert').classList.add('hidden');
+}
+
+function ouvrirConfirmationEcriture() {
+    const compteSourceId = document.getElementById('compteSource').value;
+    const compteDestinationId = document.getElementById('compteDestination').value;
+    const montant = document.getElementById('montantTransfert').value;
+    const typeOperation = document.getElementById('typeOperation').value;
+    const dateEcriture = document.getElementById('dateEcriture').value;
+
+    if (!compteSourceId || !compteDestinationId || !montant || !typeOperation || !dateEcriture) {
+        return;
+    }
+
+    const sourceOption = document.querySelector(`#compteSource option[value="${compteSourceId}"]`);
+    const destinationOption = document.querySelector(`#compteDestination option[value="${compteDestinationId}"]`);
+
+    if (!sourceOption || !destinationOption) {
+        return;
+    }
+
+    document.getElementById('confirmDebit').textContent = sourceOption.textContent.split('(')[0].trim();
+    document.getElementById('confirmCredit').textContent = destinationOption.textContent.split('(')[0].trim();
+    document.getElementById('confirmMontant').textContent = new Intl.NumberFormat('fr-FR').format(montant) + ' ' + currencySymbol;
+    document.getElementById('confirmType').textContent = document.querySelector(`#typeOperation option[value="${typeOperation}"]`)?.textContent || typeOperation;
+    document.getElementById('confirmDate').textContent = dateEcriture;
+
+    document.getElementById('modaleConfirmationEcriture').classList.remove('hidden');
+}
+
+function fermerConfirmationEcriture() {
+    document.getElementById('modaleConfirmationEcriture').classList.add('hidden');
+}
+
+function ouvrirConfirmationAnnulation(url, libelle) {
+    const form = document.getElementById('formAnnulationJournal');
+    const modal = document.getElementById('modaleConfirmationAnnulation');
+    const libelleElement = document.getElementById('annulationJournalLibelle');
+
+    form.action = url;
+    libelleElement.textContent = libelle || 'Écriture comptable';
+    modal.classList.remove('hidden');
+}
+
+function fermerConfirmationAnnulation() {
+    document.getElementById('modaleConfirmationAnnulation').classList.add('hidden');
+}
+
+function confirmerEnregistrement() {
+    fermerConfirmationEcriture();
+    document.getElementById('formTransfert').submit();
 }
 
 function transfertRapide(type, compteDestinationId) {
@@ -413,50 +577,42 @@ function mettreAJourResume() {
         const destinationOption = document.querySelector(`#compteDestination option[value="${compteDestinationId}"]`);
         
         if (sourceOption && destinationOption) {
-            document.getElementById('resumeSource').textContent = sourceOption.textContent.split('(')[0].trim();
-            document.getElementById('resumeDestination').textContent = destinationOption.textContent.split('(')[0].trim();
-            document.getElementById('resumeMontant').textContent = new Intl.NumberFormat('fr-FR').format(montant) + ' ' + currencySymbol;
-            document.getElementById('resumeTransfert').classList.remove('hidden');
+            document.getElementById('confirmDebit').textContent = sourceOption.textContent.split('(')[0].trim();
+            document.getElementById('confirmCredit').textContent = destinationOption.textContent.split('(')[0].trim();
+            document.getElementById('confirmMontant').textContent = new Intl.NumberFormat('fr-FR').format(montant) + ' ' + currencySymbol;
         }
-    } else {
-        document.getElementById('resumeTransfert').classList.add('hidden');
     }
 }
 
-function verifierSolde() {
-    const compteSourceId = document.getElementById('compteSource').value;
-    const montant = parseFloat(document.getElementById('montantTransfert').value) || 0;
-    
-    if (compteSourceId && montant > 0) {
-        const sourceOption = document.querySelector(`#compteSource option[value="${compteSourceId}"]`);
-        const solde = parseFloat(sourceOption.getAttribute('data-solde')) || 0;
-        
-        if (solde < montant) {
-            document.getElementById('messageSolde').textContent = 
-                `Attention: le solde du compte (${new Intl.NumberFormat('fr-FR').format(solde)} $) est insuffisant pour ce transfert (${new Intl.NumberFormat('fr-FR').format(montant)} $)}`;
-            document.getElementById('alerteSolde').classList.remove('hidden');
-        } else {
-            document.getElementById('alerteSolde').classList.add('hidden');
-        }
-    } else {
-        document.getElementById('alerteSolde').classList.add('hidden');
+function synchroniserRechercheCompte(inputId, listId, selectId) {
+    const input = document.getElementById(inputId);
+    const select = document.getElementById(selectId);
+    const datalist = document.getElementById(listId);
+
+    if (!input || !select || !datalist) {
+        return;
     }
+
+    input.addEventListener('input', function() {
+        const valeurSaisie = this.value.trim();
+        const optionTrouvee = Array.from(datalist.options).find(option => option.value.trim() === valeurSaisie);
+
+        if (optionTrouvee && optionTrouvee.dataset.id) {
+            select.value = optionTrouvee.dataset.id;
+            mettreAJourResume();
+        }
+    });
 }
+
 const currencySymbol = @json(optional(Auth::user()->entreprise)->devise ?? '$');
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
-    // Écouter les changements dans les selects et inputs
-    document.getElementById('compteSource').addEventListener('change', function() {
-        mettreAJourResume();
-        verifierSolde();
-    });
-    
+    synchroniserRechercheCompte('compteSourceSearch', 'compteSourceOptions', 'compteSource');
+    synchroniserRechercheCompte('compteDestinationSearch', 'compteDestinationOptions', 'compteDestination');
+
+    document.getElementById('compteSource').addEventListener('change', mettreAJourResume);
     document.getElementById('compteDestination').addEventListener('change', mettreAJourResume);
-    
-    document.getElementById('montantTransfert').addEventListener('input', function() {
-        mettreAJourResume();
-        verifierSolde();
-    });
+    document.getElementById('montantTransfert').addEventListener('input', mettreAJourResume);
     
     // Fermer la modale en cliquant à l'extérieur
     document.getElementById('modaleTransfert').addEventListener('click', function(e) {

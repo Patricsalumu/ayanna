@@ -13,6 +13,7 @@ class JournalComptable extends Model
 
     protected $fillable = [
         'date_ecriture',
+        'heure_ecriture',
         'numero_piece',
         'libelle',
         'montant_total',

@@ -40,7 +40,7 @@
                     <td>{{ $mvt->compte->nom ?? 'N/A' }} ({{ $mvt->compte->numero ?? '' }})</td>
                     <td>{{ $mvt->libele }}</td>
                     <td class="center">{{ ucfirst($mvt->type) }}</td>
-                    <td class="right">{{ number_format($mvt->montant, 2, ',', ' ') }} $</td>
+                    <td class="right">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($mvt->montant, true, 2) }}</td>
                     <td class="center">{{ $mvt->annule ? 'Oui' : 'Non' }}</td>
                 </tr>
             @endforeach
@@ -48,12 +48,12 @@
         <tfoot>
             <tr>
                 <th colspan="4" class="right">Total Entrées</th>
-                <th class="right">{{ number_format($totalEntree, 2, ',', ' ') }} $</th>
+                <th class="right">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalEntree, true, 2) }}</th>
                 <th></th>
             </tr>
             <tr>
                 <th colspan="4" class="right">Total Sorties</th>
-                <th class="right">{{ number_format($totalSortie, 2, ',', ' ') }} $</th>
+                <th class="right">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalSortie, true, 2) }}</th>
                 <th></th>
             </tr>
         </tfoot>

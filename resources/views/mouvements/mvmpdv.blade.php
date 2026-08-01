@@ -76,7 +76,7 @@
                         <div class="flex-1">
                             <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total entrées</p>
                             <p class="text-2xl font-bold text-emerald-600 mt-1">
-                                {{ number_format($totalEntree, 0, ',', ' ') }} $
+                                {{ optional($pointDeVente?->entreprise ?? auth()->user()?->entreprise)->formatAmount($totalEntree, true, 0) }}
                             </p>
                             <p class="text-xs text-emerald-600 mt-1 font-medium">Argent reçu</p>
                         </div>
@@ -91,7 +91,7 @@
                     <div class="text-center">
                         <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Solde net</p>
                         <p class="text-2xl font-bold mb-1 {{ ($totalEntree - $totalSortie) >= 0 ? 'text-blue-600' : 'text-red-500' }}">
-                            {{ number_format($totalEntree - $totalSortie, 0, ',', ' ') }} $
+                            {{ optional($pointDeVente?->entreprise ?? auth()->user()?->entreprise)->formatAmount($totalEntree - $totalSortie, true, 0) }}
                         </p>
                         <div class="flex items-center justify-center gap-1">
                             @if(($totalEntree - $totalSortie) >= 0)
@@ -111,7 +111,7 @@
                         <div class="flex-1">
                             <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total sorties</p>
                             <p class="text-2xl font-bold text-red-500 mt-1">
-                                {{ number_format($totalSortie, 0, ',', ' ') }} $
+                                {{ optional($pointDeVente?->entreprise ?? auth()->user()?->entreprise)->formatAmount($totalSortie, true, 0) }}
                             </p>
                             <p class="text-xs text-red-500 mt-1 font-medium">Argent dépensé</p>
                         </div>
@@ -161,7 +161,7 @@
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap text-right">
                                         <span class="text-lg font-bold {{ $mvt->type === 'entree' ? 'text-emerald-600' : 'text-red-500' }}">
-                                            {{ number_format($mvt->montant, 2, ',', ' ') }} $
+                                            {{ optional($pointDeVente?->entreprise ?? auth()->user()?->entreprise)->formatAmount($mvt->montant, true, 2) }}
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap text-center">

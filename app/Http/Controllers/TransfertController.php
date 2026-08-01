@@ -83,7 +83,10 @@ class TransfertController extends Controller
                 'compte_destination_id' => 'required|exists:comptes,id|different:compte_source_id',
                 'montant' => 'required|numeric|min:1',
                 'libelle' => 'required|string|max:500',
-                'reference' => 'nullable|string|max:100'
+                'reference' => 'nullable|string|max:100',
+                'type_operation' => 'required|string|in:vente,achat,od,caisse',
+                'date_ecriture' => 'required|date',
+                'heure_ecriture' => 'required|date_format:H:i'
             ]);
 
             $user = Auth::user();
@@ -101,15 +104,9 @@ class TransfertController extends Controller
                 return back()->with('error', 'Comptes invalides ou non autorisés');
             }
 
-            // Vérifier le solde du compte source (optionnel selon la logique métier)
-            $soldeSource = $this->calculerSoldeCompte($compteSource);
-            if ($soldeSource < $request->montant) {
-                return back()->with('warning', 
-                    "Attention: le solde du compte source ({$soldeSource} F) est insuffisant pour ce transfert ({$request->montant} F). Le transfert sera quand même effectué."
-                );
-            }
+            // L'écriture comptable est enregistrée sans contrôle de solde au compte crédité.
+            $dateHeureEcriture = \Carbon\Carbon::parse($request->date_ecriture . ' ' . $request->heure_ecriture);
 
-            // Effectuer le transfert via le service comptable
             $journal = $this->comptabiliteService->enregistrerTransfert(
                 $compteSource,
                 $compteDestination,
@@ -117,19 +114,25 @@ class TransfertController extends Controller
                 $request->libelle,
                 $entrepriseId,
                 $user->id,
-                $request->reference
+                $request->reference,
+                $request->type_operation,
+                $dateHeureEcriture
             );
 
-            Log::info('Transfert effectué', [
+            Log::info('Écriture comptable enregistrée', [
                 'journal_id' => $journal->id,
+                'type_operation' => $request->type_operation,
                 'source' => $compteSource->nom,
                 'destination' => $compteDestination->nom,
                 'montant' => $request->montant,
                 'user_id' => $user->id
             ]);
 
-            return redirect()->route('journal')->with('success', 
-                "Transfert de {$request->montant} F effectué avec succès de {$compteSource->nom} vers {$compteDestination->nom}"
+            return redirect()->route('comptabilite.journal', [
+                'date_debut' => $dateHeureEcriture->toDateString(),
+                'date_fin' => $dateHeureEcriture->toDateString(),
+            ])->with('success', 
+                "Écriture de {$request->montant} F enregistrée avec succès sur {$compteSource->nom} / {$compteDestination->nom}"
             );
 
         } catch (\Exception $e) {

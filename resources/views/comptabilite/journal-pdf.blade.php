@@ -259,7 +259,7 @@
                         </div>
                         <div>
                             <span class="entry-date">{{ \Carbon\Carbon::parse($journal->date_ecriture)->format('d/m/Y') }}</span>
-                            <span class="entry-amount">{{ number_format($journal->montant_total, 0, ',', ' ') }} F</span>
+                            <span class="entry-amount">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($journal->montant_total, true, 0) }}</span>
                         </div>
                     </div>
                 </div>
@@ -286,14 +286,14 @@
                                     </td>
                                     <td class="debit">
                                         @if($ecriture->debit > 0)
-                                            <span class="montant">{{ number_format($ecriture->debit, 0, ',', ' ') }} F</span>
+                                            <span class="montant">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($ecriture->debit, true, 0) }}</span>
                                         @else
                                             -
                                         @endif
                                     </td>
                                     <td class="credit">
                                         @if($ecriture->credit > 0)
-                                            <span class="montant">{{ number_format($ecriture->credit, 0, ',', ' ') }} F</span>
+                                            <span class="montant">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($ecriture->credit, true, 0) }}</span>
                                         @else
                                             -
                                         @endif
@@ -315,21 +315,21 @@
             </div>
             <div class="total-row">
                 <span class="total-label">Total Débits:</span>
-                <span class="total-value" style="color: #dc3545;">{{ number_format($totalDebit, 0, ',', ' ') }} F</span>
+                <span class="total-value" style="color: #dc3545;">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalDebit, true, 0) }}</span>
             </div>
             <div class="total-row">
                 <span class="total-label">Total Crédits:</span>
-                <span class="total-value" style="color: #28a745;">{{ number_format($totalCredit, 0, ',', ' ') }} F</span>
+                <span class="total-value" style="color: #28a745;">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalCredit, true, 0) }}</span>
             </div>
             <div class="total-row" style="border-top: 1px solid #ddd; padding-top: 5px; margin-top: 5px;">
                 <span class="total-label">Équilibre:</span>
                 @if($totalDebit == $totalCredit)
                     <span class="total-value" style="color: #28a745;">
-                        ✓ Équilibré ({{ number_format(abs($totalDebit - $totalCredit), 0, ',', ' ') }} $)
+                        ✓ Équilibré ({{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount(abs($totalDebit - $totalCredit), true, 0) }})
                     </span>
                 @else
                     <span class="total-value" style="color: #dc3545;">
-                        ⚠ Déséquilibré ({{ number_format(abs($totalDebit - $totalCredit), 0, ',', ' ') }} $)
+                        ⚠ Déséquilibré ({{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount(abs($totalDebit - $totalCredit), true, 0) }})
                     </span>
                 @endif
             </div>

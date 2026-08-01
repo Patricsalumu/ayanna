@@ -247,7 +247,7 @@
                                 <small>{{ $compte->nom }}</small>
                             </td>
                             <td class="montant">
-                                {{ number_format($compte->solde_bilan, 0, ',', ' ') }} $
+                                {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($compte->solde_bilan, true, 0) }}
                             </td>
                         </tr>
                         @endif
@@ -283,7 +283,7 @@
                                 <small>{{ $compte->nom }}</small>
                             </td>
                             <td class="montant">
-                                {{ number_format($compte->solde_bilan, 0, ',', ' ') }} $
+                                {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($compte->solde_bilan, true, 0) }}
                             </td>
                         </tr>
                         @endif
@@ -298,7 +298,7 @@
                             </td>
                             <td class="montant">
                                 <span class="{{ $resultatExercice > 0 ? 'credit' : 'debit' }}">
-                                    {{ number_format(abs($resultatExercice), 0, ',', ' ') }} $
+                                    {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount(abs($resultatExercice), true, 0) }}
                                 </span>
                             </td>
                         </tr>
@@ -320,8 +320,8 @@
         @if(abs($totalActif - $totalPassif) < 0.01)
             ✓ BILAN ÉQUILIBRÉ - Actif = Passif ({{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalActif, true, 0) }})
         @else
-            ⚠ DÉSÉQUILIBRE DÉTECTÉ - Écart de {{ number_format(abs($totalActif - $totalPassif), 0, ',', ' ') }} $
-            <br>Actif: {{ number_format($totalActif, 0, ',', ' ') }} $ - Passif: {{ number_format($totalPassif, 0, ',', ' ') }} $
+            ⚠ DÉSÉQUILIBRE DÉTECTÉ - Écart de {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount(abs($totalActif - $totalPassif), true, 0) }}
+            <br>Actif: {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalActif, true, 0) }} - Passif: {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($totalPassif, true, 0) }}
         @endif
     </div>
 
