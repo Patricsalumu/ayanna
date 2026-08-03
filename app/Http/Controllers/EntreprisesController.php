@@ -110,6 +110,27 @@ class EntreprisesController extends Controller
             ]);
         }
         $modules = \App\Models\Module::all();
+        $comptabiliteModule = \App\Models\Module::where('nom', 'Comptabilité')->first();
+
+        if (! $comptabiliteModule) {
+            $comptabiliteModule = \App\Models\Module::create([
+                'nom' => 'Comptabilité',
+                'description' => 'Module de gestion comptable et financière',
+                'disponible' => true,
+            ]);
+        }
+
+        $modules = $modules->push($comptabiliteModule)->unique('id');
+
+        $activeModuleIds = $entreprise->modules->pluck('id')->toArray();
+        if (! in_array($comptabiliteModule->id, $activeModuleIds, true)) {
+            \App\Models\ModuleEntreprise::firstOrCreate([
+                'entreprise_id' => $entreprise->id,
+                'module_id' => $comptabiliteModule->id,
+            ]);
+            $entreprise->load('modules');
+        }
+
         return view('entreprises.show', compact('entreprise', 'modules'));
     }
 

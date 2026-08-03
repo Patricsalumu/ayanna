@@ -242,8 +242,24 @@
             </div>
 
             <!-- Formulaire de transfert -->
-            <form id="formTransfert" action="{{ route('transferts.store') }}" method="POST" class="mt-6">
+            <form id="formTransfert" action="{{ route('transferts.store') }}" method="POST" class="mt-6" novalidate>
                 @csrf
+
+                <div id="formErrors" class="{{ $errors->any() ? '' : 'hidden' }} mb-4 rounded-lg border border-red-200 bg-red-50 p-3">
+                    <div class="flex items-start">
+                        <i class="fas fa-exclamation-circle mt-0.5 text-red-500"></i>
+                        <div class="ml-2">
+                            <p class="font-medium text-red-800">Veuillez corriger les erreurs suivantes :</p>
+                            <ul id="formErrorsList" class="mt-2 list-disc pl-5 text-sm text-red-700">
+                                @if($errors->any())
+                                    @foreach($errors->all() as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                @endif
+                            </ul>
+                        </div>
+                    </div>
+                </div>
 
                 @php
                     $user = Auth::user();
@@ -264,6 +280,7 @@
                         <input type="text" id="compteSourceSearch" list="compteSourceOptions" autocomplete="off"
                                placeholder="Rechercher un compte à débiter..."
                                class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                        <p id="error-compteSourceSearch" class="mt-1 text-sm text-red-600 hidden"></p>
                         <datalist id="compteSourceOptions">
                             @foreach($comptes as $compte)
                                 <option value="{{ $compte->nom }} ({{ $compte->numero }})" data-id="{{ $compte->id }}"></option>
@@ -292,6 +309,7 @@
                         <input type="text" id="compteDestinationSearch" list="compteDestinationOptions" autocomplete="off"
                                placeholder="Rechercher un compte à créditer..."
                                class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                        <p id="error-compteDestinationSearch" class="mt-1 text-sm text-red-600 hidden"></p>
                         <datalist id="compteDestinationOptions">
                             @foreach($comptes as $compte)
                                 <option value="{{ $compte->nom }} ({{ $compte->numero }})" data-id="{{ $compte->id }}"></option>
@@ -318,9 +336,10 @@
                         <i class="fas fa-edit text-blue-500 mr-1"></i>
                         Libellé / Motif de l’écriture
                     </label>
-                    <input type="text" name="libelle" id="libelleTransfert" required 
+                    <input type="text" name="libelle" id="libelleTransfert" value="{{ old('libelle') }}" required 
                            placeholder="Ex: Dépôt banque recettes du jour"
                            class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                    <p id="error-libelleTransfert" class="mt-1 text-sm text-red-600 hidden"></p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
@@ -331,8 +350,9 @@
                             Date
                         </label>
                         <input type="date" name="date_ecriture" id="dateEcriture" required
-                               value="{{ now()->toDateString() }}"
+                               value="{{ old('date_ecriture', now()->toDateString()) }}"
                                class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                        <p id="error-dateEcriture" class="mt-1 text-sm text-red-600 hidden"></p>
                     </div>
 
                     <!-- Heure -->
@@ -342,8 +362,9 @@
                             Heure
                         </label>
                         <input type="time" name="heure_ecriture" id="heureEcriture" required
-                               value="{{ now()->format('H:i') }}"
+                               value="{{ old('heure_ecriture', now()->format('H:i')) }}"
                                class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                        <p id="error-heureEcriture" class="mt-1 text-sm text-red-600 hidden"></p>
                     </div>
 
                     <!-- Montant -->
@@ -353,8 +374,10 @@
                             Montant
                         </label>
                         <input type="number" name="montant" id="montantTransfert" min="1" step="1" required 
+                               value="{{ old('montant') }}"
                                placeholder="Ex: 50000"
                                class="w-full border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                        <p id="error-montantTransfert" class="mt-1 text-sm text-red-600 hidden"></p>
                     </div>
 
                     <!-- Type d'écriture -->
@@ -371,6 +394,7 @@
                             <option value="od">OD</option>
                             <option value="caisse">Caisse</option>
                         </select>
+                        <p id="error-typeOperation" class="mt-1 text-sm text-red-600 hidden"></p>
                     </div>
                 </div>
 
@@ -477,6 +501,100 @@
 </div>
 
 <script>
+function afficherErreurChamp(champId, message) {
+    const input = document.getElementById(champId);
+    const errorEl = document.getElementById(`error-${champId}`);
+
+    if (input) {
+        input.classList.add('border-red-500');
+    }
+
+    if (errorEl) {
+        errorEl.textContent = message;
+        errorEl.classList.remove('hidden');
+    }
+}
+
+function effacerErreursChamp() {
+    document.querySelectorAll('#formTransfert input, #formTransfert select').forEach(function(el) {
+        el.classList.remove('border-red-500');
+    });
+
+    document.querySelectorAll('[id^="error-"]')?.forEach(function(el) {
+        el.textContent = '';
+        el.classList.add('hidden');
+    });
+}
+
+function validerFormulaireTransfert() {
+    effacerErreursChamp();
+
+    const erreurs = [];
+
+    const compteSourceId = document.getElementById('compteSource').value;
+    if (!compteSourceId) {
+        afficherErreurChamp('compteSourceSearch', 'Veuillez sélectionner un compte à débiter.');
+        erreurs.push('Compte à débiter requis');
+    }
+
+    const compteDestinationId = document.getElementById('compteDestination').value;
+    if (!compteDestinationId) {
+        afficherErreurChamp('compteDestinationSearch', 'Veuillez sélectionner un compte à créditer.');
+        erreurs.push('Compte à créditer requis');
+    }
+
+    const libelle = document.getElementById('libelleTransfert').value.trim();
+    if (!libelle) {
+        afficherErreurChamp('libelleTransfert', 'Le libellé est obligatoire.');
+        erreurs.push('Libellé requis');
+    }
+
+    const dateEcriture = document.getElementById('dateEcriture').value.trim();
+    if (!dateEcriture) {
+        afficherErreurChamp('dateEcriture', 'La date est obligatoire.');
+        erreurs.push('Date requise');
+    }
+
+    const heureEcriture = document.getElementById('heureEcriture').value.trim();
+    if (!heureEcriture) {
+        afficherErreurChamp('heureEcriture', 'L\'heure est obligatoire.');
+        erreurs.push('Heure requise');
+    }
+
+    const montant = document.getElementById('montantTransfert').value.trim();
+    if (!montant || Number(montant) <= 0) {
+        afficherErreurChamp('montantTransfert', 'Le montant doit être supérieur à 0.');
+        erreurs.push('Montant invalide');
+    }
+
+    const typeOperation = document.getElementById('typeOperation').value;
+    if (!typeOperation) {
+        afficherErreurChamp('typeOperation', 'Le type de journal est obligatoire.');
+        erreurs.push('Type de journal requis');
+    }
+
+    const formErrors = document.getElementById('formErrors');
+    const formErrorsList = document.getElementById('formErrorsList');
+
+    if (erreurs.length > 0) {
+        if (formErrors) {
+            formErrors.classList.remove('hidden');
+        }
+        if (formErrorsList) {
+            formErrorsList.innerHTML = erreurs.map(function(message) {
+                return '<li>' + message + '</li>';
+            }).join('');
+        }
+        return false;
+    }
+
+    if (formErrors) {
+        formErrors.classList.add('hidden');
+    }
+
+    return true;
+}
+
 function voirDetail(journalId) {
     const detailRow = document.getElementById(`detail-${journalId}`);
     if (detailRow.classList.contains('hidden')) {
@@ -490,6 +608,8 @@ function voirDetail(journalId) {
 function ouvrirModaleTransfert() {
     document.getElementById('modaleTransfert').classList.remove('hidden');
     document.getElementById('formTransfert').reset();
+    effacerErreursChamp();
+    document.getElementById('formErrors').classList.add('hidden');
     document.getElementById('resumeTransfert').classList.add('hidden');
 }
 
@@ -498,15 +618,15 @@ function fermerModaleTransfert() {
 }
 
 function ouvrirConfirmationEcriture() {
+    if (!validerFormulaireTransfert()) {
+        return;
+    }
+
     const compteSourceId = document.getElementById('compteSource').value;
     const compteDestinationId = document.getElementById('compteDestination').value;
     const montant = document.getElementById('montantTransfert').value;
     const typeOperation = document.getElementById('typeOperation').value;
     const dateEcriture = document.getElementById('dateEcriture').value;
-
-    if (!compteSourceId || !compteDestinationId || !montant || !typeOperation || !dateEcriture) {
-        return;
-    }
 
     const sourceOption = document.querySelector(`#compteSource option[value="${compteSourceId}"]`);
     const destinationOption = document.querySelector(`#compteDestination option[value="${compteDestinationId}"]`);
@@ -543,6 +663,11 @@ function fermerConfirmationAnnulation() {
 }
 
 function confirmerEnregistrement() {
+    if (!validerFormulaireTransfert()) {
+        fermerConfirmationEcriture();
+        return;
+    }
+
     fermerConfirmationEcriture();
     document.getElementById('formTransfert').submit();
 }

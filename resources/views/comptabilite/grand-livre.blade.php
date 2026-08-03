@@ -47,13 +47,15 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach($comptes as $compte)
                     @php
-                        // Calculer le solde pour la période
+                        // Calculer le solde pour la période, en excluant les écritures des journaux annulés
                         $debitTotal = $compte->ecritures()->whereHas('journal', function($q) use ($dateDebut, $dateFin) {
-                            $q->whereBetween('date_ecriture', [$dateDebut, $dateFin]);
+                            $q->whereBetween('date_ecriture', [$dateDebut, $dateFin])
+                              ->where('statut', '!=', 'annule');
                         })->sum('debit');
                         
                         $creditTotal = $compte->ecritures()->whereHas('journal', function($q) use ($dateDebut, $dateFin) {
-                            $q->whereBetween('date_ecriture', [$dateDebut, $dateFin]);
+                            $q->whereBetween('date_ecriture', [$dateDebut, $dateFin])
+                              ->where('statut', '!=', 'annule');
                         })->sum('credit');
                         
                         $mouvements = $debitTotal + $creditTotal;

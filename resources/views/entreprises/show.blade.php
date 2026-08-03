@@ -35,7 +35,12 @@
                             <div class="mt-2 w-full">
                                 @if($module->disponible)
                                     @if(in_array($module->id, $modulesActives))
-                                        <a href="{{ route('pointsDeVente.show', [$entreprise->id, 'module_id' => $module->id]) }}" 
+                                        @php
+                                            $moduleRoute = $module->nom === 'Comptabilité'
+                                                ? route('comptabilite.journal', ['entreprise' => $entreprise->id])
+                                                : route('pointsDeVente.show', [$entreprise->id, 'module_id' => $module->id]);
+                                        @endphp
+                                        <a href="{{ $moduleRoute }}" 
                                            class="block px-3 py-1 rounded-full text-xs font-medium bg-[#3e2f24] text-white hover:bg-[#5a4535] text-center">
                                             Voir
                                         </a>

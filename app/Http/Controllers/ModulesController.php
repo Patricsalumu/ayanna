@@ -36,6 +36,12 @@ class ModulesController extends Controller
                 session(['module_id' => $module->id]);
                 return redirect()->route('pointsDeVente.show', [$entreprise->id, $pointDeVente->id])
                     ->with('success', $message);
+            }
+
+            if ($module->nom === 'Comptabilité') {
+                session(['module_id' => $module->id]);
+                return redirect()->route('comptabilite.journal', ['entreprise' => $entreprise->id])
+                    ->with('success', $message);
             } else {
                 $message .= 'Les données non réinitialisées';
             }

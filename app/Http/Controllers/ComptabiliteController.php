@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\Eloquent\Builder;
 
 class ComptabiliteController extends Controller
 {
@@ -75,6 +76,21 @@ class ComptabiliteController extends Controller
         return back()->with('success', 'L’écriture a été annulée et grisée sans création d’écriture inverse.');
     }
 
+    private function appliquerFiltreJournauxNonAnnes(Builder $query, $dateDebut = null, $dateFin = null): Builder
+    {
+        return $query->whereHas('journal', function ($j) use ($dateDebut, $dateFin) {
+            if ($dateDebut !== null && $dateFin !== null) {
+                $j->whereBetween('date_ecriture', [$dateDebut, $dateFin]);
+            } elseif ($dateDebut !== null) {
+                $j->where('date_ecriture', '>=', $dateDebut);
+            } elseif ($dateFin !== null) {
+                $j->where('date_ecriture', '<=', $dateFin);
+            }
+
+            $j->where('statut', '!=', 'annule');
+        });
+    }
+
     /**
      * Grand livre - Mouvements par compte
      */
@@ -103,9 +119,8 @@ class ComptabiliteController extends Controller
             
             $ecritures = EcritureComptable::with(['journal', 'client', 'produit'])
                 ->parCompte($compteId)
-                ->whereHas('journal', function($q) use ($dateDebut, $dateFin) {
-                    $q->whereBetween('date_ecriture', [$dateDebut, $dateFin])
-                      ->where('statut', '!=', 'annule');
+                ->when(true, function ($query) use ($dateDebut, $dateFin) {
+                    return $this->appliquerFiltreJournauxNonAnnes($query, $dateDebut, $dateFin);
                 })
                 ->orderBy('created_at')
                 ->get();
@@ -128,7 +143,7 @@ class ComptabiliteController extends Controller
             // Calcul du solde initial
             $soldeInitial = $compte->solde_initial;
             $mouvementsAnterieurs = EcritureComptable::parCompte($compteId)
-                ->whereHas('journal', function($q) use ($dateDebut) {
+                ->whereHas('journal', function ($q) use ($dateDebut) {
                     $q->where('date_ecriture', '<', $dateDebut)
                       ->where('statut', '!=', 'annule');
                 })
@@ -161,7 +176,8 @@ class ComptabiliteController extends Controller
         $comptes = Compte::where('entreprise_id', $entrepriseId)
             ->with(['ecritures' => function($q) use ($date) {
                 $q->whereHas('journal', function($j) use ($date) {
-                    $j->where('date_ecriture', '<=', $date);
+                    $j->where('date_ecriture', '<=', $date)
+                      ->where('statut', '!=', 'annule');
                 });
             }])
             ->orderBy('numero')
@@ -215,7 +231,8 @@ class ComptabiliteController extends Controller
             ->where('type', 'actif')
             ->with(['ecritures' => function($q) use ($date) {
                 $q->whereHas('journal', function($j) use ($date) {
-                    $j->where('date_ecriture', '<=', $date);
+                    $j->where('date_ecriture', '<=', $date)
+                      ->where('statut', '!=', 'annule');
                 });
             }])
             ->orderBy('numero')
@@ -226,7 +243,8 @@ class ComptabiliteController extends Controller
             ->where('type', 'passif')
             ->with(['ecritures' => function($q) use ($date) {
                 $q->whereHas('journal', function($j) use ($date) {
-                    $j->where('date_ecriture', '<=', $date);
+                    $j->where('date_ecriture', '<=', $date)
+                      ->where('statut', '!=', 'annule');
                 });
             }])
             ->orderBy('numero')
@@ -332,7 +350,8 @@ class ComptabiliteController extends Controller
             })
             ->with(['ecritures' => function($q) use ($dateDebut, $dateFin) {
                 $q->whereHas('journal', function($j) use ($dateDebut, $dateFin) {
-                    $j->whereBetween('date_ecriture', [$dateDebut, $dateFin]);
+                    $j->whereBetween('date_ecriture', [$dateDebut, $dateFin])
+                      ->where('statut', '!=', 'annule');
                 });
             }])
             ->orderBy('numero')
@@ -345,7 +364,8 @@ class ComptabiliteController extends Controller
             })
             ->with(['ecritures' => function($q) use ($dateDebut, $dateFin) {
                 $q->whereHas('journal', function($j) use ($dateDebut, $dateFin) {
-                    $j->whereBetween('date_ecriture', [$dateDebut, $dateFin]);
+                    $j->whereBetween('date_ecriture', [$dateDebut, $dateFin])
+                      ->where('statut', '!=', 'annule');
                 });
             }])
             ->orderBy('numero')
@@ -455,7 +475,8 @@ class ComptabiliteController extends Controller
         $comptes = Compte::where('entreprise_id', $entrepriseId)
             ->with(['ecritures' => function($q) use ($date) {
                 $q->whereHas('journal', function($j) use ($date) {
-                    $j->where('date_ecriture', '<=', $date);
+                    $j->where('date_ecriture', '<=', $date)
+                      ->where('statut', '!=', 'annule');
                 });
             }])
             ->orderBy('numero')
@@ -513,9 +534,8 @@ class ComptabiliteController extends Controller
         
         $ecritures = EcritureComptable::with(['journal', 'client', 'produit'])
             ->parCompte($compteId)
-            ->whereHas('journal', function($q) use ($dateDebut, $dateFin) {
-                $q->whereBetween('date_ecriture', [$dateDebut, $dateFin])
-                  ->where('statut', '!=', 'annule');
+            ->when(true, function ($query) use ($dateDebut, $dateFin) {
+                return $this->appliquerFiltreJournauxNonAnnes($query, $dateDebut, $dateFin);
             })
             ->orderBy('created_at')
             ->get();
@@ -523,7 +543,7 @@ class ComptabiliteController extends Controller
         // Calcul du solde initial
         $soldeInitial = $compte->solde_initial;
         $mouvementsAnterieurs = EcritureComptable::parCompte($compteId)
-            ->whereHas('journal', function($q) use ($dateDebut) {
+            ->whereHas('journal', function ($q) use ($dateDebut) {
                 $q->where('date_ecriture', '<', $dateDebut)
                   ->where('statut', '!=', 'annule');
             })
@@ -578,7 +598,8 @@ class ComptabiliteController extends Controller
             ->where('type', 'actif')
             ->with(['ecritures' => function($q) use ($date) {
                 $q->whereHas('journal', function($j) use ($date) {
-                    $j->where('date_ecriture', '<=', $date);
+                    $j->where('date_ecriture', '<=', $date)
+                      ->where('statut', '!=', 'annule');
                 });
             }])
             ->orderBy('numero')
@@ -589,7 +610,8 @@ class ComptabiliteController extends Controller
             ->where('type', 'passif')
             ->with(['ecritures' => function($q) use ($date) {
                 $q->whereHas('journal', function($j) use ($date) {
-                    $j->where('date_ecriture', '<=', $date);
+                    $j->where('date_ecriture', '<=', $date)
+                      ->where('statut', '!=', 'annule');
                 });
             }])
             ->orderBy('numero')
@@ -650,7 +672,8 @@ class ComptabiliteController extends Controller
             })
             ->with(['ecritures' => function($q) use ($dateDebut, $dateFin) {
                 $q->whereHas('journal', function($j) use ($dateDebut, $dateFin) {
-                    $j->whereBetween('date_ecriture', [$dateDebut, $dateFin]);
+                    $j->whereBetween('date_ecriture', [$dateDebut, $dateFin])
+                      ->where('statut', '!=', 'annule');
                 });
             }])
             ->orderBy('numero')
@@ -663,7 +686,8 @@ class ComptabiliteController extends Controller
             })
             ->with(['ecritures' => function($q) use ($dateDebut, $dateFin) {
                 $q->whereHas('journal', function($j) use ($dateDebut, $dateFin) {
-                    $j->whereBetween('date_ecriture', [$dateDebut, $dateFin]);
+                    $j->whereBetween('date_ecriture', [$dateDebut, $dateFin])
+                      ->where('statut', '!=', 'annule');
                 });
             }])
             ->orderBy('numero')
