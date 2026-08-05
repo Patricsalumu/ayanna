@@ -151,7 +151,7 @@
                         $q_ajout = $stock->quantite_ajoutee ?? 0;
                         $q_vendue = $ventesParProduit[$produit->id] ?? ($stock->quantite_vendue ?? 0);
                         $q_total = $q_init + $q_ajout;
-                        $q_reste = $stock->quantite_reste ?? ($q_total - $q_vendue);
+                        $q_reste = $q_total - $q_vendue;
                         $prix = $produit->prix_vente;
                         $total = $q_vendue * $prix;
                     @endphp

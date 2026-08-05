@@ -137,7 +137,7 @@ class StockJournalierController extends Controller
             $q_ajout = $stock->quantite_ajoutee ?? 0;
             $q_vendue = $ventesParProduit[$produit->id] ?? ($stock->quantite_vendue ?? 0);
             $q_total = $q_init + $q_ajout;
-            $q_reste = $stock->quantite_reste ?? ($q_total - $q_vendue);
+            $q_reste = $q_total - $q_vendue;
             $prix = $produit->prix_vente;
             $total = $q_vendue * $prix;
 
@@ -297,6 +297,13 @@ class StockJournalierController extends Controller
             : null;
 
         $data = $this->getStockJournalierSessionData($pointDeVenteId, $session, $selectedCategoryIds);
+        $data['produitsByCategory'] = $data['produitsByCategory']->map(function ($produits) {
+            return $produits->map(function ($produit) {
+                $q_total = ($produit['q_init'] ?? 0) + ($produit['q_ajout'] ?? 0);
+                $produit['q_reste'] = $q_total - ($produit['q_vendue'] ?? 0);
+                return $produit;
+            })->values();
+        });
 
         $fileName = 'stock_journalier_'.$data['date'];
         if ($session) {
