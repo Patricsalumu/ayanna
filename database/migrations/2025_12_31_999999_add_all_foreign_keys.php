@@ -70,6 +70,22 @@ return new class extends Migration
             $table->foreign('opened_by')->references('id')->on('users')->onDelete('set null');
             $table->foreign('last_modified_by')->references('id')->on('users')->onDelete('set null');
         });
+
+        // bon_commandes -> paniers, users, clients
+        Schema::table('bon_commandes', function (Blueprint $table) {
+            if (Schema::hasColumn('bon_commandes', 'panier_id')) {
+                $table->foreign('panier_id')->references('id')->on('paniers')->onDelete('cascade');
+            }
+            if (Schema::hasColumn('bon_commandes', 'serveuse_id')) {
+                $table->foreign('serveuse_id')->references('id')->on('users')->onDelete('set null');
+            }
+            if (Schema::hasColumn('bon_commandes', 'client_id')) {
+                $table->foreign('client_id')->references('id')->on('clients')->onDelete('set null');
+            }
+            if (Schema::hasColumn('bon_commandes', 'utilisateur_id')) {
+                $table->foreign('utilisateur_id')->references('id')->on('users')->onDelete('restrict');
+            }
+        });
     }
 
     /**
@@ -84,6 +100,13 @@ return new class extends Migration
             $table->dropForeign(['serveuse_id']);
             $table->dropForeign(['opened_by']);
             $table->dropForeign(['last_modified_by']);
+        });
+
+        Schema::table('bon_commandes', function (Blueprint $table) {
+            $table->dropForeign(['panier_id']);
+            $table->dropForeign(['serveuse_id']);
+            $table->dropForeign(['client_id']);
+            $table->dropForeign(['utilisateur_id']);
         });
 
         Schema::table('entreprise_module', function (Blueprint $table) {

@@ -6,6 +6,7 @@ use App\Models\PointDeVente;
 use App\Models\Historiquepdv;
 use App\Models\Panier;
 use App\Models\Commande;
+use App\Services\PermissionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -13,14 +14,25 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class VenteController extends Controller
 {
+    public function __construct(protected PermissionService $permissionService)
+    {
+    }
     /**
      * Affichage du catalogue produits pour la vente (PDV)
      */
     public function catalogue(Request $request, $pointDeVenteId)
     {
         try {
+            $user = Auth::user();
             $pointDeVente = PointDeVente::findOrFail($pointDeVenteId);
             $categories = $pointDeVente->categories;
+
+            if ($this->permissionService->isWaitress($user) && $request->get('table_id')) {
+                $table = \App\Models\TableResto::find($request->get('table_id'));
+                if (!$this->permissionService->canAccessTable($user, $table)) {
+                    abort(403, 'Cette table ne vous est pas assignée.');
+                }
+            }
             $categorieActive = $request->get('categorie');
             $search = $request->get('search');
 
@@ -69,8 +81,11 @@ class VenteController extends Controller
             }
 
             $clients = $pointDeVente->entreprise->clients;
-            $serveuses = $pointDeVente->entreprise->users()->where('role', 'serveuse')->get();
+            $serveuses = $pointDeVente->entreprise->users()->whereIn('role', ['Serveuse', 'serveuse'])->get();
             $tables = \App\Models\TableResto::whereIn('salle_id', $pointDeVente->salles->pluck('id'))->get();
+            if ($this->permissionService->isWaitress($user)) {
+                $tables = $tables->filter(fn ($table) => $this->permissionService->canAccessTable($user, $table));
+            }
 
             $client_id = $panier ? $panier->client_id : '';
             $serveuse_id = $panier ? $panier->serveuse_id : '';
@@ -192,8 +207,19 @@ class VenteController extends Controller
             $clientId = $request->get('client_id');
             $serveuseId = $request->get('serveuse_id');
             $openedBy = Auth::id();
+            $user = Auth::user();
             if (!$tableId || !$pointDeVenteId) {
                 return response()->json(['error' => 'Aucune table ou point de vente sélectionné'], 422);
+            }
+
+            $table = \App\Models\TableResto::find($tableId);
+            if ($this->permissionService->isWaitress($user) && !$this->permissionService->canAccessTable($user, $table)) {
+                return response()->json(['success' => false, 'error' => 'Vous ne pouvez pas ouvrir cette table.'], 403);
+            }
+
+            $resolvedServeuseId = $this->permissionService->resolveServeuseId($user, $serveuseId);
+            if ($resolvedServeuseId !== null) {
+                $serveuseId = $resolvedServeuseId;
             }
 
             // 1. Récupérer ou créer le panier pour la table et le point de vente
@@ -347,6 +373,11 @@ class VenteController extends Controller
             $data = $request->all();
             Log::info('[VALIDATION PAIEMENT] Données reçues', $data);
             Log::info('[VALIDATION PAIEMENT] Clés disponibles', ['keys' => array_keys($data)]);
+
+            $user = Auth::user();
+            if ($this->permissionService->isWaitress($user)) {
+                return response()->json(['success' => false, 'error' => 'Une serveuse ne peut pas valider un paiement.'], 403);
+            }
 
             // Validation des données requises de base
             $requiredFields = ['point_de_vente_id', 'table_id', 'mode_paiement'];

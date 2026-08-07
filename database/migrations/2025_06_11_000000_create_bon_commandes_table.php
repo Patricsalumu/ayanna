@@ -21,11 +21,7 @@ return new class extends Migration
             $table->json('produits_json');
             $table->timestamps();
 
-            // Index et relations
-            $table->foreign('panier_id')->references('id')->on('paniers')->onDelete('cascade');
-            $table->foreign('serveuse_id')->references('id')->on('users')->onDelete('set null');
-            $table->foreign('client_id')->references('id')->on('clients')->onDelete('set null');
-            $table->foreign('utilisateur_id')->references('id')->on('users')->onDelete('restrict');
+            // Relations ajoutées plus tard, une fois que les tables référencées existent
 
             // Index pour optimiser les recherches
             $table->index(['panier_id', 'created_at']);

@@ -13,11 +13,17 @@ class TableResto extends Model
         'numero', 'forme',
         'width', 'height',
         'position_x', 'position_y',
-        'salle_id'
+        'salle_id',
+        'serveuse_id'
     ];
 
     public function salle()
     {
         return $this->belongsTo(Salle::class);
+    }
+
+    public function serveuse()
+    {
+        return $this->belongsTo(User::class, 'serveuse_id');
     }
 }

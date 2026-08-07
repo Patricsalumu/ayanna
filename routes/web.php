@@ -10,6 +10,7 @@ use App\Http\Controllers\TableRestoController;
 use App\Models\Module;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\VenteController;
+use App\Http\Controllers\RestaurantController;
 
 
 Route::middleware(['auth'])->group(function () 
@@ -68,6 +69,8 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/vente', function () {
         return view('vente.index');
     })->name('vente.index');
+
+    Route::get('/restaurant', [RestaurantController::class, 'home'])->name('restaurant.staff.home');
 
     //Route pour les categories
     Route::get('entreprises/{entreprise}/categories', [CategorieController::class, 'show'])->name('categories.show');

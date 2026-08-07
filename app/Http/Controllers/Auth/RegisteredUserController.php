@@ -4,12 +4,12 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Closure;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules;
 use Illuminate\View\View;
 
 class RegisteredUserController extends Controller
@@ -41,7 +41,21 @@ class RegisteredUserController extends Controller
                 'regex:/^(0)?[0-9]{9}$/',
                 'unique:users,phone'
             ],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'password' => [
+                'required',
+                'confirmed',
+                'digits:4',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $isDuplicate = User::query()
+                        ->whereNotNull('password')
+                        ->get()
+                        ->contains(fn ($user) => Hash::check((string) $value, (string) $user->password));
+
+                    if ($isDuplicate) {
+                        $fail('Ce mot de passe est déjà utilisé.');
+                    }
+                },
+            ],
             'entreprise_nom' => ['required', 'string', 'max:255'],
             'entreprise_logo' => ['nullable', 'image', 'max:2048'],
             'entreprise_devise' => ['required', 'string', 'in:$,F'],

@@ -3,11 +3,16 @@
 @section('content')
 <div class="container mx-auto p-6">
     <div class="max-w-6xl mx-auto">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold">Bons de Commande</h1>
-            <div class="flex gap-4">
-                <form method="GET" action="{{ route('bon-commande.index') }}" class="flex gap-2">
+        <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Bons de commande</h1>
+                <p class="text-sm text-gray-500">Suivi rapide des bons envoyés pour la journée.</p>
+            </div>
+            <div class="flex flex-wrap gap-3">
+                <form method="GET" action="{{ route('bon-commande.index') }}" class="flex flex-wrap gap-2">
                     <input type="date" name="date" value="{{ $date }}" class="px-4 py-2 border rounded-lg">
+                    <input type="text" name="search" value="{{ $search }}" placeholder="Recherche" class="px-4 py-2 border rounded-lg min-w-[180px]">
+                    <input type="text" name="client" value="{{ $clientFilter }}" placeholder="Client" class="px-4 py-2 border rounded-lg min-w-[160px]">
                     <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                         Filtrer
                     </button>
@@ -16,6 +21,21 @@
                    class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
                     Aujourd'hui
                 </a>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                <div class="text-sm text-blue-700">Total bons</div>
+                <div class="text-2xl font-bold text-blue-900">{{ number_format($bonsCount, 0, ',', ' ') }}</div>
+            </div>
+            <div class="rounded-2xl border border-green-100 bg-green-50 p-4">
+                <div class="text-sm text-green-700">Produits listés</div>
+                <div class="text-2xl font-bold text-green-900">{{ number_format($produitsCount, 0, ',', ' ') }}</div>
+            </div>
+            <div class="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                <div class="text-sm text-amber-700">Montant total</div>
+                <div class="text-2xl font-bold text-amber-900">{{ optional(auth()->user()?->entreprise)->formatAmount($montantTotal ?? 0, true, 2) }}</div>
             </div>
         </div>
 

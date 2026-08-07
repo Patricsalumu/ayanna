@@ -158,6 +158,10 @@
                     </template>
                 </div>
                 <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Code PIN (4 chiffres)</label>
+                    <input type="text" x-model="form.code_pin" maxlength="4" inputmode="numeric" pattern="\d{4}" class="mt-1 block w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700">Confirmer le mot de passe</label>
                     <input type="password" x-model="form.password_confirmation" class="mt-1 block w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500" required>
                 </div>

@@ -111,6 +111,7 @@ class EntreprisesController extends Controller
         }
         $modules = \App\Models\Module::all();
         $comptabiliteModule = \App\Models\Module::where('nom', 'Comptabilité')->first();
+        $restaurantModule = \App\Models\Module::where('nom', 'POS Restaubar')->first();
 
         if (! $comptabiliteModule) {
             $comptabiliteModule = \App\Models\Module::create([
@@ -120,9 +121,18 @@ class EntreprisesController extends Controller
             ]);
         }
 
-        $modules = $modules->push($comptabiliteModule)->unique('id');
+        if (! $restaurantModule) {
+            $restaurantModule = \App\Models\Module::create([
+                'nom' => 'POS Restaubar',
+                'description' => 'Module de gestion de restaurant et de salle',
+                'disponible' => true,
+            ]);
+        }
+
+        $modules = $modules->push($comptabiliteModule)->push($restaurantModule)->unique('id');
 
         $activeModuleIds = $entreprise->modules->pluck('id')->toArray();
+
         if (! in_array($comptabiliteModule->id, $activeModuleIds, true)) {
             \App\Models\ModuleEntreprise::firstOrCreate([
                 'entreprise_id' => $entreprise->id,
@@ -130,6 +140,11 @@ class EntreprisesController extends Controller
             ]);
             $entreprise->load('modules');
         }
+
+        $activeModuleIds = array_values(array_filter(
+            $entreprise->modules->pluck('id')->toArray(),
+            fn ($moduleId) => $moduleId !== $restaurantModule->id
+        ));
 
         return view('entreprises.show', compact('entreprise', 'modules'));
     }

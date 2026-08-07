@@ -187,8 +187,9 @@ return [
         ],
         'password' => [
             'required' => 'Le mot de passe est obligatoire.',
-            'min' => 'Le mot de passe doit contenir au moins :min caractères.',
+            'digits' => 'Le mot de passe doit contenir exactement :digits chiffres.',
             'confirmed' => 'Les deux mots de passe ne correspondent pas.',
+            'unique' => 'Ce mot de passe est déjà utilisé.',
         ],
     ],
 

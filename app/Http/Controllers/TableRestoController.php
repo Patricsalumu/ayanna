@@ -19,6 +19,7 @@ class TableRestoController extends Controller
             'width' => 'numeric|min:1',
             'height' => 'numeric|min:1',
             'forme' => 'string',
+            'serveuse_id' => 'nullable|exists:users,id',
         ];
         $fields = array_intersect(array_keys($request->all()), array_keys($rules));
         $validated = $request->validate(array_intersect_key($rules, array_flip($fields)));
@@ -35,14 +36,7 @@ class TableRestoController extends Controller
         'position_y' => 'nullable|integer',
         'width' => 'nullable|integer',
         'height' => 'nullable|integer',
-    ]);
-
-    $table = TableResto::create($validated);
-
-    return response()->json($table);
-}
-
-    /**
+        'serveuse_id' => 'nullable|exists:users,id',
      * Supprime une table du restaurant.
      */
     public function destroy(TableResto $table)

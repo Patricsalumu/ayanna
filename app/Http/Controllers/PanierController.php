@@ -350,6 +350,7 @@ class PanierController extends Controller
         $selectedSessionFrom = $request->get('session_from', null);
         $selectedSessionTo = $request->get('session_to', null);
         $selectedPaymentType = $request->get('payment_type', null); // 'all'|'credit'|'cash' (or null)
+        $searchTerm = trim((string) $request->get('search', ''));
 
         $pointDeVenteIds = PointDeVente::where('entreprise_id', $entrepriseId)->pluck('id');
         // Récupérer toutes les sessions disponibles en base pour les points de vente de l'entreprise
@@ -377,6 +378,10 @@ class PanierController extends Controller
         $paniersQuery = Panier::whereHas('tableResto.salle', function ($q) use ($entrepriseId) {
                 $q->where('entreprise_id', $entrepriseId);
             });
+
+        if (in_array($user?->role, ['Serveuse', 'serveuse'], true)) {
+            $paniersQuery->where('serveuse_id', $user->id);
+        }
 
         // Filtrage par intervalle de sessions (session_from & session_to) si fournis
         if ($selectedSessionFrom || $selectedSessionTo) {
@@ -436,6 +441,20 @@ class PanierController extends Controller
             $paniersQuery = $paniersQuery->whereDate('created_at', $today);
         }
 
+        if ($searchTerm !== '') {
+            $paniersQuery->where(function ($q) use ($searchTerm) {
+                $q->whereHas('client', function ($clientQuery) use ($searchTerm) {
+                    $clientQuery->where('nom', 'like', "%{$searchTerm}%");
+                })->orWhereHas('serveuse', function ($serveuseQuery) use ($searchTerm) {
+                    $serveuseQuery->where('name', 'like', "%{$searchTerm}%");
+                })->orWhereHas('tableResto.salle', function ($salleQuery) use ($searchTerm) {
+                    $salleQuery->where('nom', 'like', "%{$searchTerm}%");
+                })->orWhereHas('pointDeVente', function ($pdvQuery) use ($searchTerm) {
+                    $pdvQuery->where('nom', 'like', "%{$searchTerm}%");
+                });
+            });
+        }
+
         $paniers = $paniersQuery
             ->with(['tableResto', 'serveuse', 'client', 'produits', 'pointDeVente', 'commande'])
             ->orderBy('created_at', 'desc')
@@ -467,7 +486,7 @@ class PanierController extends Controller
             })
             ->sum(fn($panier) => $this->montantPanierAffiche($panier));
 
-        return compact('paniers', 'sessions', 'selectedSession', 'selectedSessionFrom', 'selectedSessionTo', 'selectedPaymentType', 'totalPaniers', 'totalMontants', 'totalPaye', 'totalCredit');
+        return compact('paniers', 'sessions', 'selectedSession', 'selectedSessionFrom', 'selectedSessionTo', 'selectedPaymentType', 'searchTerm', 'totalPaniers', 'totalMontants', 'totalPaye', 'totalCredit');
     }
 
     private function normalizeModePaiement(?string $mode): string

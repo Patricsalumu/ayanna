@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 use App\Models\Entreprise;
 use Illuminate\Http\Request;
 use App\Models\Salle;
+use App\Services\PermissionService;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * SalleController gère les opérations liées aux salles d'une entreprise.
@@ -12,6 +14,9 @@ use App\Models\Salle;
 
 class SalleController extends Controller
 {
+    public function __construct(protected PermissionService $permissionService)
+    {
+    }
 
     public function edit(Entreprise $entreprise, $salleId)
     {
@@ -127,9 +132,13 @@ class SalleController extends Controller
             'point_de_vente_id' => request('point_de_vente_id')
         ]);
 
-        // On charge les tables de la salle
+        $user = Auth::user();
         $salle->load('tables');
         $pointDeVenteId = request('point_de_vente_id');
+
+        if ($this->permissionService->isWaitress($user)) {
+            $salle->setRelation('tables', $salle->tables->filter(fn ($table) => $this->permissionService->canAccessTable($user, $table))->values());
+        }
         $pointDeVente = \App\Models\PointDeVente::find($pointDeVenteId);
         $sallesLiees = $pointDeVente ? $pointDeVente->salles : collect([$salle]);
 
@@ -163,6 +172,7 @@ class SalleController extends Controller
             'entreprise' => $entreprise,
             'salle' => $salle,
             'salles' => $sallesLiees,
+            'user' => $user,
         ]);
     }
 

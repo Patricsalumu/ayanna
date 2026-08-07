@@ -30,6 +30,8 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                    @php $isServeuse = in_array(Auth::user()?->role, ['Serveuse', 'serveuse'], true); @endphp
+                    @if(!$isServeuse)
                     @if($entrepriseId && $pointDeVenteId)
                     <x-nav-link href="{{ route('pointsDeVente.show', ['entreprise' => $entrepriseId]) }}" :active="request()->routeIs('pointsDeVente.*')">
                         {{ __('Tableau de board') }}
@@ -37,6 +39,11 @@
                     @else
                     <x-nav-link href="#" :active="request()->routeIs('pointsDeVente.*')">
                         {{ __('Tableau de board') }}
+                    </x-nav-link>
+                    @endif
+                    @else
+                    <x-nav-link href="{{ route('restaurant.staff.home') }}" :active="request()->routeIs('restaurant.staff.home')">
+                        {{ __('Plan vente') }}
                     </x-nav-link>
                     @endif
                 </div>
@@ -53,7 +60,9 @@
                 <!-- Menu navigation déroulant -->
                 <div x-show="showNavMenu" @click.away="showNavMenu = false" x-transition
                   class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl z-50 flex flex-col p-2 border border-gray-100">
-                  <a href="{{ route('paniers.jour') }}"  class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4 block" title="Paniers du jour">Factures</a>  
+                  @php $isServeuse = in_array(Auth::user()?->role, ['Serveuse', 'serveuse'], true); @endphp
+                  @if(!$isServeuse)
+                  <a href="{{ route('paniers.jour') }}"  class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4 block" title="Paniers du jour">Factures</a>
                   <a href="{{ (isset($pointDeVente) && is_object($pointDeVente) && method_exists($pointDeVente, 'getAttribute')) ? route('stock_journalier.index', ['pointDeVente' => $pointDeVente->id]) : '#' }}" class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4 block" title="Fiche Produit">Stock Produit</a>
                   <a href="{{ route('bon-commande.index') }}" class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4 block" title="Bons">Bons commandes</a>
                   <a href="{{ (isset($pointDeVente) && is_object($pointDeVente) && method_exists($pointDeVente, 'getAttribute')) ? route('rapport.jour', ['pointDeVenteId' => $pointDeVente->id]) : '#' }}"
@@ -71,6 +80,10 @@
                      title="Entrées-sorties">
                      Entrées-sorties
                   </a>
+                  @else
+                  <a href="{{ route('paniers.jour') }}" class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4 block" title="Mes factures">Mes factures</a>
+                  <a href="{{ route('bon-commande.index') }}" class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4 block" title="Mes bons">Mes bons</a>
+                  @endif
                   @php
                       $hasPanierEnCours = (isset($pointDeVente) && is_object($pointDeVente) && method_exists($pointDeVente, 'getAttribute')) ? \App\Models\Panier::where('point_de_vente_id', $pointDeVente->id)
                           ->where('status', 'en_cours')

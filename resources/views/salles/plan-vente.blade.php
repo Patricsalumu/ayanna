@@ -42,6 +42,11 @@
                         ->exists();
                 @endphp
 
+                @php
+                    $canAccess = !($user && $user->role === 'Serveuse') || ($table->serveuse_id == $user->id);
+                @endphp
+
+                @if ($canAccess)
                 <a href="{{ route('vente.catalogue', ['pointDeVente' => request('point_de_vente_id')]) }}?table_id={{ $table->id }}"
                    class="table-item absolute border-4 flex items-center justify-center shadow-lg"
                    style="
@@ -68,6 +73,25 @@
                     @endif
 
                 </a>
+                @else
+                <div class="table-item absolute border-4 flex items-center justify-center shadow-lg opacity-50"
+                     style="
+                        top: {{ $table->position_y }}px;
+                        left: {{ $table->position_x }}px;
+                        width: {{ $table->width ?? 70 }}px;
+                        height: {{ $table->height ?? 70 }}px;
+                        @if ($table->forme === 'cercle')
+                            border-radius: 50%;
+                        @endif
+                        background: #e5e7eb;
+                        border-color: #9ca3af;
+                     ">
+                    <span class="table-num text-center w-full select-none flex items-center justify-center"
+                          style="pointer-events:none; font-size:1.3rem; font-weight:bold; color:#6b7280;">
+                        {{ $table->numero }}
+                    </span>
+                </div>
+                @endif
 
             @endforeach
 

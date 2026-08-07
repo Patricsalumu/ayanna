@@ -29,7 +29,11 @@
                                    type="password"
                                    name="password"
                                    required
-                                   autocomplete="new-password" />
+                                   autocomplete="new-password"
+                                   inputmode="numeric"
+                                   pattern="[0-9]{4}"
+                                   maxlength="4" />
+                    <p class="text-xs text-[#7a6657] mt-1">Saisissez exactement 4 chiffres. Ce mot de passe ne doit pas déjà être utilisé.</p>
                     <x-input-error :messages="$errors->get('password')" class="mt-2" />
                 </div>
 

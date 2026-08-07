@@ -45,7 +45,8 @@ class User extends Authenticatable
         'password',
         'role',
         'entreprise_id',
-        'telephone', // harmonisé avec la migration, à adapter si besoin
+        'telephone',
+        'code_pin',
     ];
 
     /**
@@ -77,5 +78,15 @@ class User extends Authenticatable
     public function entreprise()
     {
         return $this->belongsTo(\App\Models\Entreprise::class);
+    }
+
+    public function tables()
+    {
+        return $this->hasMany(\App\Models\TableResto::class, 'serveuse_id');
+    }
+
+    public function isRole(string $role): bool
+    {
+        return strtolower((string) $this->role) === strtolower($role);
     }
 }

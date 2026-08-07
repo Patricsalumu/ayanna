@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Entreprise;
+use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -31,11 +32,30 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed',
-            'role' => ['required', Rule::in(['super_admin','admin','comptoiriste','cuisinière','serveuse'])],
+            'password' => [
+                'required',
+                'string',
+                'digits:4',
+                'confirmed',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $isDuplicate = User::query()
+                        ->whereNotNull('password')
+                        ->get()
+                        ->contains(fn ($user) => Hash::check((string) $value, (string) $user->password));
+
+                    if ($isDuplicate) {
+                        $fail('Ce mot de passe est déjà utilisé.');
+                    }
+                },
+            ],
+            'role' => ['required', Rule::in(['super_admin','admin','comptoiriste','cuisinière','serveuse','Administrateur','Caissier','Serveuse'])],
+            'code_pin' => ['nullable','regex:/^\d{4}$/'],
         ]);
         $validated['entreprise_id'] = $entreprise->id;
         $validated['password'] = Hash::make($validated['password']);
+        if (!empty($validated['code_pin'])) {
+            $validated['code_pin'] = $validated['code_pin'];
+        }
         User::create($validated);
         return redirect()->route('users.show', $entreprise->id)->with('success', 'Utilisateur ajouté avec succès.');
     }
@@ -55,10 +75,14 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => ['required','email',Rule::unique('users')->ignore($user->id)],
-            'role' => ['required', Rule::in(['super_admin','admin','comptoiriste','cuisinière','serveuse'])],
+            'role' => ['required', Rule::in(['super_admin','admin','comptoiriste','cuisinière','serveuse','Administrateur','Caissier','Serveuse'])],
+            'code_pin' => ['nullable','regex:/^\d{4}$/'],
         ]);
         if ($request->filled('password')) {
             $validated['password'] = Hash::make($request->password);
+        }
+        if ($request->has('code_pin')) {
+            $validated['code_pin'] = $request->input('code_pin');
         }
         $user->update($validated);
         return redirect()->route('users.show', $entreprise)->with('success', 'Utilisateur modifié avec succès.');

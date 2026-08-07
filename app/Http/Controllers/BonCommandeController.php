@@ -17,6 +17,8 @@ class BonCommandeController extends Controller
     public function index(Request $request)
     {
         $date = $request->input('date', Carbon::now()->toDateString());
+        $search = trim((string) $request->input('search', ''));
+        $clientFilter = trim((string) $request->input('client', ''));
         $startDate = Carbon::parse($date)->startOfDay();
         $endDate = Carbon::parse($date)->endOfDay();
 
@@ -29,14 +31,54 @@ class BonCommandeController extends Controller
             });
         }
 
+        $user = Auth::user();
+        if (in_array($user?->role, ['Serveuse', 'serveuse'], true)) {
+            $query->where('serveuse_id', $user->id);
+        }
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('numero_bon', 'like', "%{$search}%")
+                  ->orWhereHas('client', function ($clientQuery) use ($search) {
+                      $clientQuery->where('nom', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('serveuse', function ($serveuseQuery) use ($search) {
+                      $serveuseQuery->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        if ($clientFilter !== '') {
+            $query->whereHas('client', function ($q) use ($clientFilter) {
+                $q->where('nom', 'like', "%{$clientFilter}%");
+            });
+        }
+
         $bons = $query->with(['panier', 'serveuse', 'client', 'utilisateur'])
             ->orderByDesc('numero_bon')
-            ->paginate(20);
+            ->paginate(20)
+            ->appends($request->query());
+
+        $bonsCount = $bons->total();
+        $produitsCount = 0;
+        $montantTotal = 0;
+        foreach ($bons as $bon) {
+            $produits = is_string($bon->produits_json) ? json_decode($bon->produits_json, true) : ($bon->produits_json ?? []);
+            if (is_array($produits)) {
+                $produitsCount += count($produits);
+            }
+            $montantTotal += (float) ($bon->montant ?? 0);
+        }
 
         return view('bon_commande.index', [
             'bons' => $bons,
             'date' => $date,
+            'search' => $search,
+            'clientFilter' => $clientFilter,
             'pointDeVenteId' => $pointDeVenteId,
+            'bonsCount' => $bonsCount,
+            'produitsCount' => $produitsCount,
+            'montantTotal' => $montantTotal,
         ]);
     }
 

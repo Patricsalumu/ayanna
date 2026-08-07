@@ -11,7 +11,28 @@
             <span>Retour aux salles</span>
         </a>
     </div>
-    <div class="container mx-auto">
+    <div class="container mx-auto" x-data="{
+    assignModalOpen: false,
+    selectedTable: null,
+    selectedServeuse: '',
+    openAssign(table) {
+        this.selectedTable = table;
+        this.selectedServeuse = table.serveuse_id || '';
+        this.assignModalOpen = true;
+    },
+    saveAssign() {
+        if (!this.selectedTable) return;
+        fetch(`/tables/${this.selectedTable.id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ serveuse_id: this.selectedServeuse || null })
+        }).then(() => window.location.reload());
+    }
+}">
     <h1 class="text-2xl font-bold mb-4">
     <!-- Barre d'outils globale et onglets zones -->
     <div class="flex justify-between items-center mb-2">
@@ -33,15 +54,39 @@
         </div>
     </div>
 
+    <div x-show="assignModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <h3 class="text-lg font-semibold mb-4">Affecter une serveuse</h3>
+            <template x-if="selectedTable">
+                <div>
+                    <p class="mb-2">Table <span class="font-bold" x-text="selectedTable.numero"></span></p>
+                    <select x-model="selectedServeuse" class="w-full border rounded px-3 py-2">
+                        <option value="">Aucune serveuse</option>
+                        @foreach($entreprise->users()->where('role', 'serveuse')->get() as $serveuse)
+                            <option value="{{ $serveuse->id }}">{{ $serveuse->name }}</option>
+                        @endforeach
+                    </select>
+                    <div class="mt-4 flex justify-end gap-2">
+                        <button type="button" @click="assignModalOpen = false" class="px-4 py-2 rounded bg-gray-200">Annuler</button>
+                        <button type="button" @click="saveAssign()" class="px-4 py-2 rounded bg-blue-600 text-white">Enregistrer</button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
     <!-- Zone du plan -->
     <div id="plan" class="relative w-full h-[500px] border border-gray-300 rounded bg-gray-100 overflow-hidden" style="background-image: linear-gradient(0deg, transparent 24%, #e5e7eb 25%, #e5e7eb 26%, transparent 27%, transparent 74%, #e5e7eb 75%, #e5e7eb 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, #e5e7eb 25%, #e5e7eb 26%, transparent 27%, transparent 74%, #e5e7eb 75%, #e5e7eb 76%, transparent 77%, transparent); background-size: 40px 40px;">
 
         @foreach ($salle->tables as $table)
-            <div class="table-item absolute cursor-pointer border-4 flex items-center justify-center group shadow-lg"
-                 data-id="{{ $table->id }}"
-                 data-forme="{{ $table->forme }}"
-                 data-numero="{{ $table->numero }}"
-                 tabindex="0"
+            <button type="button"
+                    class="table-item absolute cursor-pointer border-4 flex items-center justify-center group shadow-lg"
+                    data-id="{{ $table->id }}"
+                    data-forme="{{ $table->forme }}"
+                    data-numero="{{ $table->numero }}"
+                    data-serveuse-id="{{ $table->serveuse_id ?? '' }}"
+                    tabindex="0"
+                    @click="openAssign({ id: {{ $table->id }}, numero: {{ $table->numero }}, serveuse_id: '{{ $table->serveuse_id ?? '' }}' })"
                  style="
                     top: {{ $table->position_y }}px;
                     left: {{ $table->position_x }}px;
@@ -56,7 +101,7 @@
                 @if(isset($table->nb_commandes) && $table->nb_commandes > 0)
                     <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 shadow">{{ $table->nb_commandes }}</span>
                 @endif
-            </div>
+            </button>
         @endforeach
         <!-- Menu contextuel d'actions pour la table sélectionnée -->
         <div id="tableActionsMenu" class="hidden absolute z-50 bg-white border border-gray-300 rounded shadow-lg p-2 flex gap-2 items-center">

@@ -95,6 +95,9 @@
           style="height:40px;"
           x-model="paiement.client_id"
           @change="setClient(paiement.client_id)"
+          @if(Auth::user() && (Auth::user()->role === 'Serveuse' || Auth::user()->role === 'serveuse'))
+            disabled
+          @endif
         >
           <option value="">Client</option>
           @foreach($clients as $c)
@@ -106,6 +109,9 @@
           style="height:40px;"
           x-model="paiement.serveuse_id"
           @change="setServeuse(paiement.serveuse_id)"
+          @if(Auth::user() && (Auth::user()->role === 'Serveuse' || Auth::user()->role === 'serveuse'))
+            disabled
+          @endif
         >
           <option value="">Serveuse</option>
           @foreach($serveuses as $s)
@@ -135,7 +141,9 @@
             <option selected>Table</option>
           @endif
         </select>
-        <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-1 px-2 py-0.5 appearance-none" style="height:40px;" @click="openPaiement()">Paiement</button>
+        @if(!(Auth::user() && (Auth::user()->role === 'Serveuse' || Auth::user()->role === 'serveuse')))
+          <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-1 px-2 py-0.5 appearance-none" style="height:40px;" @click="openPaiement()">Paiement</button>
+        @endif
       </div>
       <div class="flex flex-row flex-wrap gap-2 mb-2 justify-between items-center">
         <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[140px] rounded-xl bg-gray-800 text-white font-bold shadow hover:bg-gray-900 transition text-center px-4 py-0.5" @click="printAddition('proforma')">Addition</button>
