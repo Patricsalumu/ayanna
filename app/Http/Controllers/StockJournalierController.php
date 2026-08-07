@@ -11,10 +11,15 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\PermissionService;
 use Barryvdh\DomPDF\Facade\Pdf; // tout en haut
 
 class StockJournalierController extends Controller
 {
+    public function __construct(protected PermissionService $permissionService)
+    {
+    }
+
     // Affiche la fiche de stock journalier pour une session donnée
     public function index(Request $request, $pointDeVenteId = null)
     {
@@ -465,6 +470,10 @@ class StockJournalierController extends Controller
      */
     public function ficheOuvertureStock(Request $request, $pointDeVenteId)
     {
+        if (!$this->permissionService->canManageSalesSession(Auth::user())) {
+            abort(403, 'Seul un administrateur ou un caissier peut ouvrir une session.');
+        }
+
         $pointDeVente = \App\Models\PointDeVente::findOrFail($pointDeVenteId);
         $produits = $pointDeVente->produits()->orderBy('nom')->get();
         $stocksDerniereSession = collect();
@@ -499,6 +508,10 @@ class StockJournalierController extends Controller
      */
     public function validerOuvertureStock(Request $request)
     {
+        if (!$this->permissionService->canManageSalesSession(Auth::user())) {
+            abort(403, 'Seul un administrateur ou un caissier peut ouvrir une session.');
+        }
+
         $request->validate([
             'date' => 'required|date',
             'point_de_vente_id' => 'required|exists:points_de_vente,id',
@@ -554,6 +567,10 @@ class StockJournalierController extends Controller
      */
     public function fermerSession(Request $request, $pointDeVenteId)
     {
+        if (!$this->permissionService->canManageSalesSession(Auth::user())) {
+            abort(403, 'Seul un administrateur ou un caissier peut fermer une session.');
+        }
+
         $now = now();
         $userId = Auth::id();
         $date = $now->toDateString();
@@ -625,6 +642,8 @@ class StockJournalierController extends Controller
         // Fermer le point de vente
         $pointDeVente->etat = 'ferme';
         $pointDeVente->save();
+
+        $this->invalidateOtherSessions();
         // DEBUG : log des infos session fermée
         Log::info('[Fermeture Session] Dernière session trouvée', [
             'point_de_vente_id' => $pointDeVenteId,
@@ -635,5 +654,14 @@ class StockJournalierController extends Controller
         ]);
         return redirect()->route('pointsDeVente.show', [$pointDeVente->entreprise_id, $pointDeVente->id])
             ->with('success', 'Session fermée. Quantités sauvegardées.');
+    }
+
+    private function invalidateOtherSessions(): void
+    {
+        if (config('session.driver') === 'database') {
+            DB::table(config('session.table', 'sessions'))
+                ->where('id', '!=', request()->session()->getId())
+                ->delete();
+        }
     }
 }

@@ -183,7 +183,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/stock-journalier/{pointDeVente}/fermer-session', [App\Http\Controllers\StockJournalierController::class, 'fermerSession'])->name('stock_journalier.fermer_session');
 });
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
 });
 
 //Route du dashboard

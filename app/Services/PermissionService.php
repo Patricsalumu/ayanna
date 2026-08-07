@@ -55,6 +55,11 @@ class PermissionService
         return $this->isCashier($user);
     }
 
+    public function canManageSalesSession(?object $user): bool
+    {
+        return $this->isAdmin($user) || $this->isCashier($user);
+    }
+
     public function canEditPayment(?object $user): bool
     {
         return $this->isAdmin($user) || $this->isCashier($user);

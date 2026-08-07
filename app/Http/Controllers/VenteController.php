@@ -322,6 +322,10 @@ class VenteController extends Controller
     // Ouvre un point de vente (redirection vers initialisation stock)
     public function ouvrir($id)
     {
+        if (!$this->permissionService->canManageSalesSession(Auth::user())) {
+            abort(403, 'Seul un administrateur ou un caissier peut ouvrir une session.');
+        }
+
         $pointDeVente = PointDeVente::findOrFail($id);
         if ($pointDeVente->etat === 'ouvert') {
             return redirect()->back()->with('error', 'Le point de vente est déjà ouvert.');
@@ -334,6 +338,10 @@ class VenteController extends Controller
     // Ferme un point de vente (changement d'état, traçabilité)
     public function fermer($id)
     {
+        if (!$this->permissionService->canManageSalesSession(Auth::user())) {
+            abort(403, 'Seul un administrateur ou un caissier peut fermer une session.');
+        }
+
         $pointDeVente = PointDeVente::findOrFail($id);
         if ($pointDeVente->etat === 'ferme') {
             return redirect()->back()->with('error', 'Le point de vente est déjà fermé.');
@@ -346,6 +354,13 @@ class VenteController extends Controller
                 'etat' => 'ferme',
             ]);
         });
+
+        if (config('session.driver') === 'database') {
+            DB::table(config('session.table', 'sessions'))
+                ->where('id', '!=', request()->session()->getId())
+                ->delete();
+        }
+
         return redirect()->route('pointsDeVente.show', [$pointDeVente->entreprise_id, $pointDeVente->id])->with('success', 'Point de vente fermé.');
     }
 

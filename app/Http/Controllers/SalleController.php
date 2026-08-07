@@ -133,13 +133,21 @@ class SalleController extends Controller
         ]);
 
         $user = Auth::user();
-        $salle->load('tables');
         $pointDeVenteId = request('point_de_vente_id');
+        $pointDeVente = \App\Models\PointDeVente::find($pointDeVenteId);
+
+        if ($pointDeVente && $pointDeVente->etat !== 'ouvert') {
+            return redirect()->route('pointsDeVente.show', [
+                'entreprise' => $entreprise->id,
+                'module_id' => $pointDeVente->module_id,
+            ])->with('error', 'Ce point de vente est fermé. Ouvrez une session pour accéder au plan de vente.');
+        }
+
+        $salle->load('tables');
 
         if ($this->permissionService->isWaitress($user)) {
             $salle->setRelation('tables', $salle->tables->filter(fn ($table) => $this->permissionService->canAccessTable($user, $table))->values());
         }
-        $pointDeVente = \App\Models\PointDeVente::find($pointDeVenteId);
         $sallesLiees = $pointDeVente ? $pointDeVente->salles : collect([$salle]);
 
         // Nouvelle logique : on récupère les paniers en base pour chaque table de la salle

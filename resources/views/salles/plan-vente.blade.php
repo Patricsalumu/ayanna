@@ -14,6 +14,7 @@
         <div class="text-sm text-gray-600">Plan de vente — {{ auth()->user()?->name ?? 'Utilisateur' }}</div>
         <form method="POST" action="{{ route('logout') }}" class="inline-block">
             @csrf
+            <input type="hidden" name="serveuse_logout" value="1">
             <button type="submit" class="rounded bg-gray-800 px-4 py-2 text-white text-sm font-semibold hover:bg-gray-700">
                 Déconnexion
             </button>
