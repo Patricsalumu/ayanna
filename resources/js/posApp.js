@@ -13,6 +13,8 @@ function posApp() {
     showOptions: false,
     currentCat: null,
     userRole: window.USER_ROLE || '',
+    canAddProducts: window.CAN_ADD_PRODUCTS !== false,
+    canApplyDiscount: window.CAN_APPLY_DISCOUNT === true,
     quantityRestrictedRoles: ['comptoiriste', 'serveuse'],
     client_id: window.CLIENT_ID || '',
     serveuse_id: window.SERVEUSE_ID || '',
@@ -82,7 +84,7 @@ function posApp() {
       return this.isQuantityRestricted() && ['C', 'x', '-'].includes(action);
     },
     isKeyDisabled(btn) {
-      return this.mode === 'paiement' && btn.disabledEnPaiement;
+      return (this.mode === 'paiement' && btn.disabledEnPaiement) || (this.mode !== 'paiement' && !this.canAddProducts);
     },
     async demanderAutorisationAdmin(actionLabel) {
       if (!this.isQuantityRestricted()) {
@@ -233,6 +235,7 @@ function posApp() {
     },
     // --- Actions pavé numérique rétablies ---
     async handleKey(action) {
+      if (!this.canAddProducts) return;
       if(this.selectedIndex===null) return;
       const item=this.panier[this.selectedIndex];
       if(!item) return;
@@ -421,8 +424,8 @@ function posApp() {
     },
     validerPaiement() {
       // Exemple de logique de validation du paiement
-      if (this.paiement.montantRecu < this.total) {
-        alert('Le montant reçu est insuffisant.');
+      if (this.paiement.montantRecu <= 0) {
+        alert('Veuillez saisir un montant reçu supérieur à zéro.');
         return;
       }
       // Appel AJAX pour valider le paiement côté serveur
@@ -438,7 +441,7 @@ function posApp() {
           mode_paiement: this.paiement.modePaiement,
           client_id: this.paiement.client_id,
           serveuse_id: this.paiement.serveuse_id,
-          remise: this.remise,
+          remise: this.canApplyDiscount ? this.remise : 0,
           table_id: window.TABLE_COURANTE,
           point_de_vente_id: window.POINT_DE_VENTE_ID,
           panier_id: (this.panier && this.panier.length && this.panier[0].panier_id) ? this.panier[0].panier_id : (window.PANIER_ID || null)
@@ -468,8 +471,8 @@ function posApp() {
     },
     async validerEtImprimer() {
       // Même logique que validerPaiement mais imprime si succès
-      if (this.paiement.montantRecu < this.total) {
-        alert('Le montant reçu est insuffisant.');
+      if (this.paiement.montantRecu <= 0) {
+        alert('Veuillez saisir un montant reçu supérieur à zéro.');
         return;
       }
       try {
@@ -485,7 +488,7 @@ function posApp() {
             mode_paiement: this.paiement.modePaiement,
             client_id: this.paiement.client_id,
             serveuse_id: this.paiement.serveuse_id,
-            remise: this.remise,
+            remise: this.canApplyDiscount ? this.remise : 0,
             table_id: window.TABLE_COURANTE,
             point_de_vente_id: window.POINT_DE_VENTE_ID,
             panier_id: (this.panier && this.panier.length && this.panier[0].panier_id) ? this.panier[0].panier_id : (window.PANIER_ID || null)

@@ -142,7 +142,7 @@
                         <option value="">-- Sélectionner --</option>
                         <option value="super_admin">Super Admin</option>
                         <option value="admin">Admin</option>
-                        <option value="comptoiriste">Comptoiriste</option>
+                        <option value="caissier">Caissier</option>
                         <option value="cuisinière">Cuisinière</option>
                         <option value="serveuse">Serveuse</option>
                     </select>
@@ -203,7 +203,7 @@
                         <option value="">-- Sélectionner --</option>
                         <option value="super_admin">Super Admin</option>
                         <option value="admin">Admin</option>
-                        <option value="comptoiriste">Comptoiriste</option>
+                        <option value="caissier">Caissier</option>
                         <option value="cuisinière">Cuisinière</option>
                         <option value="serveuse">Serveuse</option>
                     </select>

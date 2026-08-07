@@ -10,17 +10,24 @@
             </div>
             <div class="flex flex-wrap gap-3">
                 <form method="GET" action="{{ route('bon-commande.index') }}" class="flex flex-wrap gap-2">
-                    <input type="date" name="date" value="{{ $date }}" class="px-4 py-2 border rounded-lg">
+                    @if($pointDeVenteId)
+                        <input type="hidden" name="point_de_vente_id" value="{{ $pointDeVenteId }}">
+                    @endif
+                    <select name="session" class="px-4 py-2 border rounded-lg" onchange="this.form.submit()">
+                        @forelse($sessions as $session)
+                            <option value="{{ $session->session }}" @selected((string) $selectedSession === (string) $session->session)>
+                                Session {{ $session->session }} — {{ $session->point_de_vente_nom }}
+                            </option>
+                        @empty
+                            <option value="">Aucune session disponible</option>
+                        @endforelse
+                    </select>
                     <input type="text" name="search" value="{{ $search }}" placeholder="Recherche" class="px-4 py-2 border rounded-lg min-w-[180px]">
                     <input type="text" name="client" value="{{ $clientFilter }}" placeholder="Client" class="px-4 py-2 border rounded-lg min-w-[160px]">
                     <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                         Filtrer
                     </button>
                 </form>
-                <a href="{{ route('bon-commande.index', ['date' => \Carbon\Carbon::now()->toDateString()]) }}" 
-                   class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                    Aujourd'hui
-                </a>
             </div>
         </div>
 

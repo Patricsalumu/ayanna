@@ -6,29 +6,67 @@ use Illuminate\Http\Request;
 use App\Models\BonCommande;
 use App\Models\Panier;
 use App\Models\Produit;
+use App\Models\StockJournalier;
+use App\Models\Historiquepdv;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class BonCommandeController extends Controller
 {
     /**
-     * Affiche la liste des bons de commande avec filtrage par date
+    * Affiche la liste des bons de commande par session de vente
      */
     public function index(Request $request)
     {
-        $date = $request->input('date', Carbon::now()->toDateString());
+        $selectedSession = $request->filled('session')
+            ? (string) $request->input('session')
+            : null;
         $search = trim((string) $request->input('search', ''));
         $clientFilter = trim((string) $request->input('client', ''));
-        $startDate = Carbon::parse($date)->startOfDay();
-        $endDate = Carbon::parse($date)->endOfDay();
+        $pointDeVenteId = $request->integer('point_de_vente_id') ?: session('point_de_vente_id');
 
-        $pointDeVenteId = session('point_de_vente_id') ?? null;
+        $sessionsQuery = StockJournalier::with('pointDeVente')->orderByDesc('session');
+        if ($pointDeVenteId) {
+            $sessionsQuery->where('point_de_vente_id', $pointDeVenteId);
+        }
+        $sessions = $sessionsQuery->get()->groupBy('session')->map(function ($stocks, $session) {
+            $first = $stocks->sortBy('validated_at')->first();
+            return (object) [
+                'session' => (string) $session,
+                'point_de_vente_id' => $first->point_de_vente_id,
+                'point_de_vente_nom' => $first->pointDeVente?->nom ?? 'N/A',
+                'validated_at' => $first->validated_at ?? $first->created_at,
+            ];
+        })->values();
 
-        $query = BonCommande::whereBetween('created_at', [$startDate, $endDate]);
+        if ($selectedSession === null && $sessions->isNotEmpty()) {
+            $selectedSession = (string) $sessions->first()->session;
+        }
+
+        $query = BonCommande::query();
         if ($pointDeVenteId) {
             $query->whereHas('panier', function ($q) use ($pointDeVenteId) {
                 $q->where('point_de_vente_id', $pointDeVenteId);
             });
+        }
+
+        $sessionInfo = $sessions->first(function ($session) use ($selectedSession) {
+            return (string) $session->session === (string) $selectedSession;
+        });
+        if ($sessionInfo) {
+            $query->whereHas('panier', function ($q) use ($sessionInfo) {
+                $q->where('point_de_vente_id', $sessionInfo->point_de_vente_id);
+            })->where('created_at', '>=', $sessionInfo->validated_at);
+
+            $closedAt = Historiquepdv::where('point_de_vente_id', $sessionInfo->point_de_vente_id)
+                ->where('etat', 'ferme')
+                ->where('opened_at', $sessionInfo->validated_at)
+                ->value('closed_at');
+            if ($closedAt) {
+                $query->where('created_at', '<=', $closedAt);
+            }
+        } else {
+            $query->whereRaw('1 = 0');
         }
 
         $user = Auth::user();
@@ -72,7 +110,8 @@ class BonCommandeController extends Controller
 
         return view('bon_commande.index', [
             'bons' => $bons,
-            'date' => $date,
+            'selectedSession' => $selectedSession,
+            'sessions' => $sessions,
             'search' => $search,
             'clientFilter' => $clientFilter,
             'pointDeVenteId' => $pointDeVenteId,

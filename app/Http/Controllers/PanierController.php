@@ -12,10 +12,15 @@ use Illuminate\Support\Carbon;
 use App\Models\PointDeVente;
 use App\Models\StockJournalier;
 use App\Models\Historiquepdv;
+use App\Services\PermissionService;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class PanierController extends Controller
 {
+    public function __construct(protected PermissionService $permissionService)
+    {
+    }
+
     // Récupérer le panier d'une table avec client, serveuse et utilisateur en session
     public function getPanier(Request $request)
     {
@@ -48,6 +53,13 @@ class PanierController extends Controller
     // Ajouter un produit au panier
     public function ajouterProduit(Request $request, $produit_id)
     {
+        if (!$this->permissionService->canAddProductsToTable(Auth::user())) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Le caissier ne peut pas ajouter de produits dans une table.',
+            ], 403);
+        }
+
         $table_id = $request->input('table_id');
         $quantite = $request->input('quantite', 1);
 
@@ -83,6 +95,13 @@ class PanierController extends Controller
     // Modifier la quantité d'un produit (nouvelle version, pivot)
     public function modifierProduit(Request $request, $produit_id)
     {
+        if (!$this->permissionService->canAddProductsToTable(Auth::user())) {
+            return response()->json([
+                'success' => false,
+                'error' => "Le caissier ne peut pas modifier les produits d'une table.",
+            ], 403);
+        }
+
         try {
             $table_id = $request->input('table_id');
             $quantite = $request->input('quantite');
@@ -128,6 +147,13 @@ class PanierController extends Controller
     // Supprimer un produit du panier
     public function supprimerProduit(Request $request, $produit_id)
     {
+        if (!$this->permissionService->canAddProductsToTable(Auth::user())) {
+            return response()->json([
+                'success' => false,
+                'error' => "Le caissier ne peut pas supprimer les produits d'une table.",
+            ], 403);
+        }
+
         $table_id = $request->input('table_id');
         $panier = Panier::where('table_id', $table_id)
             ->where('status', 'en_cours')
@@ -353,7 +379,14 @@ class PanierController extends Controller
         $searchTerm = trim((string) $request->get('search', ''));
 
         $pointDeVenteIds = PointDeVente::where('entreprise_id', $entrepriseId)->pluck('id');
-        // Récupérer toutes les sessions disponibles en base pour les points de vente de l'entreprise
+        $pointDeVenteId = $request->integer('point_de_vente_id') ?: session('point_de_vente_id');
+        if ($pointDeVenteId && $pointDeVenteIds->contains((int) $pointDeVenteId)) {
+            $pointDeVenteIds = collect([(int) $pointDeVenteId]);
+        } else {
+            $pointDeVenteId = null;
+        }
+
+        // Les sessions proposées appartiennent uniquement au point de vente actif.
         $sessionGroups = StockJournalier::with('pointDeVente')
             ->whereIn('point_de_vente_id', $pointDeVenteIds)
             ->orderByDesc('session')
@@ -378,6 +411,10 @@ class PanierController extends Controller
         $paniersQuery = Panier::whereHas('tableResto.salle', function ($q) use ($entrepriseId) {
                 $q->where('entreprise_id', $entrepriseId);
             });
+
+        if ($pointDeVenteId) {
+            $paniersQuery->where('point_de_vente_id', $pointDeVenteId);
+        }
 
         if (in_array($user?->role, ['Serveuse', 'serveuse'], true)) {
             $paniersQuery->where('serveuse_id', $user->id);
@@ -456,7 +493,7 @@ class PanierController extends Controller
         }
 
         $paniers = $paniersQuery
-            ->with(['tableResto', 'serveuse', 'client', 'produits', 'pointDeVente', 'commande'])
+            ->with(['tableResto', 'serveuse', 'client', 'produits', 'pointDeVente', 'commande.paiements'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -486,7 +523,7 @@ class PanierController extends Controller
             })
             ->sum(fn($panier) => $this->montantPanierAffiche($panier));
 
-        return compact('paniers', 'sessions', 'selectedSession', 'selectedSessionFrom', 'selectedSessionTo', 'selectedPaymentType', 'searchTerm', 'totalPaniers', 'totalMontants', 'totalPaye', 'totalCredit');
+        return compact('paniers', 'sessions', 'selectedSession', 'selectedSessionFrom', 'selectedSessionTo', 'selectedPaymentType', 'searchTerm', 'totalPaniers', 'totalMontants', 'totalPaye', 'totalCredit', 'pointDeVenteId');
     }
 
     private function normalizeModePaiement(?string $mode): string

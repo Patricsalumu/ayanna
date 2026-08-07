@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Facture Créance #{{ $commande->id }}</title>
+    <title>Reçu de paiement #{{ $commande->id }}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -139,7 +139,7 @@
         <div style="font-size: 12px; color: #6B7280;">
             {{ $commande->panier->pointDeVente->nom ?? 'Point de vente' }}
         </div>
-        <div class="document-title">FACTURE CRÉANCE</div>
+        <div class="document-title">REÇU DE PAIEMENT</div>
         <div style="font-size: 14px; margin-top: 10px;">
             Facture N° {{ $commande->id }} - {{ \Carbon\Carbon::parse($commande->created_at)->format('d/m/Y') }}
         </div>
@@ -211,9 +211,23 @@
         </tbody>
         <tfoot>
             <tr class="total-row">
-                <td colspan="3"><strong>TOTAL FACTURE</strong></td>
+                    <td colspan="3"><strong>TOTAL TTC SANS REMISE</strong></td>
                 <td class="text-right"><strong>{{ number_format($montantTotal, 2, ',', ' ') }} $</strong></td>
             </tr>
+                @php
+                    $remise = (float) ($commande->panier->total_remise ?? $commande->panier->remise ?? 0);
+                    $netAPayer = max(0, $montantTotal - $remise);
+                    $montantPaye = (float) $commande->paiements->sum('montant');
+                    $montantRestant = max(0, $netAPayer - $montantPaye);
+                @endphp
+                <tr>
+                    <td colspan="3"><strong>REMISE</strong></td>
+                    <td class="text-right"><strong>{{ number_format($remise, 2, ',', ' ') }} $</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="3"><strong>NET À PAYER</strong></td>
+                    <td class="text-right"><strong>{{ number_format($netAPayer, 2, ',', ' ') }} $</strong></td>
+                </tr>
         </tfoot>
     </table>
 
@@ -241,10 +255,6 @@
                     @endforeach
                 </tbody>
                 <tfoot>
-                    @php
-                        $montantPaye = $commande->paiements->sum('montant');
-                        $montantRestant = $montantTotal - $montantPaye;
-                    @endphp
                     <tr style="background-color: #DBEAFE;">
                         <td colspan="3"><strong>TOTAL PAYÉ</strong></td>
                         <td class="text-right"><strong>{{ number_format($montantPaye, 2, ',', ' ') }} $</strong></td>
@@ -265,7 +275,7 @@
     @else
         <!-- Résumé financier sans paiements -->
         <div style="background-color: #FEF3C7; padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px;">
-            <strong style="color: #D97706;">MONTANT TOTAL DÛ : {{ number_format($montantTotal, 2, ',', ' ') }} $</strong>
+            <strong style="color: #D97706;">MONTANT PAYÉ : 0,00 $ | RESTANT DÛ : {{ number_format($netAPayer, 2, ',', ' ') }} $</strong>
         </div>
     @endif
 
@@ -281,5 +291,12 @@
         <a href="{{ route('creances.liste') }}" class="btn btn-secondary">Retour à la liste</a>
         <a href="{{ route('creances.historique', $commande->id) }}" class="btn btn-secondary">Voir l'historique</a>
     </div>
+    @if($autoPrint ?? false)
+        <script>
+            window.addEventListener('load', function () {
+                setTimeout(function () { window.print(); }, 300);
+            });
+        </script>
+    @endif
 </body>
 </html>

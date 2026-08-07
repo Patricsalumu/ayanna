@@ -48,7 +48,6 @@
             @endif
         </div>
         @php
-            $totalPaniersCount = $paniers->count();
             $totalMontantsCalc = $totalMontants ?? 0;
 
             $totalPayeCalc = $totalPaye ?? 0;
@@ -58,7 +57,7 @@
         <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="rounded-xl border border-blue-100 bg-blue-50 px-5 py-4">
                 <div class="text-sm font-medium text-blue-700">Total paniers</div>
-                <div id="totalPaniersDisplay" class="mt-1 text-2xl font-bold text-blue-900">{{ number_format($totalPaniersCount, 0, ',', ' ') }}</div>
+                <div id="totalPaniersDisplay" class="mt-1 text-2xl font-bold text-blue-900">{{ number_format($paniers->count(), 0, ',', ' ') }}</div>
             </div>
             <div class="rounded-xl border border-indigo-100 bg-indigo-50 px-5 py-4">
                 <div class="text-sm font-medium text-indigo-700">Total montant (TTC)</div>
@@ -110,28 +109,40 @@
         <table class="w-full table-auto rounded-xl overflow-hidden border">
             <thead class="bg-blue-100 text-gray-700">
                 <tr>
+                    <th class="p-3 text-left">N° facture / panier</th>
                     <th class="p-3 text-left">Table</th>
                     <th class="p-3 text-left">Serveuse</th>
                     <th class="p-3 text-left">Client</th>
-                    <th class="p-3 text-left">Point de vente</th>
                     <th class="p-3 text-left">Ouvert à</th>
                     <th class="p-3 text-left">Statut</th>
                     <th class="p-3 text-left">Paiement</th>
-                    <th class="p-3 text-left">Montant</th>
+                    <th class="p-3 text-left">Montant TTC sans remises</th>
+                    <th class="p-3 text-left">Remises</th>
+                    <th class="p-3 text-left">Net à payer</th>
+                    <th class="p-3 text-left">Payé</th>
                     <th class="p-3 text-left">Action</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($paniers as $panier)
                 @php
+                    $montantBrut = $panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * (($p->pivot->prix ?? $p->prix_vente) ?? 0));
+                    $montantTtcSansRemises = (float) ($montantBrut + ($panier->total_tva ?? 0));
+                    $remise = (float) ($panier->total_remise ?? $panier->remise ?? 0);
+                    $netAPayer = (float) ($panier->total_ttc ?? max(0, $montantBrut - $remise + ($panier->total_tva ?? 0)));
+                    $montantPaye = (float) ($panier->commande?->paiements?->sum('montant') ?? 0);
                     $panierDetails = [
                         'id' => $panier->id,
+                        'reference' => $panier->commande?->id ? 'Facture #' . $panier->commande->id : 'Panier #' . $panier->id,
                         'table' => $panier->tableResto->numero ?? $panier->table_id,
                         'serveuse' => $panier->serveuse->name ?? '-',
                         'client' => $panier->client->nom ?? '-',
                             'salle' => $panier->tableResto->salle->nom ?? $panier->pointDeVente->nom ?? 'N/A',
                         'ouvert_a' => $panier->created_at->format('d/m H:i'),
                         'status' => $panier->status,
+                        'remise' => $remise,
+                        'net_a_payer' => $netAPayer,
+                        'montant_paye' => $montantPaye,
                         'produits' => $panier->produits->map(function($prod) {
                             $unit = $prod->pivot->prix ?? $prod->prix_vente;
                             return [
@@ -141,7 +152,7 @@
                                 'total' => max(0, $prod->pivot->quantite) * ($unit ?? 0),
                             ];
                         })->toArray(),
-                        'total' => $panier->total_ttc ?? ($panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * (($p->pivot->prix ?? $p->prix_vente) ?? 0)) - ($panier->remise ?? 0) + ($panier->total_tva ?? 0)),
+                        'total' => $netAPayer,
                     ];
                 @endphp
                 <tr class="hover:bg-gray-100 {{ $panier->status !== 'annulé' ? 'cursor-pointer' : 'opacity-60' }} panier-row"
@@ -149,14 +160,10 @@
                     data-panier-status="{{ $panier->status }}"
                     data-panier='@json($panierDetails)'
                     data-produits="{{ strtolower(collect($panier->produits)->pluck('nom')->implode(',')) }}">
+                    <td class="p-3 font-semibold">{{ $panier->commande?->id ? 'Facture #' . $panier->commande->id : 'Panier #' . $panier->id }}</td>
                     <td class="p-3">{{ $panier->tableResto->numero ?? $panier->table_id }}</td>
                     <td class="p-3">{{ $panier->serveuse->name ?? '-' }}</td>
                     <td class="p-3">{{ $panier->client->nom ?? '-' }}</td>
-                    <td class="p-3">
-                                <div class="text-sm">
-                                    <div class="font-medium text-blue-600">{{ $panier->tableResto->salle->nom ?? $panier->pointDeVente->nom ?? 'N/A' }}</div>
-                                </div>
-                    </td>
                     <td class="p-3">{{ $panier->created_at->format('d/m H:i') }}</td>
                     <td class="p-3">{{ $panier->status }}</td>
                     <td class="p-3">
@@ -169,14 +176,10 @@
                         @endphp
                         <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold {{ $modeClass }}">{{ $modeLabel }}</span>
                     </td>
-                    @php
-                        if(($panier->status ?? '') === 'en_cours') {
-                            $displayMontant = $panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * (($p->pivot->prix ?? $p->prix_vente) ?? 0));
-                        } else {
-                            $displayMontant = $panier->total_ttc ?? ($panier->produits->sum(fn($p) => max(0, $p->pivot->quantite) * (($p->pivot->prix ?? $p->prix_vente) ?? 0)) - ($panier->remise ?? 0) + ($panier->total_tva ?? 0));
-                        }
-                    @endphp
-                    <td class="p-3">{{ optional(auth()->user()?->entreprise)->formatAmount($displayMontant ?? 0, true, 2) }}</td>
+                    <td class="p-3">{{ optional(auth()->user()?->entreprise)->formatAmount($montantTtcSansRemises, true, 2) }}</td>
+                    <td class="p-3">{{ optional(auth()->user()?->entreprise)->formatAmount($remise, true, 2) }}</td>
+                    <td class="p-3 font-semibold">{{ optional(auth()->user()?->entreprise)->formatAmount($netAPayer, true, 2) }}</td>
+                    <td class="p-3 text-green-700 font-semibold">{{ optional(auth()->user()?->entreprise)->formatAmount($montantPaye, true, 2) }}</td>
                     <td class="p-3">
                         @if($panier->status === 'en_cours')
                             @if(!in_array(Auth::user()->role ?? null, ['comptoiriste','serveuse']))
@@ -187,13 +190,21 @@
                                     <button type="button" 
                                         class="bg-red-600 text-white rounded-full text-xs px-3 py-1 hover:bg-red-700 annuler-btn"
                                         data-table="{{ $panier->tableResto->nom ?? 'Table ' . $panier->table_id }}"
-                                        data-montant="{{ optional(auth()->user()?->entreprise)->formatAmount($displayMontant ?? 0, true, 2) }}">
+                                        data-montant="{{ optional(auth()->user()?->entreprise)->formatAmount($montantTtcSansRemises, true, 2) }}">
                                         Annuler
                                     </button>
                                 </form>
                             @else
                                 <span class="text-gray-400 text-xs">-</span>
                             @endif
+                        @elseif(app(\App\Services\PermissionService::class)->canPrintReceipt(auth()->user()) && $panier->commande && in_array($panier->commande->statut, ['validé', 'payé'], true))
+                            <a href="{{ route('creances.imprimer', $panier->commande->id) }}?auto_print=1"
+                               target="_blank"
+                               onclick="event.stopPropagation()"
+                               class="inline-flex items-center rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-700"
+                               title="Réimprimer le reçu de paiement">
+                                Réimprimer reçu
+                            </a>
                         @else
                             <span class="text-gray-400 text-xs">-</span>
                         @endif

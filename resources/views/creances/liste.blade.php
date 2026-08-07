@@ -2,6 +2,7 @@
 @section('content')
 
 <div class="max-w-7xl mx-auto px-6 py-3">
+    @php($canPrintReceipt = app(\App\Services\PermissionService::class)->canPrintReceipt(auth()->user()))
     <!-- Messages de statut -->
     @if(session('success'))
         <div class="mb-3 p-3 bg-green-100 border border-green-300 text-green-700 rounded-lg text-center font-medium">
@@ -227,7 +228,8 @@
                                                 Historique
                                             </a>
                                             
-                                            <!-- Bouton Export PDF -->
+                                            <!-- Bouton Export PDF réservé au caissier -->
+                                            @if($canPrintReceipt)
                                             <a href="{{ route('creances.imprimer', $commande->id) }}" target="_blank"
                                                class="inline-flex items-center px-3 py-2 bg-gray-600 text-white font-medium rounded-lg text-sm hover:bg-gray-700 transition-colors shadow-sm"
                                                title="Télécharger le reçu PDF">
@@ -236,6 +238,7 @@
                                                 </svg>
                                                 PDF
                                             </a>
+                                            @endif
                                         @else
                                             <div class="flex items-center gap-2">
                                                 <span class="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-700 font-medium text-sm border border-green-200">
@@ -255,7 +258,8 @@
                                                     Historique
                                                 </a>
                                                 
-                                                <!-- Bouton Export PDF -->
+                                                <!-- Bouton Export PDF réservé au caissier -->
+                                                @if($canPrintReceipt)
                                                 <a href="{{ route('creances.imprimer', $commande->id) }}" target="_blank"
                                                    class="inline-flex items-center px-3 py-2 bg-gray-600 text-white font-medium rounded-lg text-sm hover:bg-gray-700 transition-colors shadow-sm"
                                                    title="Télécharger le reçu PDF">
@@ -264,6 +268,7 @@
                                                     </svg>
                                                     PDF
                                                 </a>
+                                                @endif
                                             </div>
                                         @endif
                                     </div>

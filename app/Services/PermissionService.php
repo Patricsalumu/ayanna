@@ -47,7 +47,12 @@ class PermissionService
 
     public function canPrintReceipt(?object $user): bool
     {
-        return $this->isAdmin($user) || $this->isCashier($user);
+        return $this->isCashier($user);
+    }
+
+    public function canApplyDiscount(?object $user): bool
+    {
+        return $this->isCashier($user);
     }
 
     public function canEditPayment(?object $user): bool
@@ -58,6 +63,11 @@ class PermissionService
     public function canManageProductQuantity(?object $user): bool
     {
         return $this->isAdmin($user) || $this->isCashier($user);
+    }
+    
+    public function canAddProductsToTable(?object $user): bool
+    {
+        return !$this->isCashier($user);
     }
 
     public function resolveServeuseId(?object $user, ?string $currentServeuseId): ?string

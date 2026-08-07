@@ -52,12 +52,14 @@
                 <td colspan="3" class="text-right py-1">Sous-total</td>
                 <td class="text-right" x-text="formatMoney(totalHt)"></td>
               </tr>
-              <tr class="border-t">
-                <td colspan="3" class="text-right py-1">Remise</td>
-                <td class="text-right">
-                  <input x-model.number="remise" type="number" min="0" step="0.01" class="w-full text-right border border-gray-300 rounded px-2 py-1" placeholder="0" />
-                </td>
-              </tr>
+              @if(app(\App\Services\PermissionService::class)->canApplyDiscount(auth()->user()))
+                <tr class="border-t">
+                  <td colspan="3" class="text-right py-1">Remise</td>
+                  <td class="text-right">
+                    <input x-model.number="remise" type="number" min="0" step="0.01" class="w-full text-right border border-gray-300 rounded px-2 py-1" placeholder="0" />
+                  </td>
+                </tr>
+              @endif
               <tr class="font-bold border-t">
                 <td colspan="3" class="text-right py-1">Net à payer</td>
                 <td class="text-right" x-text="formatMoney(total)"></td>
@@ -80,12 +82,14 @@
       </template>
     </div>
 
-    <!-- Bouton Bon de Commande -->
-    <template x-if="panier.length">
-      <button @click="genererBonCommande()" class="w-full py-3 rounded-2xl bg-orange-600 text-white font-bold text-base shadow hover:bg-orange-700 transition">
-        🍲 Bon de Commande
-      </button>
-    </template>
+    @if(!app(\App\Services\PermissionService::class)->isCashier(auth()->user()))
+      <!-- Bouton Bon de Commande -->
+      <template x-if="panier.length">
+        <button @click="genererBonCommande()" class="w-full py-3 rounded-2xl bg-orange-600 text-white font-bold text-base shadow hover:bg-orange-700 transition">
+          🍲 Bon de Commande
+        </button>
+      </template>
+    @endif
 
     <!-- Sélecteurs + Options -->
     <div class="bg-white rounded-2xl shadow p-1 min-h-0 h-auto mt-1 mb-0">
@@ -164,7 +168,8 @@
           <button @click="mode==='paiement' ? ajouterChiffre(btn.action) : handleKey(btn.action)"
                   class="py-3 rounded text-lg font-semibold"
                   :class="[btn.class, isKeyDisabled(btn) ? 'opacity-40 cursor-not-allowed' : '']"
-                  :disabled="isKeyDisabled(btn)">
+                  :disabled="(mode !== 'paiement' && !canAddProducts) || isKeyDisabled(btn)"
+              :title="!canAddProducts && mode !== 'paiement' ? 'Modification des produits désactivée pour le caissier' : ''">
             <span x-text="btn.label"></span>
           </button>
         </template>
@@ -230,8 +235,9 @@
           ]"
         >
           <template x-for="prod in filteredProduits" :key="prod.id">
-            <div @click="ajouterProduit(prod)"
-                 class="relative bg-white p-2 rounded-xl shadow cursor-pointer hover:ring-2 hover:ring-blue-500 transition h-[102px] min-h-[102px] max-h-[102px] flex flex-col items-center justify-end overflow-hidden">
+            <div @click="canAddProducts ? ajouterProduit(prod) : null"
+                 :class="canAddProducts ? 'cursor-pointer hover:ring-2 hover:ring-blue-500' : 'cursor-not-allowed opacity-60'"
+                 class="relative bg-white p-2 rounded-xl shadow transition h-[102px] min-h-[102px] max-h-[102px] flex flex-col items-center justify-end overflow-hidden">
               
               <!-- Bande colorée en bas selon la catégorie -->
               <div class="absolute bottom-0 left-0 right-0 h-1 z-10"
@@ -331,6 +337,8 @@ window.SET_CLIENT_URL = "{{ url('/panier/set-client') }}";
 window.SET_SERVEUSE_URL = "{{ url('/panier/set-serveuse') }}";
 window.PANIER_ID = @json($panier->id ?? ($panier['id'] ?? null));
 window.USER_ROLE = @json(auth()->user()->role ?? null);
+window.CAN_ADD_PRODUCTS = @json(app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user()));
+window.CAN_APPLY_DISCOUNT = @json(app(\App\Services\PermissionService::class)->canApplyDiscount(auth()->user()));
 window.ENTREPRISE = @json($pointDeVente->entreprise);
 window.CLIENTS = @json($clientsArray ?? []);
 window.SERVEUSES = @json($serveusesArray ?? []);

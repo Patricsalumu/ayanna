@@ -32,10 +32,9 @@
                     <select name="role" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400" required>
                         <option value="super_admin" @if($user->role=='super_admin') selected @endif>Super Admin</option>
                         <option value="admin" @if($user->role=='admin') selected @endif>Admin</option>
-                        <option value="comptoiriste" @if($user->role=='comptoiriste') selected @endif>Comptoiriste</option>
+                        <option value="caissier" @if(in_array($user->role, ['comptoiriste', 'caissier', 'Caissier'], true)) selected @endif>Caissier</option>
                         <option value="cuisinière" @if($user->role=='cuisinière') selected @endif>Cuisinière</option>
                         <option value="serveuse" @if($user->role=='serveuse') selected @endif>Serveuse</option>
-                        <option value="Caissier" @if($user->role=='Caissier') selected @endif>Caissier</option>
                         <option value="Administrateur" @if($user->role=='Administrateur') selected @endif>Administrateur</option>
                     </select>
                     @error('role')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror

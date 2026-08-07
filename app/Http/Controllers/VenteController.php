@@ -50,6 +50,9 @@ class VenteController extends Controller
             // Gestion multi-paniers par table (NOUVELLE LOGIQUE)
             $tableCourante = $request->get('table_id');
             $produitsPanier = [];
+            $table = $tableCourante
+                ? \App\Models\TableResto::with('serveuse')->find($tableCourante)
+                : null;
             Log::debug('[CATALOGUE] table_id reçu', ['table_id' => $tableCourante, 'point_de_vente_id' => $pointDeVenteId]);
             if ($tableCourante) {
                 $panier = Panier::where('table_id', $tableCourante)
@@ -57,6 +60,10 @@ class VenteController extends Controller
                     ->first();
                 Log::debug('[CATALOGUE] Panier trouvé ?', ['panier_id' => $panier ? $panier->id : null]);
                 if ($panier) {
+                    if (!$panier->serveuse_id && $table?->serveuse_id) {
+                        $panier->serveuse_id = $table->serveuse_id;
+                        $panier->save();
+                    }
                     $panier->load('produits');
                     $produitsPanier = $panier->produits->map(function($prod) use ($tableCourante) {
                         return [
@@ -75,6 +82,7 @@ class VenteController extends Controller
                         'status' => 'en_cours',
                         'point_de_vente_id' => $pointDeVenteId,
                         'opened_by' => Auth::id(),
+                        'serveuse_id' => $table?->serveuse_id,
                     ]);
                     $panier->load('produits');
                 }
@@ -88,7 +96,7 @@ class VenteController extends Controller
             }
 
             $client_id = $panier ? $panier->client_id : '';
-            $serveuse_id = $panier ? $panier->serveuse_id : '';
+            $serveuse_id = $panier?->serveuse_id ?? $table?->serveuse_id ?? '';
 
             // Récupérer les modes de paiement actifs pour l'entreprise
             $modesPaiement = \App\Models\ModePaiement::where('entreprise_id', $pointDeVente->entreprise_id)
@@ -210,6 +218,13 @@ class VenteController extends Controller
             $user = Auth::user();
             if (!$tableId || !$pointDeVenteId) {
                 return response()->json(['error' => 'Aucune table ou point de vente sélectionné'], 422);
+            }
+
+            if (!$this->permissionService->canAddProductsToTable($user)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Le caissier ne peut pas ajouter de produits dans une table.',
+                ], 403);
             }
 
             $table = \App\Models\TableResto::find($tableId);
@@ -418,6 +433,12 @@ class VenteController extends Controller
             if ($remise < 0) {
                 return response()->json(['error' => 'La remise doit être positive'], 400);
             }
+            if ($remise > 0 && !$this->permissionService->canApplyDiscount($user)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Seul le caissier peut appliquer une remise.',
+                ], 403);
+            }
 
             // Vérification du panier (accepter 'panier' ou récupérer via 'panier_id' ou 'table_id')
             if (!empty($data['panier']) && is_array($data['panier'])) {
@@ -493,11 +514,20 @@ class VenteController extends Controller
             $panier->total_ttc = max(0, $panierTotalHt - $panier->total_tva - $remise);
             $panier->save();
 
+            $montantTotal = (float) $panier->total_ttc;
+            $montantRecu = (float) ($data['montant_recu'] ?? $data['montant'] ?? $montantTotal);
+            if ($montantRecu <= 0) {
+                throw new \Exception('Le montant reçu doit être supérieur à zéro.');
+            }
+
+            $montantPaye = min($montantRecu, $montantTotal);
+            $montantRestant = max(0, $montantTotal - $montantPaye);
+
             // 2. Créer la commande à partir du panier (seulement les champs qui existent dans la table)
             $commande = new Commande();
             $commande->panier_id = $panier->id;
             $commande->mode_paiement = $data['mode_paiement'];
-            $commande->statut = 'validé';
+            $commande->statut = $montantRestant <= 0 ? 'payé' : 'validé';
             $commande->created_at = now();
             
             Log::info('[VALIDATION PAIEMENT] Données commande à sauvegarder', [
@@ -510,6 +540,17 @@ class VenteController extends Controller
 
             $commande->save();
             Log::info('[VALIDATION PAIEMENT] Commande créée', ['commande_id' => $commande->id]);
+
+            \App\Models\Paiement::create([
+                'commande_id' => $commande->id,
+                'montant' => $montantPaye,
+                'montant_restant' => $montantRestant,
+                'mode' => $data['mode_paiement'],
+                'date_paiement' => now()->toDateString(),
+                'est_solde' => $montantRestant <= 0,
+                'user_id' => Auth::id(),
+                'statut' => 'validé',
+            ]);
 
             // 3. ENREGISTREMENT COMPTABLE AUTOMATIQUE
             try {
@@ -824,12 +865,19 @@ class VenteController extends Controller
         return view('creances.historique', compact('commande'));
     }
 
-    public function imprimerCreance($commandeId)
+    public function imprimerCreance(Request $request, $commandeId)
     {
+        if (!$this->permissionService->canPrintReceipt(Auth::user())) {
+            abort(403, 'Seul le caissier peut réimprimer le reçu d’une facture validée.');
+        }
+
         $commande = \App\Models\Commande::with(['panier.client', 'panier.serveuse', 'panier.tableResto', 'panier.produits', 'panier.pointDeVente.entreprise', 'paiements'])
             ->findOrFail($commandeId);
         
-        return view('creances.facture', compact('commande'));
+        return view('creances.facture', [
+            'commande' => $commande,
+            'autoPrint' => $request->boolean('auto_print'),
+        ]);
     }
 
     public function exporterListeCreances(Request $request)

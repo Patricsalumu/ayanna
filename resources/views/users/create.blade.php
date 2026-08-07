@@ -36,10 +36,9 @@
                         <option value="">-- Sélectionner --</option>
                         <option value="super_admin">Super Admin</option>
                         <option value="admin">Admin</option>
-                        <option value="comptoiriste">Comptoiriste</option>
+                        <option value="caissier">Caissier</option>
                         <option value="cuisinière">Cuisinière</option>
                         <option value="serveuse">Serveuse</option>
-                        <option value="Caissier">Caissier</option>
                         <option value="Administrateur">Administrateur</option>
                     </select>
                     @error('role')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror

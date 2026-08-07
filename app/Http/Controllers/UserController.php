@@ -48,7 +48,7 @@ class UserController extends Controller
                     }
                 },
             ],
-            'role' => ['required', Rule::in(['super_admin','admin','comptoiriste','cuisinière','serveuse','Administrateur','Caissier','Serveuse'])],
+            'role' => ['required', Rule::in(['super_admin','admin','caissier','comptoiriste','cuisinière','serveuse','Administrateur','Caissier','Serveuse'])],
             'code_pin' => ['nullable','regex:/^\d{4}$/'],
         ]);
         $validated['entreprise_id'] = $entreprise->id;
@@ -75,7 +75,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => ['required','email',Rule::unique('users')->ignore($user->id)],
-            'role' => ['required', Rule::in(['super_admin','admin','comptoiriste','cuisinière','serveuse','Administrateur','Caissier','Serveuse'])],
+            'role' => ['required', Rule::in(['super_admin','admin','caissier','comptoiriste','cuisinière','serveuse','Administrateur','Caissier','Serveuse'])],
             'code_pin' => ['nullable','regex:/^\d{4}$/'],
         ]);
         if ($request->filled('password')) {
