@@ -107,6 +107,7 @@
         <table class="w-full table-auto rounded-xl overflow-hidden border">
             <thead class="bg-blue-100 text-gray-700">
                 <tr>
+                    <th class="p-3 text-left">No Fact</th>
                     <th class="p-3 text-left">Table</th>
                     <th class="p-3 text-left">Serveuse</th>
                     <th class="p-3 text-left">Client</th>
@@ -146,6 +147,7 @@
                     data-panier-status="{{ $panier->status }}"
                     data-panier='@json($panierDetails)'
                     data-produits="{{ strtolower(collect($panier->produits)->pluck('nom')->implode(',')) }}">
+                    <td class="p-3 font-semibold text-blue-700">{{ $panier->id }}</td>
                     <td class="p-3">{{ $panier->tableResto->numero ?? $panier->table_id }}</td>
                     <td class="p-3">{{ $panier->serveuse->name ?? '-' }}</td>
                     <td class="p-3">{{ $panier->client->nom ?? '-' }}</td>

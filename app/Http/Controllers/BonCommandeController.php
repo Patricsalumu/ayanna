@@ -17,6 +17,7 @@ class BonCommandeController extends Controller
     public function index(Request $request)
     {
         $date = $request->input('date', Carbon::now()->toDateString());
+        $search = trim((string) $request->input('search', ''));
         $startDate = Carbon::parse($date)->startOfDay();
         $endDate = Carbon::parse($date)->endOfDay();
 
@@ -29,13 +30,35 @@ class BonCommandeController extends Controller
             });
         }
 
+        if ($search !== '') {
+            $searchTerm = '%' . $search . '%';
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('numero_bon', 'like', $searchTerm)
+                    ->orWhere('produits_json', 'like', $searchTerm)
+                    ->orWhereHas('client', function ($clientQuery) use ($searchTerm) {
+                        $clientQuery->where('nom', 'like', $searchTerm);
+                    })
+                    ->orWhereHas('serveuse', function ($serveuseQuery) use ($searchTerm) {
+                        $serveuseQuery->where('name', 'like', $searchTerm);
+                    })
+                    ->orWhereHas('panier.commande', function ($commandeQuery) use ($searchTerm) {
+                        $commandeQuery->where('id', 'like', $searchTerm);
+                    })
+                    ->orWhereHas('panier', function ($panierQuery) use ($searchTerm) {
+                        $panierQuery->where('id', 'like', $searchTerm);
+                    });
+            });
+        }
+
         $bons = $query->with(['panier', 'serveuse', 'client', 'utilisateur'])
             ->orderByDesc('numero_bon')
-            ->paginate(20);
+            ->paginate(20)
+            ->appends(['date' => $date, 'search' => $search]);
 
         return view('bon_commande.index', [
             'bons' => $bons,
             'date' => $date,
+            'search' => $search,
             'pointDeVenteId' => $pointDeVenteId,
         ]);
     }
@@ -177,6 +200,7 @@ class BonCommandeController extends Controller
 
         return view('bon_commande.print', [
             'bon' => $bon,
+            'is_copy' => true,
         ]);
     }
 
@@ -190,6 +214,7 @@ class BonCommandeController extends Controller
 
         return view('bon_commande.print', [
             'bon' => $bon,
+            'is_copy' => false,
         ]);
     }
 }

@@ -5,14 +5,18 @@
     <div class="max-w-6xl mx-auto">
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-3xl font-bold">Bons de Commande</h1>
-            <div class="flex gap-4">
-                <form method="GET" action="{{ route('bon-commande.index') }}" class="flex gap-2">
+            <div class="flex gap-4 items-center">
+                <form method="GET" action="{{ route('bon-commande.index') }}" class="flex flex-wrap gap-2 items-center">
+                    <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="N° bon, facture, client, serveuse, produit" class="px-4 py-2 border rounded-lg min-w-[280px]">
                     <input type="date" name="date" value="{{ $date }}" class="px-4 py-2 border rounded-lg">
                     <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                        Filtrer
+                        Rechercher
                     </button>
+                    <a href="{{ route('bon-commande.index') }}" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
+                        Effacer
+                    </a>
                 </form>
-                <a href="{{ route('bon-commande.index', ['date' => \Carbon\Carbon::now()->toDateString()]) }}" 
+                <a href="{{ route('bon-commande.index', ['date' => \Carbon\Carbon::now()->toDateString(), 'search' => '']) }}" 
                    class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
                     Aujourd'hui
                 </a>
@@ -83,7 +87,7 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <a href="{{ route('bon-commande.print', $bon->id) }}"
+                                    <a href="{{ route('bon-commande.reprint', $bon->id) }}"
                                        class="text-blue-600 hover:text-blue-900 mr-3">
                                         Imprimer
                                     </a>

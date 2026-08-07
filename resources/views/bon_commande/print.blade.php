@@ -46,6 +46,18 @@
             margin: 2px 0;
         }
 
+        .copy-badge {
+            display: inline-block;
+            margin-top: 4px;
+            padding: 2px 6px;
+            background: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fca5a5;
+            font-weight: bold;
+            font-size: 10px;
+            letter-spacing: 1px;
+        }
+
         .serveuse-info {
             text-align: center;
             font-weight: bold;
@@ -142,11 +154,14 @@
         </div>
 
         <div class="bon-title">BON DE COMMANDE No {{ $bon->numero_bon }}</div>
+        @if($is_copy ?? false)
+            <div class="copy-badge">COPIE</div>
+        @endif
 
         <div class="serveuse-info">{{ $bon->serveuse?->name ?? 'N/A' }} | Table {{ $bon->panier?->tableResto?->numero ?? $bon->panier?->table_id ?? 'N/A' }}</div>
 
         <div class="details">
-            Panier #{{ $bon->panier_id }} | {{ $bon->created_at->format('H:i') }}
+            No Fact {{ $bon->panier_id }} | {{ $bon->created_at->format('H:i') }}
         </div>
 
         <div class="separator"></div>
@@ -174,7 +189,7 @@
         <div class="separator"></div>
 
         <div class="footer">
-            {{ now()->format('H:i') }}
+            {{ now()->format('d/m/Y H:i') }}
         </div>
     </div>
 
