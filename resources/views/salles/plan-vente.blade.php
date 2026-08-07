@@ -10,9 +10,17 @@
             : ($pointDeVenteId ? \App\Models\PointDeVente::find($pointDeVenteId) : null);
     @endphp
 
-    <!-- Onglets de navigation entre salles -->
-    <br>
+    <div class="flex items-center justify-between gap-3 mb-4">
+        <div class="text-sm text-gray-600">Plan de vente — {{ auth()->user()?->name ?? 'Utilisateur' }}</div>
+        <form method="POST" action="{{ route('logout') }}" class="inline-block">
+            @csrf
+            <button type="submit" class="rounded bg-gray-800 px-4 py-2 text-white text-sm font-semibold hover:bg-gray-700">
+                Déconnexion
+            </button>
+        </form>
+    </div>
 
+    <!-- Onglets de navigation entre salles -->
     <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
         @foreach($salles as $zone)
             <a href="{{ route('salle.plan.vente', [
@@ -43,7 +51,8 @@
                 @endphp
 
                 @php
-                    $canAccess = !($user && $user->role === 'Serveuse') || ($table->serveuse_id == $user->id);
+                    $userRole = strtolower((string) ($user?->role ?? ''));
+                    $canAccess = !($user && $userRole === 'serveuse') || ($table->serveuse_id == $user->id);
                 @endphp
 
                 @if ($canAccess)

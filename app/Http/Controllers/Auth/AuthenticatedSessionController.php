@@ -20,6 +20,11 @@ class AuthenticatedSessionController extends Controller
         return view('auth.login');
     }
 
+    public function createServeuse(): View
+    {
+        return view('auth.serveuse-login');
+    }
+
     /**
      * Handle an incoming authentication request.
      */
@@ -36,6 +41,24 @@ class AuthenticatedSessionController extends Controller
         return redirect()->intended(route('entreprises.show', $user->entreprise_id ?? 0, absolute: false));
     }
 
+    public function storeServeuse(LoginRequest $request): RedirectResponse
+    {
+        $request->merge(['serveuse_login' => true]);
+        $request->authenticate();
+        $request->session()->regenerate();
+
+        $user = Auth::user();
+        if ($user && strtolower((string) $user->role) === 'serveuse') {
+            return redirect()->intended(route('restaurant.staff.home', absolute: false));
+        }
+
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('serveuse.login')->withErrors(['password' => 'Accès réservé aux serveuses.']);
+    }
+
     /**
      * Destroy an authenticated session.
      */
@@ -47,6 +70,6 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect()->route('serveuse.login');
     }
 }

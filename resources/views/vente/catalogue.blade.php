@@ -95,9 +95,6 @@
           style="height:40px;"
           x-model="paiement.client_id"
           @change="setClient(paiement.client_id)"
-          @if(Auth::user() && (Auth::user()->role === 'Serveuse' || Auth::user()->role === 'serveuse'))
-            disabled
-          @endif
         >
           <option value="">Client</option>
           @foreach($clients as $c)
@@ -328,6 +325,8 @@ window.SERVEUSE_ID = @json($serveuse_id ?? '');
 window.CSRF_TOKEN = '{{ csrf_token() }}';
 window.TABLE_COURANTE = "{{ $tableCourante ? (int)$tableCourante : '' }}";
 window.POINT_DE_VENTE_ID = "{{ $pointDeVente->id ?? '' }}";
+window.ENTREPRISE_ID = @json($pointDeVente->entreprise->id ?? session('entreprise_id') ?? null);
+window.SALLE_ID = @json(session('salle_id') ?? null);
 window.SET_CLIENT_URL = "{{ url('/panier/set-client') }}";
 window.SET_SERVEUSE_URL = "{{ url('/panier/set-serveuse') }}";
 window.PANIER_ID = @json($panier->id ?? ($panier['id'] ?? null));

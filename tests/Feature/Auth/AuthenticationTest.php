@@ -42,6 +42,22 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_serveuse_can_authenticate_with_pin_only_on_serveuse_login_page(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'serveuse',
+            'code_pin' => '1234',
+        ]);
+
+        $response = $this->post('/login', [
+            'password' => '1234',
+            'serveuse_login' => true,
+        ]);
+
+        $this->assertAuthenticatedAs($user);
+        $response->assertRedirect(route('restaurant.staff.home', absolute: false));
+    }
+
     public function test_users_can_logout(): void
     {
         $user = User::factory()->create();

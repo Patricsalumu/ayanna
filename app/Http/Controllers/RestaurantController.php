@@ -23,19 +23,18 @@ class RestaurantController extends Controller
             return redirect()->route('dashboard');
         }
 
-        if ($this->permissionService->isWaitress($user)) {
-            $tables = TableResto::query()
-                ->where('serveuse_id', $user->id)
-                ->orderBy('numero')
-                ->get();
+        $salle = $pointDeVente->salles()->first();
 
-            return view('restaurant.home', compact('user', 'tables', 'pointDeVente'));
+        if (!$salle) {
+            return redirect()->route('dashboard');
         }
 
-        if ($this->permissionService->isCashier($user)) {
-            $tables = TableResto::query()->orderBy('numero')->get();
-
-            return view('restaurant.home', compact('user', 'tables', 'pointDeVente'));
+        if ($this->permissionService->isWaitress($user) || $this->permissionService->isCashier($user)) {
+            return redirect()->route('salle.plan.vente', [
+                'entreprise' => optional($pointDeVente->entreprise)->id ?? $pointDeVente->entreprise_id,
+                'salle' => $salle->id,
+                'point_de_vente_id' => $pointDeVente->id,
+            ]);
         }
 
         return redirect()->route('dashboard');

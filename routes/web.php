@@ -13,7 +13,7 @@ use App\Http\Controllers\VenteController;
 use App\Http\Controllers\RestaurantController;
 
 
-Route::middleware(['auth'])->group(function () 
+Route::middleware(['auth', 'serveuse.session.timeout'])->group(function () 
 {
         // Routes clients
         Route::prefix('entreprises/{entreprise}')->group(function () {

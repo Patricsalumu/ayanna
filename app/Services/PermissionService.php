@@ -63,6 +63,12 @@ class PermissionService
     public function resolveServeuseId(?object $user, ?string $currentServeuseId): ?string
     {
         if ($this->isWaitress($user)) {
+            $currentValue = trim((string) ($currentServeuseId ?? ''));
+
+            if ($currentValue !== '') {
+                return $currentValue;
+            }
+
             return (string) ($user->id ?? '');
         }
 

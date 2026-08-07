@@ -620,27 +620,53 @@ function posApp() {
           throw new Error(`HTTP ${response.status}`);
         }
         const html = await response.text();
-        const printWindow = window.open('', 'printWindow', 'width=900,height=800');
-        if (!printWindow) {
-          throw new Error('Impossible d\'ouvrir la fenêtre d\'impression');
-        }
+
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '-9999px';
+        iframe.style.bottom = '-9999px';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+
+        const printWindow = iframe.contentWindow;
         printWindow.document.open();
         printWindow.document.write(html);
         printWindow.document.close();
         printWindow.focus();
+
         const attemptPrint = () => {
           try {
             printWindow.print();
-            printWindow.close();
           } catch (printErr) {
             console.error('Erreur lors de print() :', printErr);
           }
         };
-        // On attend le chargement de la page pour déclencher l'impression
+
         printWindow.onload = () => {
-          setTimeout(attemptPrint, 500);
+          setTimeout(attemptPrint, 300);
         };
-        setTimeout(attemptPrint, 1500);
+        setTimeout(() => {
+          try {
+            iframe.remove();
+          } catch (e) {}
+        }, 2000);
+
+        const redirectToPlanVente = () => {
+          const entrepriseId = window.ENTREPRISE_ID || window.ENTREPRISE?.id || '';
+          const pointDeVenteId = window.POINT_DE_VENTE_ID || '';
+          const salleId = window.SALLE_ID || '';
+          if (entrepriseId && salleId && pointDeVenteId) {
+            window.location.href = `/entreprises/${encodeURIComponent(entrepriseId)}/salles/${encodeURIComponent(salleId)}/plan-vente?point_de_vente_id=${encodeURIComponent(pointDeVenteId)}`;
+          } else if (pointDeVenteId) {
+            window.location.href = `/vente/catalogue/${encodeURIComponent(pointDeVenteId)}`;
+          } else {
+            window.location.reload();
+          }
+        };
+
+        setTimeout(redirectToPlanVente, 1200);
       } catch (err) {
         console.error('Erreur impression bon commande :', err);
         alert('❌ Erreur d\'impression du bon de commande.\n\nVérifiez votre connexion internet ou réessayez.');

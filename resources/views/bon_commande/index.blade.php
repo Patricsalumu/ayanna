@@ -103,7 +103,8 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <a href="{{ route('bon-commande.print', $bon->id) }}"
+                                    <a href="#"
+                                       onclick="event.preventDefault(); printBonFromUrl('{{ route('bon-commande.print', $bon->id) }}')"
                                        class="text-blue-600 hover:text-blue-900 mr-3">
                                         Imprimer
                                     </a>
@@ -126,3 +127,36 @@
     </div>
 </div>
 @endsection
+
+<script>
+function printBonFromUrl(url) {
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(response => {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.text();
+        })
+        .then(html => {
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'fixed';
+            iframe.style.right = '-9999px';
+            iframe.style.bottom = '-9999px';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            document.body.appendChild(iframe);
+
+            const printWindow = iframe.contentWindow;
+            printWindow.document.open();
+            printWindow.document.write(html);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => {
+                try { printWindow.print(); } catch (e) {}
+            }, 400);
+            setTimeout(() => iframe.remove(), 1500);
+        })
+        .catch(() => {
+            alert('Impossible d’imprimer ce bon pour le moment.');
+        });
+}
+</script>

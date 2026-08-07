@@ -29,8 +29,10 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'username' => ['required', 'string'],
+            'username' => ['nullable', 'string'],
+            'email' => ['nullable', 'string'],
             'password' => ['required', 'string'],
+            'serveuse_login' => ['nullable', 'boolean'],
         ];
     }
 
@@ -43,11 +45,51 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        $user = User::where('name', $this->input('username'))->first();
+        $login = $this->resolveLoginIdentifier();
+        $password = (string) $this->input('password');
+        $serveuseLogin = $this->boolean('serveuse_login');
 
-        if ($user && $this->isValidPin($this->input('password')) && $this->matchesPin($user, $this->input('password'))) {
+        $requiresLoginIdentifier = !($serveuseLogin && $this->isValidPin($password));
+        if ($requiresLoginIdentifier && ($login === null || $login === '')) {
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'username' => trans('auth.failed'),
+            ]);
+        }
+
+        $user = null;
+        if ($serveuseLogin && $this->isValidPin($password)) {
+            $user = User::query()
+                ->where('code_pin', $password)
+                ->where('role', 'serveuse')
+                ->first();
+        } else {
+            $user = User::query()
+                ->where(function ($query) use ($login): void {
+                    $query->where('name', $login)
+                        ->orWhere('email', $login)
+                        ->orWhere('phone', $login);
+                })
+                ->when($serveuseLogin, function ($query): void {
+                    $query->where('role', 'serveuse');
+                })
+                ->first();
+        }
+
+        if ($user && $this->isValidPin($password) && $this->matchesPin($user, $password)) {
             Auth::login($user, $this->boolean('remember'));
-        } elseif (Auth::attempt(['name' => $this->input('username'), 'password' => $this->input('password')], $this->boolean('remember'))) {
+        } elseif ($user && Auth::attempt(['email' => $user->email, 'password' => $password], $this->boolean('remember'))) {
+            // ok
+        } elseif ($user && Auth::attempt(['name' => $user->name, 'password' => $password], $this->boolean('remember'))) {
+            // ok
+        } elseif ($user && Auth::attempt(['phone' => $user->phone, 'password' => $password], $this->boolean('remember'))) {
+            // ok
+        } elseif (Auth::attempt(['email' => $login, 'password' => $password], $this->boolean('remember'))) {
+            // ok
+        } elseif (Auth::attempt(['name' => $login, 'password' => $password], $this->boolean('remember'))) {
+            // ok
+        } elseif (Auth::attempt(['phone' => $login, 'password' => $password], $this->boolean('remember'))) {
             // ok
         } else {
             RateLimiter::hit($this->throttleKey());
@@ -89,6 +131,13 @@ class LoginRequest extends FormRequest
     public function throttleKey(): string
     {
         return Str::transliterate(Str::lower($this->string('username')).'|'.$this->ip());
+    }
+
+    protected function resolveLoginIdentifier(): ?string
+    {
+        $login = $this->input('username') ?? $this->input('email') ?? $this->input('login');
+
+        return is_string($login) ? trim($login) : null;
     }
 
     protected function isValidPin(?string $password): bool
