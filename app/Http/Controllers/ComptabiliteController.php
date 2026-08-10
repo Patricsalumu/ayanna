@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ComptabiliteController extends Controller
 {
@@ -76,7 +77,7 @@ class ComptabiliteController extends Controller
         return back()->with('success', 'L’écriture a été annulée et grisée sans création d’écriture inverse.');
     }
 
-    private function appliquerFiltreJournauxNonAnnes(Builder $query, $dateDebut = null, $dateFin = null): Builder
+    private function appliquerFiltreJournauxNonAnnes(Builder|HasMany $query, $dateDebut = null, $dateFin = null)
     {
         return $query->whereHas('journal', function ($j) use ($dateDebut, $dateFin) {
             if ($dateDebut !== null && $dateFin !== null) {
@@ -226,47 +227,78 @@ class ComptabiliteController extends Controller
         
         $date = $request->get('date', now()->toDateString());
         
-        // Actifs (classes 1, 2, 3, 4, 5)
-        $actifs = Compte::where('entreprise_id', $entrepriseId)
-            ->where('type', 'actif')
-            ->with(['ecritures' => function($q) use ($date) {
-                $q->whereHas('journal', function($j) use ($date) {
-                    $j->where('date_ecriture', '<=', $date)
-                      ->where('statut', '!=', 'annule');
-                });
+        // Calcul personnalisé par classe comptable selon les règles fournies :
+        // Classes débiteurs (2,3,4,5): formule solde = solde_initial + debit - credit
+        // Classe 1 (créditeur): formule solde = solde_initial + credit - debit
+        // Si le solde est négatif par rapport à la nature, on le bascule de côté (actif <-> passif)
+        $comptes = Compte::where('entreprise_id', $entrepriseId)
+            ->whereHas('classeComptable', function($q) {
+                $q->whereNotIn('numero', [6, 7]);
+            })
+            ->with(['classeComptable', 'ecritures' => function($q) use ($date) {
+                return $this->appliquerFiltreJournauxNonAnnes($q, null, $date);
             }])
             ->orderBy('numero')
             ->get();
 
-        // Passifs (classes 1, 2, 4, mais PAS 6 et 7)
-        $passifs = Compte::where('entreprise_id', $entrepriseId)
-            ->where('type', 'passif')
-            ->with(['ecritures' => function($q) use ($date) {
-                $q->whereHas('journal', function($j) use ($date) {
-                    $j->where('date_ecriture', '<=', $date)
-                      ->where('statut', '!=', 'annule');
-                });
-            }])
-            ->orderBy('numero')
-            ->get();
-
+        $actifs = [];
+        $passifs = [];
         $totalActif = 0;
         $totalPassif = 0;
 
-        foreach ($actifs as $compte) {
-            $debit = $compte->ecritures->sum('debit');
-            $credit = $compte->ecritures->sum('credit');
-            $solde = $compte->solde_initial + $debit - $credit;
-            $compte->solde_bilan = max(0, $solde);
-            $totalActif += $compte->solde_bilan;
-        }
+        foreach ($comptes as $compte) {
+            $classeNum = intval($compte->classeComptable->numero ?? 0);
 
-        foreach ($passifs as $compte) {
+            // Solde initial auquel on ajoute les mouvements validés jusqu'à la date
+            $soldeInitial = $compte->solde_initial;
             $debit = $compte->ecritures->sum('debit');
             $credit = $compte->ecritures->sum('credit');
-            $solde = $compte->solde_initial + $credit - $debit;
-            $compte->solde_bilan = max(0, $solde);
-            $totalPassif += $compte->solde_bilan;
+
+            // Déterminer formule selon la classe
+            $isDebiteurClass = in_array($classeNum, [2,3,4,5,6]); // 6 (charges) traité ici comme débiteur pour solde
+            $isCrediteurClass = in_array($classeNum, [1,7]);
+
+            if ($isDebiteurClass) {
+                $solde = $soldeInitial + $debit - $credit; // débiteur: débit - crédit
+            } elseif ($isCrediteurClass) {
+                $solde = $soldeInitial + $credit - $debit; // créditeur: crédit - débit
+            } else {
+                // Par défaut, traiter comme débiteur
+                $solde = $soldeInitial + $debit - $credit;
+                $isDebiteurClass = true;
+            }
+
+            // Attribuer côté actif ou passif en fonction du signe et de la nature
+            if ($isDebiteurClass) {
+                if ($solde >= 0) {
+                    // reste à l'actif
+                    $compte->solde_debit = $solde;
+                    $compte->solde_credit = 0;
+                    $actifs[] = $compte;
+                    $totalActif += $solde;
+                } else {
+                    // devient passif (valeur positive côté crédit)
+                    $compte->solde_debit = 0;
+                    $compte->solde_credit = abs($solde);
+                    $passifs[] = $compte;
+                    $totalPassif += abs($solde);
+                }
+            } else {
+                // créditeur
+                if ($solde >= 0) {
+                    // reste au passif (crédit)
+                    $compte->solde_debit = 0;
+                    $compte->solde_credit = $solde;
+                    $passifs[] = $compte;
+                    $totalPassif += $solde;
+                } else {
+                    // devient actif (valeur positive côté débit)
+                    $compte->solde_debit = abs($solde);
+                    $compte->solde_credit = 0;
+                    $actifs[] = $compte;
+                    $totalActif += abs($solde);
+                }
+            }
         }
 
         // Calcul du résultat de l'exercice (à ajouter au passif)
@@ -281,6 +313,83 @@ class ComptabiliteController extends Controller
         }
 
         return view('comptabilite.bilan', compact('actifs', 'passifs', 'totalActif', 'totalPassif', 'date', 'resultatExercice'));
+    }
+
+    /**
+     * Construit le bilan selon les règles de classe comptable.
+     */
+    private function construireBilan($entrepriseId, $date)
+    {
+        $comptes = Compte::where('entreprise_id', $entrepriseId)
+            ->whereHas('classeComptable', function($q) {
+                $q->whereNotIn('numero', [6, 7]);
+            })
+            ->with(['classeComptable', 'ecritures' => function($q) use ($date) {
+                return $this->appliquerFiltreJournauxNonAnnes($q, null, $date);
+            }])
+            ->orderBy('numero')
+            ->get();
+
+        $actifs = [];
+        $passifs = [];
+        $totalActif = 0;
+        $totalPassif = 0;
+
+        foreach ($comptes as $compte) {
+            $classeNum = intval($compte->classeComptable->numero ?? 0);
+            $isDebiteurClass = in_array($classeNum, [2,3,4,5,6]);
+            $isCrediteurClass = in_array($classeNum, [1,7]);
+
+            $soldeInitial = $compte->solde_initial;
+            $debit = $compte->ecritures->sum('debit');
+            $credit = $compte->ecritures->sum('credit');
+
+            if ($isDebiteurClass) {
+                $solde = $soldeInitial + $debit - $credit;
+            } elseif ($isCrediteurClass) {
+                $solde = $soldeInitial + $credit - $debit;
+            } else {
+                $solde = $soldeInitial + $debit - $credit;
+                $isDebiteurClass = true;
+            }
+
+            if ($isDebiteurClass) {
+                if ($solde >= 0) {
+                    $compte->solde_debit = $solde;
+                    $compte->solde_credit = 0;
+                    $compte->solde_bilan = $solde;
+                    $actifs[] = $compte;
+                    $totalActif += $solde;
+                } else {
+                    $compte->solde_debit = 0;
+                    $compte->solde_credit = abs($solde);
+                    $compte->solde_bilan = abs($solde);
+                    $passifs[] = $compte;
+                    $totalPassif += abs($solde);
+                }
+            } else {
+                if ($solde >= 0) {
+                    $compte->solde_debit = 0;
+                    $compte->solde_credit = $solde;
+                    $compte->solde_bilan = $solde;
+                    $passifs[] = $compte;
+                    $totalPassif += $solde;
+                } else {
+                    $compte->solde_debit = abs($solde);
+                    $compte->solde_credit = 0;
+                    $compte->solde_bilan = abs($solde);
+                    $actifs[] = $compte;
+                    $totalActif += abs($solde);
+                }
+            }
+        }
+
+        return [
+            'actifs' => $actifs,
+            'passifs' => $passifs,
+            'totalActif' => $totalActif,
+            'totalPassif' => $totalPassif,
+        ];
     }
 
     /**
@@ -451,6 +560,7 @@ class ComptabiliteController extends Controller
         $journaux = JournalComptable::with(['pointDeVente', 'user', 'ecritures.compte'])
             ->parEntreprise($entrepriseId)
             ->parPeriode($dateDebut, $dateFin)
+            ->where('statut', '!=', 'annule')
             ->orderBy('date_ecriture')
             ->orderBy('created_at')
             ->get();
@@ -542,6 +652,9 @@ class ComptabiliteController extends Controller
 
         // Calcul du solde initial
         $soldeInitial = $compte->solde_initial;
+        $classeNum = intval($compte->classeComptable->numero ?? 0);
+        $isDebiteurClass = in_array($classeNum, [2,3,4,5,6]);
+
         $mouvementsAnterieurs = EcritureComptable::parCompte($compteId)
             ->whereHas('journal', function ($q) use ($dateDebut) {
                 $q->where('date_ecriture', '<', $dateDebut)
@@ -550,7 +663,7 @@ class ComptabiliteController extends Controller
             ->get();
 
         foreach ($mouvementsAnterieurs as $mvt) {
-            if ($compte->type === 'actif') {
+            if ($isDebiteurClass) {
                 $soldeInitial += $mvt->debit - $mvt->credit;
             } else {
                 $soldeInitial += $mvt->credit - $mvt->debit;
@@ -575,7 +688,10 @@ class ComptabiliteController extends Controller
         $dateDebut = $request->get('date_debut', now()->startOfMonth()->toDateString());
         $dateFin = $request->get('date_fin', now()->toDateString());
         
-        $comptes = Compte::where('entreprise_id', $entrepriseId)->orderBy('numero')->get();
+        $comptes = Compte::where('entreprise_id', $entrepriseId)
+            ->with('classeComptable')
+            ->orderBy('numero')
+            ->get();
         $entreprise = \App\Models\Entreprise::find($entrepriseId);
 
         $pdf = Pdf::loadView('comptabilite.grand-livre-general-pdf', compact('comptes', 'dateDebut', 'dateFin', 'entreprise'));
@@ -592,49 +708,12 @@ class ComptabiliteController extends Controller
         $entrepriseId = $user->entreprise_id;
         
         $date = $request->get('date', now()->toDateString());
-        
-        // Actifs (classes 1, 2, 3, 4, 5)
-        $actifs = Compte::where('entreprise_id', $entrepriseId)
-            ->where('type', 'actif')
-            ->with(['ecritures' => function($q) use ($date) {
-                $q->whereHas('journal', function($j) use ($date) {
-                    $j->where('date_ecriture', '<=', $date)
-                      ->where('statut', '!=', 'annule');
-                });
-            }])
-            ->orderBy('numero')
-            ->get();
 
-        // Passifs (classes 1, 2, 4, mais PAS 6 et 7)
-        $passifs = Compte::where('entreprise_id', $entrepriseId)
-            ->where('type', 'passif')
-            ->with(['ecritures' => function($q) use ($date) {
-                $q->whereHas('journal', function($j) use ($date) {
-                    $j->where('date_ecriture', '<=', $date)
-                      ->where('statut', '!=', 'annule');
-                });
-            }])
-            ->orderBy('numero')
-            ->get();
-
-        $totalActif = 0;
-        $totalPassif = 0;
-
-        foreach ($actifs as $compte) {
-            $debit = $compte->ecritures->sum('debit');
-            $credit = $compte->ecritures->sum('credit');
-            $solde = $compte->solde_initial + $debit - $credit;
-            $compte->solde_bilan = max(0, $solde);
-            $totalActif += $compte->solde_bilan;
-        }
-
-        foreach ($passifs as $compte) {
-            $debit = $compte->ecritures->sum('debit');
-            $credit = $compte->ecritures->sum('credit');
-            $solde = $compte->solde_initial + $credit - $debit;
-            $compte->solde_bilan = max(0, $solde);
-            $totalPassif += $compte->solde_bilan;
-        }
+        $bilan = $this->construireBilan($entrepriseId, $date);
+        $actifs = $bilan['actifs'];
+        $passifs = $bilan['passifs'];
+        $totalActif = $bilan['totalActif'];
+        $totalPassif = $bilan['totalPassif'];
 
         // Calcul du résultat de l'exercice (à ajouter au passif)
         $resultatExercice = $this->calculerResultatExercice($entrepriseId, $date);

@@ -45,17 +45,18 @@
                     <h2 class="text-lg font-bold text-blue-900">ACTIF</h2>
                 </div>
                 <div class="p-6">
-                    @if($actifs->count() > 0)
+                    @if(count($actifs) > 0)
                         <div class="space-y-3">
                             @foreach($actifs as $compte)
-                                @if($compte->solde_bilan > 0)
+                                @php $amount = $compte->solde_debit ?? $compte->solde_bilan ?? 0; @endphp
+                                @if($amount > 0)
                                     <div class="flex justify-between items-center py-2 border-b border-gray-100">
                                         <div>
                                             <div class="font-medium text-gray-900">{{ $compte->numero }}</div>
                                             <div class="text-sm text-gray-600">{{ $compte->nom }}</div>
                                         </div>
-                                        <div class="font-semibold text-blue-600">
-                                            @currency($compte->solde_bilan)
+                                        <div class="font-semibold text-green-600">
+                                            @currency($amount)
                                         </div>
                                     </div>
                                 @endif
@@ -64,7 +65,7 @@
                             <!-- Total Actif -->
                             <div class="flex justify-between items-center py-3 border-t-2 border-blue-200 bg-blue-50 rounded-lg px-4 mt-4">
                                 <div class="font-bold text-blue-900">TOTAL ACTIF</div>
-                                <div class="font-bold text-xl text-blue-600">
+                                <div class="font-bold text-xl text-green-600">
                                     @currency($totalActif)
                                 </div>
                             </div>
@@ -84,17 +85,18 @@
                     <h2 class="text-lg font-bold text-purple-900">PASSIF</h2>
                 </div>
                 <div class="p-6">
-                    @if($passifs->count() > 0)
+                    @if(count($passifs) > 0)
                         <div class="space-y-3">
                             @foreach($passifs as $compte)
-                                @if($compte->solde_bilan > 0)
+                                @php $amount = $compte->solde_credit ?? $compte->solde_bilan ?? 0; @endphp
+                                @if($amount > 0)
                                     <div class="flex justify-between items-center py-2 border-b border-gray-100">
                                         <div>
                                             <div class="font-medium text-gray-900">{{ $compte->numero }}</div>
                                             <div class="text-sm text-gray-600">{{ $compte->nom }}</div>
                                         </div>
-                                        <div class="font-semibold text-purple-600">
-                                            @currency($compte->solde_bilan)
+                                        <div class="font-semibold text-green-600">
+                                            @currency($amount)
                                         </div>
                                     </div>
                                 @endif
@@ -118,7 +120,7 @@
                             <!-- Total Passif -->
                             <div class="flex justify-between items-center py-3 border-t-2 border-purple-200 bg-purple-50 rounded-lg px-4 mt-4">
                                 <div class="font-bold text-purple-900">TOTAL PASSIF</div>
-                                <div class="font-bold text-xl text-purple-600">
+                                <div class="font-bold text-xl text-green-600">
                                     @currency($totalPassif)
                                 </div>
                             </div>

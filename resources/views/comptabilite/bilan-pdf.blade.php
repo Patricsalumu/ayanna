@@ -142,6 +142,14 @@
             text-align: right;
             font-weight: bold;
         }
+
+        .montant.credit {
+            color: #28a745;
+        }
+
+        .montant.debit {
+            color: #dc3545;
+        }
         
         .total-row {
             background-color: #e9ecef !important;
@@ -240,18 +248,30 @@
                 </thead>
                 <tbody>
                     @foreach($actifs as $compte)
-                        @if($compte->solde_bilan > 0)
+                        @php $amount = $compte->solde_debit ?? $compte->solde_bilan ?? 0; @endphp
+                        @if($amount > 0)
                         <tr>
                             <td>
                                 <strong>{{ $compte->numero }}</strong><br>
                                 <small>{{ $compte->nom }}</small>
                             </td>
-                            <td class="montant">
-                                {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($compte->solde_bilan, true, 0) }}
+                            <td class="montant debit">
+                                {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($amount, true, 0) }}
                             </td>
                         </tr>
                         @endif
                     @endforeach
+                    @if(isset($resultatExercice) && $resultatExercice != 0 && $resultatExercice < 0)
+                        <tr style="background-color: #fff3cd;">
+                            <td>
+                                <strong>Résultat déficitaire</strong><br>
+                                <small>Exercice en cours</small>
+                            </td>
+                            <td class="montant debit">
+                                {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount(abs($resultatExercice), true, 0) }}
+                            </td>
+                        </tr>
+                    @endif
                     <tr class="total-row">
                         <td><strong>TOTAL ACTIF</strong></td>
                         <td class="montant">
@@ -276,30 +296,28 @@
                 </thead>
                 <tbody>
                     @foreach($passifs as $compte)
-                        @if($compte->solde_bilan > 0)
+                        @php $amount = $compte->solde_credit ?? $compte->solde_bilan ?? 0; @endphp
+                        @if($amount > 0)
                         <tr>
                             <td>
                                 <strong>{{ $compte->numero }}</strong><br>
                                 <small>{{ $compte->nom }}</small>
                             </td>
-                            <td class="montant">
-                                {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($compte->solde_bilan, true, 0) }}
+                            <td class="montant credit">
+                                {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($amount, true, 0) }}
                             </td>
                         </tr>
                         @endif
                     @endforeach
                     
-                    <!-- Résultat de l'exercice -->
-                    @if(isset($resultatExercice) && $resultatExercice != 0)
+                    @if(isset($resultatExercice) && $resultatExercice != 0 && $resultatExercice > 0)
                         <tr style="background-color: #fff3cd;">
                             <td>
-                                <strong>{{ $resultatExercice > 0 ? 'Résultat bénéficiaire' : 'Résultat déficitaire' }}</strong><br>
+                                <strong>Résultat bénéficiaire</strong><br>
                                 <small>Exercice en cours</small>
                             </td>
-                            <td class="montant">
-                                <span class="{{ $resultatExercice > 0 ? 'credit' : 'debit' }}">
-                                    {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount(abs($resultatExercice), true, 0) }}
-                                </span>
+                            <td class="montant credit">
+                                {{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($resultatExercice, true, 0) }}
                             </td>
                         </tr>
                     @endif

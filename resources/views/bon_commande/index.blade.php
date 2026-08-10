@@ -64,7 +64,7 @@
                                     {{ $bon->client?->nom ?? '-' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    #{{ $bon->panier_id }}
+                                    {{ $bon->panier_id ? '#'.$bon->panier_id : 'Panier Supprimé' }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     {{ $bon->created_at->format('d/m/Y H:i') }}

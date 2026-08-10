@@ -79,11 +79,19 @@
                     @php
                         $debitTotal = $ecritures->sum('debit');
                         $creditTotal = $ecritures->sum('credit');
-                        if ($compte->type === 'actif') {
+                        $classeNum = intval($compte->classeComptable->numero ?? 0);
+                        $isDebiteurClass = in_array($classeNum, [2,3,4,5,6]);
+                        $isCrediteurClass = in_array($classeNum, [1,7]);
+
+                        if ($isDebiteurClass) {
                             $soldeFinal = $soldeInitial + $debitTotal - $creditTotal;
-                        } else {
+                        } elseif ($isCrediteurClass) {
                             $soldeFinal = $soldeInitial + $creditTotal - $debitTotal;
+                        } else {
+                            $soldeFinal = $soldeInitial + $debitTotal - $creditTotal;
                         }
+                        $debitColClass = $isDebiteurClass ? 'text-green-600' : 'text-red-600';
+                        $creditColClass = $isDebiteurClass ? 'text-red-600' : 'text-green-600';
                     @endphp
                     <div class="text-sm text-gray-600">Solde final</div>
                     <div class="font-semibold {{ $soldeFinal >= 0 ? 'text-green-600' : 'text-red-600' }}">
@@ -127,7 +135,9 @@
                     
                     @forelse($ecritures as $ecriture)
                         @php
-                            if ($compte->type === 'actif') {
+                            $classeNum = intval($compte->classeComptable->numero ?? 0);
+                            $isDebiteurClass = in_array($classeNum, [2,3,4,5,6]);
+                            if ($isDebiteurClass) {
                                 $soldeProgressif += $ecriture->debit - $ecriture->credit;
                             } else {
                                 $soldeProgressif += $ecriture->credit - $ecriture->debit;
@@ -154,10 +164,10 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {{ $ecriture->journal->reference ?? '-' }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm {{ $ecriture->debit > 0 ? 'font-medium text-red-600' : 'text-gray-400' }}">
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm {{ $ecriture->debit > 0 ? 'font-medium ' . ($isDebiteurClass ? 'text-green-600' : 'text-red-600') : 'text-gray-400' }}">
                                 {{ $ecriture->debit > 0 ? number_format($ecriture->debit, 0, ',', ' ') : '-' }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm {{ $ecriture->credit > 0 ? 'font-medium text-green-600' : 'text-gray-400' }}">
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm {{ $ecriture->credit > 0 ? 'font-medium ' . ($isDebiteurClass ? 'text-red-600' : 'text-green-600') : 'text-gray-400' }}">
                                 {{ $ecriture->credit > 0 ? number_format($ecriture->credit, 0, ',', ' ') : '-' }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium {{ $soldeProgressif >= 0 ? 'text-green-600' : 'text-red-600' }}">

@@ -47,7 +47,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach($comptes as $compte)
                     @php
-                        // Calculer le solde pour la période, en excluant les écritures des journaux annulés
+                        // Calculer les totaux pour la période (écritures non annulées)
                         $debitTotal = $compte->ecritures()->whereHas('journal', function($q) use ($dateDebut, $dateFin) {
                             $q->whereBetween('date_ecriture', [$dateDebut, $dateFin])
                               ->where('statut', '!=', 'annule');
@@ -57,15 +57,26 @@
                             $q->whereBetween('date_ecriture', [$dateDebut, $dateFin])
                               ->where('statut', '!=', 'annule');
                         })->sum('credit');
-                        
-                        $mouvements = $debitTotal + $creditTotal;
-                        
-                        if ($compte->type === 'actif') {
-                            $solde = $compte->solde_initial + $debitTotal - $creditTotal;
+
+                        $classeNum = intval($compte->classeComptable->numero ?? 0);
+                        $isDebiteurClass = in_array($classeNum, [2,3,4,5,6]);
+                        $isCrediteurClass = in_array($classeNum, [1,7]);
+
+                        if ($isDebiteurClass) {
+                            $solde = $compte->solde_initial + $debitTotal - $creditTotal; // débit - crédit
+                            $debitClass = 'text-green-600';
+                            $creditClass = 'text-red-600';
+                        } elseif ($isCrediteurClass) {
+                            $solde = $compte->solde_initial + $creditTotal - $debitTotal; // crédit - débit
+                            $debitClass = 'text-red-600';
+                            $creditClass = 'text-green-600';
                         } else {
-                            $solde = $compte->solde_initial + $creditTotal - $debitTotal;
+                            $solde = $compte->solde_initial + $debitTotal - $creditTotal;
+                            $debitClass = 'text-green-600';
+                            $creditClass = 'text-red-600';
                         }
-                        
+
+                        $mouvements = $debitTotal + $creditTotal;
                         $soldeColor = $solde >= 0 ? 'text-green-600' : 'text-red-600';
                     @endphp
                     
@@ -84,11 +95,11 @@
                         <div class="space-y-2 text-sm">
                             <div class="flex justify-between">
                                 <span class="text-gray-600">Débit période:</span>
-                                <span class="font-medium text-red-600">@currency($debitTotal)</span>
+                                <span class="font-medium {{ $debitClass }}">@currency($debitTotal)</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-gray-600">Crédit période:</span>
-                                <span class="font-medium text-green-600">@currency($creditTotal)</span>
+                                <span class="font-medium {{ $creditClass }}">@currency($creditTotal)</span>
                             </div>
                             <div class="flex justify-between border-t pt-2">
                                 <span class="text-gray-900 font-medium">Solde actuel:</span>

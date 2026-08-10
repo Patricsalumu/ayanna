@@ -158,10 +158,10 @@
             <div class="copy-badge">COPIE</div>
         @endif
 
-        <div class="serveuse-info">{{ $bon->serveuse?->name ?? 'N/A' }} | Table {{ $bon->panier?->tableResto?->numero ?? $bon->panier?->table_id ?? 'N/A' }}</div>
+        <div class="serveuse-info">{{ $bon->serveuse?->name ?? 'N/A' }} | Table {{ $bon->table_numero ?? $bon->panier?->tableResto?->numero ?? $bon->panier?->table_id ?? 'N/A' }}</div>
 
         <div class="details">
-            No Fact {{ $bon->panier_id }} | {{ $bon->created_at->format('H:i') }}
+            No Fact {{ $bon->panier_id ?? 'N/A' }} | {{ $bon->created_at->format('H:i') }}
         </div>
 
         <div class="separator"></div>

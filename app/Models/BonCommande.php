@@ -19,6 +19,9 @@ class BonCommande extends Model
         'client_id',
         'utilisateur_id',
         'produits_json',
+        'entreprise_nom',
+        'point_de_vente_nom',
+        'table_numero',
     ];
 
     protected $casts = [

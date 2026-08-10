@@ -117,6 +117,22 @@
         .montant.vide {
             color: #999;
         }
+
+        .debit-vert {
+            color: #28a745;
+        }
+
+        .debit-rouge {
+            color: #dc3545;
+        }
+
+        .credit-vert {
+            color: #28a745;
+        }
+
+        .credit-rouge {
+            color: #dc3545;
+        }
         
         .solde {
             font-weight: bold;
@@ -209,7 +225,8 @@
         @php
             // Récupérer les écritures pour ce compte sur la période
             $ecritures = $compte->ecritures()->whereHas('journal', function($q) use ($dateDebut, $dateFin) {
-                $q->whereBetween('date_ecriture', [$dateDebut, $dateFin]);
+                $q->whereBetween('date_ecriture', [$dateDebut, $dateFin])
+                  ->where('statut', '!=', 'annule');
             })->with('journal')->orderBy('created_at')->get();
             
             if ($ecritures->count() === 0) {
@@ -220,12 +237,19 @@
             
             // Calcul du solde initial
             $soldeInitial = $compte->solde_initial;
+            $classeNum = intval($compte->classeComptable->numero ?? 0);
+            $isDebiteurClass = in_array($classeNum, [2,3,4,5,6]);
+            $isCrediteurClass = in_array($classeNum, [1,7]);
+            $debitColumnClass = $isDebiteurClass ? 'debit-vert' : 'debit-rouge';
+            $creditColumnClass = $isDebiteurClass ? 'credit-rouge' : 'credit-vert';
+
             $mouvementsAnterieurs = $compte->ecritures()->whereHas('journal', function($q) use ($dateDebut) {
-                $q->where('date_ecriture', '<', $dateDebut);
+                $q->where('date_ecriture', '<', $dateDebut)
+                  ->where('statut', '!=', 'annule');
             })->get();
 
             foreach ($mouvementsAnterieurs as $mvt) {
-                if ($compte->type === 'actif') {
+                if ($isDebiteurClass) {
                     $soldeInitial += $mvt->debit - $mvt->credit;
                 } else {
                     $soldeInitial += $mvt->credit - $mvt->debit;
@@ -235,7 +259,7 @@
             $debitTotal = $ecritures->sum('debit');
             $creditTotal = $ecritures->sum('credit');
             
-            if ($compte->type === 'actif') {
+            if ($isDebiteurClass) {
                 $soldeFinal = $soldeInitial + $debitTotal - $creditTotal;
             } else {
                 $soldeFinal = $soldeInitial + $creditTotal - $debitTotal;
@@ -286,7 +310,7 @@
                     @php $soldeProgressif = $soldeInitial; @endphp
                     @foreach($ecritures as $ecriture)
                         @php
-                            if ($compte->type === 'actif') {
+                            if ($isDebiteurClass) {
                                 $soldeProgressif += $ecriture->debit - $ecriture->credit;
                             } else {
                                 $soldeProgressif += $ecriture->credit - $ecriture->debit;
@@ -296,10 +320,10 @@
                             <td>{{ \Carbon\Carbon::parse($ecriture->journal->date_ecriture)->format('d/m/Y') }}</td>
                             <td>{{ $ecriture->journal->numero_piece }}</td>
                             <td>{{ $ecriture->libelle }}</td>
-                            <td class="montant {{ $ecriture->debit > 0 ? 'debit' : 'vide' }}">
+                            <td class="montant {{ $ecriture->debit > 0 ? $debitColumnClass : 'vide' }}">
                                 {{ $ecriture->debit > 0 ? number_format($ecriture->debit, 0, ',', ' ') : '-' }}
                             </td>
-                            <td class="montant {{ $ecriture->credit > 0 ? 'credit' : 'vide' }}">
+                            <td class="montant {{ $ecriture->credit > 0 ? $creditColumnClass : 'vide' }}">
                                 {{ $ecriture->credit > 0 ? number_format($ecriture->credit, 0, ',', ' ') : '-' }}
                             </td>
                             <td class="montant {{ $soldeProgressif >= 0 ? 'credit' : 'debit' }}">

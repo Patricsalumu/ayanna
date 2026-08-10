@@ -25,8 +25,10 @@ class BonCommandeController extends Controller
 
         $query = BonCommande::whereBetween('created_at', [$startDate, $endDate]);
         if ($pointDeVenteId) {
-            $query->whereHas('panier', function ($q) use ($pointDeVenteId) {
-                $q->where('point_de_vente_id', $pointDeVenteId);
+            $query->where(function ($q) use ($pointDeVenteId) {
+                $q->whereHas('panier', function ($q) use ($pointDeVenteId) {
+                    $q->where('point_de_vente_id', $pointDeVenteId);
+                })->orWhereNull('panier_id');
             });
         }
 
@@ -82,8 +84,8 @@ class BonCommandeController extends Controller
                 ], 400);
             }
 
-            // Récupérer le panier
-            $panier = Panier::with('produits')->findOrFail($panier_id);
+            // Récupérer le panier et ses relations nécessaires pour créer un snapshot
+            $panier = Panier::with(['produits', 'pointDeVente.entreprise', 'tableResto'])->findOrFail($panier_id);
 
             \Log::info('[BonCommande] Panier trouvé', ['panier_id' => $panier->id, 'produits_count' => $panier->produits->count()]);
 
@@ -144,7 +146,7 @@ class BonCommandeController extends Controller
 
             \Log::info('[BonCommande] Numéro généré', ['numero_bon' => $numero_bon]);
 
-            // Créer le bon de commande
+            // Créer le bon de commande en sauvegardant un snapshot des informations utiles
             $bon = BonCommande::create([
                 'numero_bon' => $numero_bon,
                 'panier_id' => $panier_id,
@@ -152,6 +154,9 @@ class BonCommandeController extends Controller
                 'client_id' => $panier->client_id,
                 'utilisateur_id' => Auth::id(),
                 'produits_json' => $nouveauxProduits,
+                'entreprise_nom' => $panier->pointDeVente?->entreprise?->nom,
+                'point_de_vente_nom' => $panier->pointDeVente?->nom,
+                'table_numero' => $panier->tableResto?->numero,
             ]);
 
             \Log::info('[BonCommande] Bon créé', ['bon_id' => $bon->id, 'numero' => $bon->numero_bon]);

@@ -164,6 +164,12 @@
         .page-break {
             page-break-before: always;
         }
+
+        .journal-entry.annule {
+            opacity: 0.6;
+            background-color: #f5f5f5;
+            border-color: #ccc;
+        }
         
         .footer {
             position: fixed;
@@ -247,12 +253,15 @@
                 <div class="page-break"></div>
             @endif
 
-            <div class="journal-entry">
+            <div class="journal-entry {{ ($journal->statut ?? '') === 'annule' ? 'annule' : '' }}">
                 <!-- En-tête de l'écriture -->
                 <div class="entry-header">
                     <div class="entry-info">
                         <div>
                             <strong>{{ $journal->numero_piece }}</strong> - {{ $journal->libelle }}
+                            @if(($journal->statut ?? '') === 'annule')
+                                <span style="color: #666; font-weight: bold; margin-left: 8px;">(ANNULÉ)</span>
+                            @endif
                             @if($journal->pointDeVente)
                                 <span style="color: #666;">({{ $journal->pointDeVente->nom }})</span>
                             @endif
