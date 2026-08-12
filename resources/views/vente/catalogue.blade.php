@@ -198,11 +198,10 @@
           </div>
           {{-- Catégories avec couleurs --}}
           <div class="flex flex-wrap gap-2 mb-4">
-            <button type="button" @click="selectCat(null); $nextTick(() => $event.currentTarget.closest('form').submit())"
-                    :class="!currentCat ? 'bg-gray-600 text-white font-bold ring-2 ring-gray-300' : 'bg-gray-200 text-gray-700'"
-                    class="px-4 py-2 rounded-lg transition shadow">
+            <a href="{{ route('vente.catalogue', ['pointDeVente' => $pointDeVente->id] + ($tableCourante ? ['table_id' => $tableCourante] : [])) }}"
+               class="px-4 py-2 rounded-lg transition shadow {{ $categorieActive ? 'bg-gray-200 text-gray-700' : 'bg-gray-600 text-white font-bold ring-2 ring-gray-300' }}">
               Toutes
-            </button>
+            </a>
             @php
               $colors = [
                 'red' => ['bg-red-500', 'text-white', 'ring-red-300', 'bg-red-100', 'text-red-700', 'border-red-400'],
@@ -222,13 +221,19 @@
               @php
                 $colorKey = $colorKeys[$index % count($colorKeys)];
                 $colorClasses = $colors[$colorKey];
+                $query = ['pointDeVente' => $pointDeVente->id, 'categorie' => $cat->id];
+                if ($tableCourante) {
+                    $query['table_id'] = $tableCourante;
+                }
+                if ($search) {
+                    $query['search'] = $search;
+                }
               @endphp
-              <button type="button" @click="selectCat({{ $cat->id }}); $nextTick(() => $event.currentTarget.closest('form').submit())"
-                      :class="currentCat==={{ $cat->id }} ? '{{ $colorClasses[0] }} {{ $colorClasses[1] }} font-bold ring-2 {{ $colorClasses[2] }}' : '{{ $colorClasses[3] }} {{ $colorClasses[4] }}'"
-                      class="px-4 py-2 rounded-lg transition shadow"
-                      data-cat-color="{{ $colorKey }}">
+              <a href="{{ route('vente.catalogue', $query) }}"
+                 class="px-4 py-2 rounded-lg transition shadow {{ $categorieActive === $cat->id ? $colorClasses[0].' '.$colorClasses[1].' font-bold ring-2 '.$colorClasses[2] : $colorClasses[3].' '.$colorClasses[4] }}"
+                 data-cat-color="{{ $colorKey }}">
                 {{ $cat->nom }}
-              </button>
+              </a>
             @endforeach
           </div>
         </form>
@@ -255,12 +260,14 @@
                 </template>
                 <template x-if="!prod.image">
                   <div class="w-[92px] h-[92px] rounded flex items-center justify-center bg-gray-100 border border-gray-200 p-2" style="flex-shrink:0;">
-                    <div class="w-full h-full flex items-center justify-center text-center text-[10px] font-semibold text-gray-700 leading-4 break-words px-1">
-                      <span x-text="truncateProductName(prod.nom, 25)"></span>
+                    <div class="w-full h-full flex items-center justify-center text-center px-1">
+                      <p class="text-[11px] font-semibold text-black leading-tight break-words whitespace-normal" x-text="truncateProductName(prod.nom, 25)"></p>
                     </div>
                   </div>
                 </template>
-                <span class="absolute bottom-0 left-0 right-0 bg-white text-gray-700 text-xs font-semibold truncate px-1 text-center" style="transform:translateY(40%);" x-text="prod.nom"></span>
+              </div>
+              <div class="mt-1 w-full text-center px-1">
+                <span class="block text-xs font-semibold text-black truncate" x-text="prod.nom"></span>
               </div>
               <template x-if="inqte(prod.id)">
                 <div class="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full"

@@ -1,7 +1,7 @@
 // Alpine.js logic extrait de catalogue.blade.php
 // Les variables PHP doivent être passées via le Blade dans le script global (voir instructions plus bas)
 
-function posApp() {
+export function posApp() {
   return {
     showModal: false,
     showNavMenu: false,
