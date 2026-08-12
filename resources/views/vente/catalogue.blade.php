@@ -181,51 +181,57 @@
   <div class="w-full md:w-2/3 flex flex-col gap-4">
     <template x-if="mode === 'commande'">
       <div>
-        {{-- Barre de recherche centrée --}}
-        <div class="flex justify-center items-center mb-4">
-          <div class="flex w-full max-w-md">
-            <input x-model="search" type="text" placeholder="Rechercher un produit..."
-                   class="flex-1 px-4 py-3 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"/>
-            <button class="bg-blue-600 text-white px-6 py-3 rounded-r-lg hover:bg-blue-700 transition">
-              🔍
-            </button>
+        <form method="GET" action="{{ route('vente.catalogue', ['pointDeVente' => $pointDeVente->id]) }}" class="w-full">
+          @if($tableCourante)
+            <input type="hidden" name="table_id" value="{{ $tableCourante }}">
+          @endif
+          <input type="hidden" name="categorie" x-model="currentCat" :value="currentCat">
+          {{-- Barre de recherche centrée --}}
+          <div class="flex justify-center items-center mb-4">
+            <div class="flex w-full max-w-md">
+              <input x-model="search" name="search" type="text" value="{{ $search ?? '' }}" placeholder="Rechercher un produit..."
+                     class="flex-1 px-4 py-3 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"/>
+              <button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-r-lg hover:bg-blue-700 transition">
+                🔍
+              </button>
+            </div>
           </div>
-        </div>
-        {{-- Catégories avec couleurs --}}
-        <div class="flex flex-wrap gap-2 mb-4">
-          <button @click="selectCat(null)" 
-                  :class="!currentCat ? 'bg-gray-600 text-white font-bold ring-2 ring-gray-300' : 'bg-gray-200 text-gray-700'"
-                  class="px-4 py-2 rounded-lg transition shadow">
-            Toutes
-          </button>
-          @php
-            $colors = [
-              'red' => ['bg-red-500', 'text-white', 'ring-red-300', 'bg-red-100', 'text-red-700', 'border-red-400'],
-              'blue' => ['bg-blue-500', 'text-white', 'ring-blue-300', 'bg-blue-100', 'text-blue-700', 'border-blue-400'],
-              'green' => ['bg-green-500', 'text-white', 'ring-green-300', 'bg-green-100', 'text-green-700', 'border-green-400'],
-              'purple' => ['bg-purple-500', 'text-white', 'ring-purple-300', 'bg-purple-100', 'text-purple-700', 'border-purple-400'],
-              'yellow' => ['bg-yellow-500', 'text-white', 'ring-yellow-300', 'bg-yellow-100', 'text-yellow-700', 'border-yellow-400'],
-              'pink' => ['bg-pink-500', 'text-white', 'ring-pink-300', 'bg-pink-100', 'text-pink-700', 'border-pink-400'],
-              'indigo' => ['bg-indigo-500', 'text-white', 'ring-indigo-300', 'bg-indigo-100', 'text-indigo-700', 'border-indigo-400'],
-              'teal' => ['bg-teal-500', 'text-white', 'ring-teal-300', 'bg-teal-100', 'text-teal-700', 'border-teal-400'],
-              'orange' => ['bg-orange-500', 'text-white', 'ring-orange-300', 'bg-orange-100', 'text-orange-700', 'border-orange-400'],
-              'cyan' => ['bg-cyan-500', 'text-white', 'ring-cyan-300', 'bg-cyan-100', 'text-cyan-700', 'border-cyan-400'],
-            ];
-            $colorKeys = array_keys($colors);
-          @endphp
-          @foreach($categories as $index => $cat)
-            @php
-              $colorKey = $colorKeys[$index % count($colorKeys)];
-              $colorClasses = $colors[$colorKey];
-            @endphp
-            <button @click="selectCat({{ $cat->id }})"
-                    :class="currentCat==={{ $cat->id }} ? '{{ $colorClasses[0] }} {{ $colorClasses[1] }} font-bold ring-2 {{ $colorClasses[2] }}' : '{{ $colorClasses[3] }} {{ $colorClasses[4] }}'"
-                    class="px-4 py-2 rounded-lg transition shadow"
-                    data-cat-color="{{ $colorKey }}">
-              {{ $cat->nom }}
+          {{-- Catégories avec couleurs --}}
+          <div class="flex flex-wrap gap-2 mb-4">
+            <button type="button" @click="selectCat(null); $nextTick(() => $event.currentTarget.closest('form').submit())"
+                    :class="!currentCat ? 'bg-gray-600 text-white font-bold ring-2 ring-gray-300' : 'bg-gray-200 text-gray-700'"
+                    class="px-4 py-2 rounded-lg transition shadow">
+              Toutes
             </button>
-          @endforeach
-        </div>
+            @php
+              $colors = [
+                'red' => ['bg-red-500', 'text-white', 'ring-red-300', 'bg-red-100', 'text-red-700', 'border-red-400'],
+                'blue' => ['bg-blue-500', 'text-white', 'ring-blue-300', 'bg-blue-100', 'text-blue-700', 'border-blue-400'],
+                'green' => ['bg-green-500', 'text-white', 'ring-green-300', 'bg-green-100', 'text-green-700', 'border-green-400'],
+                'purple' => ['bg-purple-500', 'text-white', 'ring-purple-300', 'bg-purple-100', 'text-purple-700', 'border-purple-400'],
+                'yellow' => ['bg-yellow-500', 'text-white', 'ring-yellow-300', 'bg-yellow-100', 'text-yellow-700', 'border-yellow-400'],
+                'pink' => ['bg-pink-500', 'text-white', 'ring-pink-300', 'bg-pink-100', 'text-pink-700', 'border-pink-400'],
+                'indigo' => ['bg-indigo-500', 'text-white', 'ring-indigo-300', 'bg-indigo-100', 'text-indigo-700', 'border-indigo-400'],
+                'teal' => ['bg-teal-500', 'text-white', 'ring-teal-300', 'bg-teal-100', 'text-teal-700', 'border-teal-400'],
+                'orange' => ['bg-orange-500', 'text-white', 'ring-orange-300', 'bg-orange-100', 'text-orange-700', 'border-orange-400'],
+                'cyan' => ['bg-cyan-500', 'text-white', 'ring-cyan-300', 'bg-cyan-100', 'text-cyan-700', 'border-cyan-400'],
+              ];
+              $colorKeys = array_keys($colors);
+            @endphp
+            @foreach($categories as $index => $cat)
+              @php
+                $colorKey = $colorKeys[$index % count($colorKeys)];
+                $colorClasses = $colors[$colorKey];
+              @endphp
+              <button type="button" @click="selectCat({{ $cat->id }}); $nextTick(() => $event.currentTarget.closest('form').submit())"
+                      :class="currentCat==={{ $cat->id }} ? '{{ $colorClasses[0] }} {{ $colorClasses[1] }} font-bold ring-2 {{ $colorClasses[2] }}' : '{{ $colorClasses[3] }} {{ $colorClasses[4] }}'"
+                      class="px-4 py-2 rounded-lg transition shadow"
+                      data-cat-color="{{ $colorKey }}">
+                {{ $cat->nom }}
+              </button>
+            @endforeach
+          </div>
+        </form>
 
         {{-- Grille catalogue --}}
         <div
@@ -248,32 +254,10 @@
                   <img :src="prod.image" class="w-[92px] h-[92px] object-cover rounded" style="flex-shrink:0;" />
                 </template>
                 <template x-if="!prod.image">
-                  <div class="w-[92px] h-[92px] rounded flex items-center justify-center" style="flex-shrink:0;">
-                    <!-- Icône produit minimaliste noir et blanc -->
-                    <svg width="50" height="55" viewBox="0 0 100 110" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <!-- Corps principal de la bouteille -->
-                      <path d="M35 30 L35 95 Q35 102 42 102 L58 102 Q65 102 65 95 L65 30 Q65 27 62 27 L38 27 Q35 27 35 30 Z" 
-                            fill="none" stroke="#374151" stroke-width="2.5" stroke-linejoin="round"/>
-                      
-                      <!-- Goulot -->
-                      <rect x="45" y="12" width="10" height="18" fill="none" stroke="#374151" stroke-width="2.5" rx="2" stroke-linejoin="round"/>
-                      
-                      <!-- Bouchon simple -->
-                      <rect x="42" y="8" width="16" height="6" fill="#374151" rx="3"/>
-                      
-                      <!-- Étiquette épurée -->
-                      <rect x="40" y="45" width="20" height="16" fill="none" stroke="#374151" stroke-width="1.5" rx="2"/>
-                      
-                      <!-- Lignes de texte sur l'étiquette -->
-                      <rect x="43" y="49" width="14" height="1.2" fill="#374151" rx="0.6"/>
-                      <rect x="45" y="52" width="10" height="1" fill="#6B7280" rx="0.5"/>
-                      <rect x="46" y="55" width="8" height="1" fill="#6B7280" rx="0.5"/>
-                      <rect x="47" y="57.5" width="6" height="1" fill="#9CA3AF" rx="0.5"/>
-                      
-                      <!-- Niveau de liquide suggéré -->
-                      <path d="M37 32 L37 93 Q37 99 42 99 L58 99 Q63 99 63 93 L63 32" 
-                            fill="none" stroke="#9CA3AF" stroke-width="1" stroke-dasharray="2,2" opacity="0.6"/>
-                    </svg>
+                  <div class="w-[92px] h-[92px] rounded flex items-center justify-center bg-gray-100 border border-gray-200 p-2" style="flex-shrink:0;">
+                    <div class="w-full h-full flex items-center justify-center text-center text-[10px] font-semibold text-gray-700 leading-4 break-words px-1">
+                      <span x-text="truncateProductName(prod.nom, 25)"></span>
+                    </div>
                   </div>
                 </template>
                 <span class="absolute bottom-0 left-0 right-0 bg-white text-gray-700 text-xs font-semibold truncate px-1 text-center" style="transform:translateY(40%);" x-text="prod.nom"></span>
@@ -326,6 +310,8 @@
 <script>
 window.PRODUITS_ARRAY = @json($produitsArray);
 window.PANIER_ARRAY = @json($produitsPanier);
+window.INITIAL_CATEGORY = @json($categorieActive ?? null);
+window.INITIAL_SEARCH = @json($search ?? '');
 window.CLIENT_ID = @json($client_id ?? '');
 window.SERVEUSE_ID = @json($serveuse_id ?? '');
 window.CSRF_TOKEN = '{{ csrf_token() }}';

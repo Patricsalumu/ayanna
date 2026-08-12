@@ -33,16 +33,23 @@ class VenteController extends Controller
                     abort(403, 'Cette table ne vous est pas assignée.');
                 }
             }
-            $categorieActive = $request->get('categorie');
-            $search = $request->get('search');
+            $categorieActiveRaw = $request->input('categorie');
+            $categorieActive = null;
+            if ($categorieActiveRaw !== null && $categorieActiveRaw !== '') {
+                $categorieActive = (int) $categorieActiveRaw;
+                if (!$categories->contains('id', $categorieActive)) {
+                    $categorieActive = null;
+                }
+            }
+            $search = trim((string) $request->input('search', ''));
 
             $produitsQuery = \App\Models\Produit::with('salles');
-            if ($categorieActive) {
+            if ($categorieActive !== null) {
                 $produitsQuery->where('categorie_id', $categorieActive);
             } else {
                 $produitsQuery->whereIn('categorie_id', $categories->pluck('id'));
             }
-            if ($search) {
+            if ($search !== '') {
                 $produitsQuery->where('nom', 'like', '%'.$search.'%');
             }
             $produits = $produitsQuery->orderBy('nom')->get();

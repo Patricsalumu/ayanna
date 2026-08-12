@@ -8,10 +8,10 @@ function posApp() {
     showPaiement: false,
     produits: window.PRODUITS_ARRAY,
     panier: window.PANIER_ARRAY,
-    search: '',
+    search: window.INITIAL_SEARCH || '',
     selectedIndex: null,
     showOptions: false,
-    currentCat: null,
+    currentCat: (window.INITIAL_CATEGORY !== undefined && window.INITIAL_CATEGORY !== null && window.INITIAL_CATEGORY !== '') ? Number(window.INITIAL_CATEGORY) : null,
     userRole: window.USER_ROLE || '',
     canAddProducts: window.CAN_ADD_PRODUCTS !== false,
     canApplyDiscount: window.CAN_APPLY_DISCOUNT === true,
@@ -48,6 +48,13 @@ function posApp() {
       // Couleurs par défaut si la fonction globale n'est pas disponible
       const colors = ['bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500', 'bg-orange-500', 'bg-cyan-500'];
       return colors[(categoryId || 0) % colors.length];
+    },
+    truncateProductName(name, maxLength = 25) {
+      const value = typeof name === 'string' ? name.trim() : '';
+      if (!value) {
+        return '';
+      }
+      return value.length > maxLength ? `${value.slice(0, maxLength)}…` : value;
     },
     
     get totalHt(){
