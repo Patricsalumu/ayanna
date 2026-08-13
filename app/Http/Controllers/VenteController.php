@@ -54,6 +54,12 @@ class VenteController extends Controller
             }
             $produits = $produitsQuery->orderBy('nom')->get();
 
+            // Debug logs to diagnose production filtering issues
+            Log::debug('[CATALOGUE DEBUG] Request query', ['query' => $request->query()]);
+            Log::debug('[CATALOGUE DEBUG] Categorie raw/active', ['raw' => $categorieActiveRaw ?? null, 'active' => $categorieActive]);
+            Log::debug('[CATALOGUE DEBUG] PointDeVente categories', ['ids' => $categories->pluck('id')->toArray()]);
+            Log::debug('[CATALOGUE DEBUG] Produits fetched', ['count' => $produits->count(), 'ids' => $produits->pluck('id')->take(20)->toArray()]);
+
             // Gestion multi-paniers par table (NOUVELLE LOGIQUE)
             $tableCourante = $request->get('table_id');
             $produitsPanier = [];
