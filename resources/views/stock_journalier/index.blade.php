@@ -96,16 +96,28 @@
                         @endforeach
                     </div>
                 </div>
-                <div class="flex flex-col gap-2">
-                    <form method="GET" action="{{ route('stock_journalier.export_pdf', ['pointDeVente' => $pointDeVenteId, 'date' => $date, 'session' => $session ?? '']) }}" target="_blank" class="w-full" id="exportPdfForm">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <form method="GET" action="{{ route('stock_journalier.export_pdf', ['pointDeVente' => $pointDeVenteId, 'date' => $date, 'session' => $session ?? '']) }}" target="_blank" class="w-full sm:w-auto" id="exportPdfForm">
                         <input type="hidden" name="date" value="{{ $date }}">
                         <input type="hidden" name="session" value="{{ $session ?? '' }}">
                         <input type="hidden" name="export_form" value="1">
-                        <button type="submit" class="w-full inline-flex items-center justify-center px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 shadow transition-colors">
+                        <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 shadow transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            Exporter PDF
+                            Export A4
+                        </button>
+                    </form>
+
+                    <form method="GET" action="{{ route('stock_journalier.export_80mm', ['pointDeVente' => $pointDeVenteId, 'date' => $date, 'session' => $session ?? '']) }}" target="_blank" class="w-full sm:w-auto" id="export80Form">
+                        <input type="hidden" name="date" value="{{ $date }}">
+                        <input type="hidden" name="session" value="{{ $session ?? '' }}">
+                        <input type="hidden" name="export_form" value="1">
+                        <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2 bg-yellow-600 text-white font-semibold rounded-lg hover:bg-yellow-700 shadow transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16" />
+                            </svg>
+                            Export 80mm
                         </button>
                     </form>
                     <form method="GET" action="{{ route('stock_journalier.export_opening_pdf', ['pointDeVente' => $pointDeVenteId, 'session' => $session ?? '']) }}" target="_blank" class="w-full" id="exportOpeningForm">
@@ -402,10 +414,16 @@
     document.addEventListener('DOMContentLoaded', function() {
         const exportPdfForm = document.getElementById('exportPdfForm');
         const exportOpeningForm = document.getElementById('exportOpeningForm');
+        const export80Form = document.getElementById('export80Form');
 
         if (exportPdfForm) {
             exportPdfForm.addEventListener('submit', function(e) {
                 appendSelectedCategoriesToForm(exportPdfForm);
+            });
+        }
+        if (export80Form) {
+            export80Form.addEventListener('submit', function(e) {
+                appendSelectedCategoriesToForm(export80Form);
             });
         }
         if (exportOpeningForm) {

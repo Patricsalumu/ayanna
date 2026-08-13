@@ -332,6 +332,49 @@ class StockJournalierController extends Controller
         return $pdf->download($fileName);
     }
 
+    public function exportPdf80mm(Request $request, $pointDeVenteId)
+    {
+        $session = $request->get('session');
+        $selectedCategoryIds = $request->exists('categories')
+            ? array_values(array_filter(array_map('intval', (array) $request->input('categories', []))))
+            : null;
+
+        if (!$pointDeVenteId) {
+            $pointDeVenteId = $request->get('point_de_vente_id') ?? auth()->user()->point_de_vente_id ?? \App\Models\PointDeVente::first()?->id;
+        }
+
+        $data = $this->getStockJournalierSessionData($pointDeVenteId, $session, $selectedCategoryIds);
+
+        // prepare simplified columns and totals
+        $produitsByCategory = $data['produitsByCategory'];
+        $categoryTotals = $data['categoryTotals'];
+        $totalVente = $data['totalVente'] ?? 0;
+
+        $exportData = compact('produitsByCategory', 'categoryTotals', 'totalVente') + $data;
+
+        // Filename and session formatting (JJ-MM HH-MM)
+        $fileName = 'fiche_stock_80mm_'.$data['date'];
+        if ($session) {
+            if (strlen($session) === 14 && ctype_digit($session)) {
+                $sessionFormatted = Carbon::createFromFormat('YmdHis', $session)->format('d-m H-i');
+                $fileName .= '_session_'.$sessionFormatted;
+            } else {
+                $fileName .= '_session_'.$this->sanitizeFileName($session);
+            }
+        }
+        $fileName .= '.pdf';
+
+        $pdf = Pdf::loadView('stock_journalier.pdf_80mm', $exportData)
+            ->setPaper([0, 0, 226.77, 2000], 'portrait');
+
+        $pdf->getDomPDF()->set_option('isPhpEnabled', true);
+        $pdf->getDomPDF()->set_option('isRemoteEnabled', true);
+        $pdf->getDomPDF()->set_option('defaultFont', 'DejaVu Sans');
+        $pdf->getDomPDF()->set_option('enable_unicode', true);
+
+        return $pdf->download($fileName);
+    }
+
     public function exportOpeningPdf(Request $request, $pointDeVenteId)
     {
         $session = $request->get('session');
