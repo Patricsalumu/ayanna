@@ -71,8 +71,11 @@ export function posApp() {
     },
     get filteredProduits(){
       return this.produits.filter(p => {
-        return (!this.currentCat || p.categorie_id===this.currentCat)
-          && (!this.search || p.nom.toLowerCase().includes(this.search.toLowerCase()));
+        const prodCat = p?.categorie_id !== undefined && p?.categorie_id !== null ? Number(p.categorie_id) : null;
+        const activeCat = this.currentCat !== undefined && this.currentCat !== null && this.currentCat !== '' ? Number(this.currentCat) : null;
+        const catMatches = (activeCat === null) || (prodCat !== null && prodCat === activeCat);
+        const searchMatches = (!this.search) || (p.nom && p.nom.toLowerCase().includes(this.search.toLowerCase()));
+        return catMatches && searchMatches;
       });
     },
     get panierAffiche() {
