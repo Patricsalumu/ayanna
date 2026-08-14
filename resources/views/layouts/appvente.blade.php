@@ -24,7 +24,10 @@
         <!-- Interact.js -->
       <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     </head>
-    <body class="font-sans antialiased" x-data="{ showNavMenu: false, showNotification: false, notificationMessage: '', notificationType: 'info', showConfirm: false, confirmMessage: '', confirmCallback: null }">
+    <body class="font-sans antialiased" x-data="{ showNavMenu: false, showNotification: false, notificationMessage: '', notificationType: 'info', showConfirm: false, confirmMessage: '', confirmCallback: null }" data-user-role="{{ auth()->user()?->role ?? '' }}">
+        <script>
+            window.USER_ROLE = @json(auth()->user()?->role ?? '');
+        </script>
         @php
             // Contexte global pour la navigation
             $pointDeVenteId = request('point_de_vente_id') ?? session('point_de_vente_id');

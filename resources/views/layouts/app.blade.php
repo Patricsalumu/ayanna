@@ -24,7 +24,10 @@
         <!-- Interact.js -->
       <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
     </head>
-    <body class="font-sans antialiased">
+    <body class="font-sans antialiased" data-user-role="{{ auth()->user()?->role ?? '' }}">
+        <script>
+            window.USER_ROLE = @json(auth()->user()?->role ?? '');
+        </script>
         <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
             @include('layouts.navigation')
 
