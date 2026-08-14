@@ -178,16 +178,5 @@
         </div>
     </div>
 
-    <button class="print-button" onclick="window.print(); return false;">
-        🖨️ Imprimer
-    </button>
-
-    <script>
-        window.addEventListener('DOMContentLoaded', function() {
-            setTimeout(function() {
-                window.print();
-            }, 300);
-        });
-    </script>
 </body>
 </html>

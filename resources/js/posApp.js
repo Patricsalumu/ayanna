@@ -88,7 +88,7 @@ export function posApp() {
       return i && i.qte > 0 ? i.qte : null;
     },
     isQuantityRestricted() {
-      return this.quantityRestrictedRoles.includes(this.userRole);
+      return this.quantityRestrictedRoles.includes(String(this.userRole || '').trim().toLowerCase());
     },
     isRestrictedQuantityAction(action) {
       return this.isQuantityRestricted() && ['C', 'x', '-'].includes(action);
@@ -649,17 +649,14 @@ export function posApp() {
         printWindow.document.close();
         printWindow.focus();
 
-        const attemptPrint = () => {
+        setTimeout(() => {
           try {
             printWindow.print();
           } catch (printErr) {
             console.error('Erreur lors de print() :', printErr);
           }
-        };
+        }, 400);
 
-        printWindow.onload = () => {
-          setTimeout(attemptPrint, 300);
-        };
         setTimeout(() => {
           try {
             iframe.remove();

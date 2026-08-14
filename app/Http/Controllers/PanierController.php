@@ -104,7 +104,7 @@ class PanierController extends Controller
 
         try {
             $table_id = $request->input('table_id');
-            $quantite = $request->input('quantite');
+            $quantite = max(0, (int) $request->input('quantite', 0));
 
             $panier = Panier::where('table_id', $table_id)
                 ->where('status', 'en_cours')
@@ -118,9 +118,13 @@ class PanierController extends Controller
                 return response()->json(['success' => false, 'error' => 'Mot de passe administrateur requis pour diminuer ou supprimer un produit.'], 403);
             }
 
-            if ($existant) {
+            if ($quantite <= 0) {
+                if ($existant) {
+                    $panier->produits()->detach($produit_id);
+                }
+            } elseif ($existant) {
                 $panier->produits()->updateExistingPivot($produit_id, ['quantite' => $quantite]);
-            } else if ($quantite > 0) {
+            } else {
                 $produit = \App\Models\Produit::find($produit_id);
                 $panier->produits()->attach($produit_id, ['quantite' => $quantite, 'prix' => $produit?->prix_vente ?? 0]);
             }
@@ -135,7 +139,7 @@ class PanierController extends Controller
                     'image' => $prod->image ? asset('storage/'.$prod->image) : null,
                     'cat_id' => $prod->categorie_id,
                 ];
-            })->values()->toArray();
+            })->filter(fn($item) => (int) ($item['qte'] ?? 0) > 0)->values()->toArray();
 
             return response()->json(['success' => true, 'panier' => $panierArray]);
         } catch (\Throwable $e) {
@@ -161,19 +165,17 @@ class PanierController extends Controller
 
         if (!$panier) return response()->json(['error' => 'Panier non trouvé'], 404);
 
-        // Marquer le produit comme supprimé (quantité 0 ans la table pivot)
         if ($this->roleNePeutPasDiminuerPanier() && !$this->verifierMotDePasseAdmin($request)) {
             return response()->json(['success' => false, 'error' => 'Mot de passe administrateur requis pour supprimer un produit.'], 403);
         }
 
         $existant = $panier->produits()->where('produit_id', $produit_id)->first();
         if ($existant) {
-            $panier->produits()->updateExistingPivot($produit_id, ['quantite' =>0]);
+            $panier->produits()->detach($produit_id);
         }
 
         $panier->load('produits');
         $panierArray = $panier->produits
-            ->filter(fn($prod) => $prod->pivot->quantite !== null && $prod->pivot->quantite >= 0)
             ->map(function($prod){
                 return [
                     'id' => $prod->id,
@@ -183,7 +185,10 @@ class PanierController extends Controller
                     'image' => $prod->image ? asset('storage/'.$prod->image) : null,
                     'cat_id' => $prod->categorie_id,
                 ];
-            })->values()->toArray();
+            })
+            ->filter(fn($item) => (int) ($item['qte'] ?? 0) > 0)
+            ->values()
+            ->toArray();
 
         return response()->json(['success' => true, 'panier' => $panierArray]);
     }
@@ -200,9 +205,12 @@ class PanierController extends Controller
         }
 
         $user = Auth::user();
+        $adminRoles = ['admin', 'super_admin', 'administrateur'];
         $adminUsers = User::where('entreprise_id', $user?->entreprise_id)
-            ->whereIn('role', ['admin', 'super_admin'])
-            ->get();
+            ->get()
+            ->filter(function ($adminUser) use ($adminRoles) {
+                return in_array(strtolower((string) ($adminUser->role ?? '')), $adminRoles, true);
+            });
 
         foreach ($adminUsers as $adminUser) {
             if ($adminUser->id === $user?->id || Hash::check($password, $adminUser->password)) {
@@ -238,9 +246,12 @@ class PanierController extends Controller
         }
 
         $user = Auth::user();
+        $adminRoles = ['admin', 'super_admin', 'administrateur'];
         $adminUsers = User::where('entreprise_id', $user?->entreprise_id)
-            ->whereIn('role', ['admin', 'super_admin'])
-            ->get();
+            ->get()
+            ->filter(function ($adminUser) use ($adminRoles) {
+                return in_array(strtolower((string) ($adminUser->role ?? '')), $adminRoles, true);
+            });
 
         foreach ($adminUsers as $adminUser) {
             if ($adminUser->id === $user?->id || Hash::check($password, $adminUser->password)) {
@@ -559,7 +570,9 @@ class PanierController extends Controller
 
     private function roleNePeutPasDiminuerPanier(): bool
     {
-        return in_array(Auth::user()?->role, ['comptoiriste', 'serveuse'], true);
+        $role = strtolower((string) (Auth::user()?->role ?? ''));
+
+        return in_array($role, ['comptoiriste', 'serveuse', 'caissier', 'cashier'], true);
     }
 
     /**
