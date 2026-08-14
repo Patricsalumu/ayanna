@@ -4,6 +4,8 @@
 export function posApp() {
   return {
     showModal: false,
+    bonCommandeEnCours: false,
+    bonCommandePrintEnCours: false,
     showNavMenu: false,
     showPaiement: false,
     produits: window.PRODUITS_ARRAY,
@@ -535,54 +537,54 @@ export function posApp() {
       let now = new Date();
       let dateStr = now.toLocaleDateString('fr-FR');
       let heureStr = now.toLocaleTimeString('fr-FR');
-      let html = `<div style='width:58mm;padding:0;font-family:monospace;'>`;
+      let html = `<div style='width:75mm;padding:0;margin:0;font-family:monospace;background:#fff;color:#111;box-sizing:border-box;font-weight:bold;'>`;
       // Type de reçu
       if(type === 'proforma') {
-        html += `<div style='text-align:center;font-size:13px;font-weight:bold;color:#888;margin-bottom:2px;'>ADDITION / PROFORMA</div>`;
+        html += `<div style='text-align:center;font-size:20px;font-weight:bold;color:#111;margin-bottom:6px;letter-spacing:0.5px;'>PRE-FACTURE</div>`;
       } else {
-        html += `<div style='text-align:center;font-size:13px;font-weight:bold;color:#222;margin-bottom:2px;'>REÇU DE PAIEMENT</div>`;
+        html += `<div style='text-align:center;font-size:20px;font-weight:bold;color:#111;margin-bottom:6px;letter-spacing:0.5px;'>REÇU DE PAIEMENT</div>`;
       }
       // Logo
       if(entreprise.logo) {
-        html += `<div style='text-align:center;'><img src='${window.location.origin}/storage/${entreprise.logo}' style='max-width:40px;max-height:40px;margin-bottom:2px;display:block;margin-left:auto;margin-right:auto;'/></div>`;
+        html += `<div style='text-align:center;'><img src='${window.location.origin}/storage/${entreprise.logo}' style='max-width:56px;max-height:56px;margin-bottom:6px;display:block;margin-left:auto;margin-right:auto;'/></div>`;
       }
       // Nom + infos entreprise
-      html += `<div style='text-align:center;font-weight:bold;font-size:15px;'>${entreprise.nom ?? ''}</div>`;
-      if(entreprise.numero_entreprise) html += `<div style='text-align:center;font-size:11px;'>N° Entreprise : ${entreprise.numero_entreprise}</div>`;
-      if(entreprise.email) html += `<div style='text-align:center;font-size:11px;'>${entreprise.email}</div>`;
-      if(entreprise.telephone) html += `<div style='text-align:center;font-size:11px;'>${entreprise.telephone}</div>`;
-      if(entreprise.adresse) html += `<div style='text-align:center;font-size:11px;'>${entreprise.adresse}</div>`;
-      html += `<div style='border-top:1px dashed #222;margin:6px 0;'></div>`;
+      html += `<div style='text-align:center;font-weight:bold;font-size:20px;color:#111;'>${entreprise.nom ?? ''}</div>`;
+      if(entreprise.numero_entreprise) html += `<div style='text-align:center;font-size:14px;color:#111;'>N° Entreprise : ${entreprise.numero_entreprise}</div>`;
+      if(entreprise.email) html += `<div style='text-align:center;font-size:14px;color:#111;'>${entreprise.email}</div>`;
+      if(entreprise.telephone) html += `<div style='text-align:center;font-size:14px;color:#111;'>${entreprise.telephone}</div>`;
+      if(entreprise.adresse) html += `<div style='text-align:center;font-size:14px;color:#111;'>${entreprise.adresse}</div>`;
+      html += `<div style='border-top:1px solid #111;margin:8px 0;'></div>`;
       // Infos client/serveuse/table/panier
-      html += `<div style='font-size:11px;'>Client : <b>${client?.nom ?? '-'}</b></div>`;
-      html += `<div style='font-size:11px;'>Servie par : <b>${serveuse?.name ?? '-'}</b></div>`;
-      html += `<div style='font-size:11px;'>Table : <b>${table}</b> | Panier n° <b>${panierId ?? '-'}</b></div>`;
+      html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Client : <b>${client?.nom ?? '-'}</b></div>`;
+      html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Serveuse : <b>${serveuse?.name ?? '-'}</b></div>`;
+      html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Table : <b>${table}</b> | Panier n° <b>${panierId ?? '-'}</b></div>`;
       if(type === 'paiement') {
-        html += `<div style='font-size:11px;'>Mode de paiement : <b>${this.paiement.modePaiement === 'espèces' ? 'Espèces' : (this.paiement.modePaiement === 'mobile_money' ? 'Mobile Money' : (this.paiement.modePaiement === 'compte_client' ? 'Compte Client' : this.paiement.modePaiement))}</b></div>`;
+        html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Mode de paiement : <b>${this.paiement.modePaiement === 'espèces' ? 'Espèces' : (this.paiement.modePaiement === 'mobile_money' ? 'Mobile Money' : (this.paiement.modePaiement === 'compte_client' ? 'Compte Client' : this.paiement.modePaiement))}</b></div>`;
       }
-      html += `<div style='border-top:1px dashed #222;margin:6px 0;'></div>`;
+      html += `<div style='border-top:1px solid #111;margin:8px 0;'></div>`;
       // Tableau produits
-      html += `<table style='width:100%;font-size:11px;margin:0 auto;'><thead><tr><th style='text-align:left;'>Produit</th><th>Qté</th><th style='text-align:right;'>Prix</th><th style='text-align:right;'>Total</th></tr></thead><tbody>`;
+      html += `<table style='width:100%;font-size:15px;margin:0 auto;border-collapse:collapse;color:#111;font-weight:bold;'><thead><tr><th style='text-align:left;border-bottom:1px solid #111;padding:2px 0;font-weight:bold;'>Produit</th><th style='border-bottom:1px solid #111;padding:2px 0;font-weight:bold;'>Qté</th><th style='text-align:right;border-bottom:1px solid #111;padding:2px 0;font-weight:bold;'>Prix</th><th style='text-align:right;border-bottom:1px solid #111;padding:2px 0;font-weight:bold;'>Total</th></tr></thead><tbody>`;
       panier.filter(item=>item.qte>0).forEach(item => {
         const lineTotal = item.qte * item.prix;
         total += lineTotal;
-        html += `<tr><td style='word-break:break-all;'>${item.nom}</td><td style='text-align:center;'>${item.qte}</td><td style='text-align:right;'>${this.formatMoney(item.prix)}</td><td style='text-align:right;'>${this.formatMoney(lineTotal)}</td></tr>`;
+        html += `<tr><td style='word-break:break-all;padding:2px 0;border-bottom:1px solid rgba(17,17,17,0.4);color:#111;font-weight:bold;'>${item.nom}</td><td style='text-align:center;padding:2px 0;border-bottom:1px solid rgba(17,17,17,0.4);color:#111;font-weight:bold;'>${item.qte}</td><td style='text-align:right;padding:2px 0;border-bottom:1px solid rgba(17,17,17,0.4);color:#111;font-weight:bold;'>${this.formatMoney(item.prix)}</td><td style='text-align:right;padding:2px 0;border-bottom:1px solid rgba(17,17,17,0.4);color:#111;font-weight:bold;'>${this.formatMoney(lineTotal)}</td></tr>`;
       });
       html += `</tbody></table>`;
-      html += `<div style='border-top:1px dashed #222;margin:6px 0;'></div>`;
-      html += `<div style='text-align:right;font-size:12px;'>Sous-total : ${this.formatMoney(this.totalHt)}</div>`;
-      html += `<div style='text-align:right;font-size:12px;'>Remise : ${this.formatMoney(this.totalRemise)}</div>`;
-      html += `<div style='text-align:right;font-size:14px;font-weight:bold;'>Net à payer : ${this.formatMoney(this.total)}</div>`;
+      html += `<div style='border-top:1px solid #111;margin:8px 0;'></div>`;
+      html += `<div style='text-align:right;font-size:16px;color:#111;font-weight:bold;'>Sous-total : ${this.formatMoney(this.totalHt)}</div>`;
+      html += `<div style='text-align:right;font-size:16px;color:#111;font-weight:bold;'>Remise : ${this.formatMoney(this.totalRemise)}</div>`;
+      html += `<div style='text-align:right;font-size:20px;font-weight:bold;color:#111;'>Net à payer : ${this.formatMoney(this.total)}</div>`;
       if (this.showFEquivalent(this.total)) {
-        html += `<div style='text-align:right;font-size:12px;color:#6b7280;'>Équivalent F : ${this.formatFEquivalent(this.total)}</div>`;
+        html += `<div style='text-align:right;font-size:15px;color:#111;font-weight:bold;'>Équivalent F : ${this.formatFEquivalent(this.total)}</div>`;
       }
-      html += `<div style='text-align:center;font-size:11px;margin-top:10px;'>Merci pour votre visite !</div>`;
-      html += `<div style='text-align:center;font-size:10px;margin-top:8px;'>Généré par Ayanna &copy; | ${dateStr} ${heureStr}</div>`;
+      html += `<div style='text-align:center;font-size:15px;margin-top:12px;color:#111;font-weight:bold;'>Merci pour votre visite !</div>`;
+      html += `<div style='text-align:center;font-size:13px;margin-top:10px;color:#111;font-weight:bold;'>Généré par Ayanna &copy; | ${dateStr} ${heureStr}</div>`;
       html += `</div>`;
       document.getElementById('ticket-addition').innerHTML = html;
       const printWindow = window.open('', '', 'width=900,height=800');
-      printWindow.document.write('<html><head><title>Addition</title>');
-      printWindow.document.write('<style>body{margin:0;padding:0;}@media print{body{width:58mm!important;}}</style>');
+      printWindow.document.write('<html><head><title>Préfacture</title>');
+      printWindow.document.write('<style>html,body{margin:0;padding:0;background:#fff;color:#111;}body{display:flex;justify-content:center;}@media print{body{width:75mm!important;background:#fff;color:#111;}}</style>');
       printWindow.document.write('</head><body >');
       printWindow.document.write(html);
       printWindow.document.write('</body></html>');
@@ -627,6 +629,12 @@ export function posApp() {
       return `${montantF.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} F`;
     },
     async printBonCommande(bonId) {
+      if (this.bonCommandePrintEnCours) {
+        return;
+      }
+
+      this.bonCommandePrintEnCours = true;
+
       try {
         const response = await fetch(`/bon-commande/${bonId}/print`);
         if (!response.ok) {
@@ -655,13 +663,13 @@ export function posApp() {
           } catch (printErr) {
             console.error('Erreur lors de print() :', printErr);
           }
-        }, 400);
+        }, 100);
 
         setTimeout(() => {
           try {
             iframe.remove();
           } catch (e) {}
-        }, 2000);
+        }, 600);
 
         const redirectToPlanVente = () => {
           const entrepriseId = window.ENTREPRISE_ID || window.ENTREPRISE?.id || '';
@@ -676,17 +684,26 @@ export function posApp() {
           }
         };
 
-        setTimeout(redirectToPlanVente, 1200);
+        setTimeout(redirectToPlanVente, 500);
       } catch (err) {
         console.error('Erreur impression bon commande :', err);
         alert('❌ Erreur d\'impression du bon de commande.\n\nVérifiez votre connexion internet ou réessayez.');
+      } finally {
+        this.bonCommandePrintEnCours = false;
       }
     },
     genererBonCommande() {
+      if (this.bonCommandeEnCours || this.bonCommandePrintEnCours) {
+        return;
+      }
+
+      this.bonCommandeEnCours = true;
+
       // Vérifier qu'une serveuse est sélectionnée
       if (!this.paiement.serveuse_id) {
         alert('❌ Veuillez sélectionner une serveuse avant de générer un bon de commande.');
         this.showModal = false;
+        this.bonCommandeEnCours = false;
         return;
       }
 
@@ -694,6 +711,7 @@ export function posApp() {
       const panierId = (this.panier && this.panier.length && this.panier[0].panier_id) ? this.panier[0].panier_id : window.PANIER_ID;
       if (!panierId) {
         alert('❌ Impossible de générer un bon : aucun panier n\'est actif.');
+        this.bonCommandeEnCours = false;
         return;
       }
 
@@ -744,6 +762,11 @@ export function posApp() {
       .catch(err => {
         console.error('❌ Erreur:', err);
         alert('❌ Erreur de connexion avec le serveur:\n' + err.message + '\n\nVérifiez les logs du serveur pour plus de détails.');
+      })
+      .finally(() => {
+        if (!this.bonCommandePrintEnCours) {
+          this.bonCommandeEnCours = false;
+        }
       });
     },
   }

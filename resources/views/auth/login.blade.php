@@ -57,5 +57,11 @@
                 {{ __('Se Connecter') }}
             </x-primary-button>
         </div>
+
+        <div class="mt-4 pt-4 border-t border-[#eadbc9] text-center">
+            <a href="{{ route('serveuse.login') }}" class="inline-flex items-center justify-center w-full rounded-xl border border-[#d8c1a8] bg-white px-4 py-3 text-sm font-semibold text-[#3e2f24] hover:bg-[#f7efe7] transition">
+                Se connecter en tant que serveuse
+            </a>
+        </div>
     </form>
 </x-layouts.guest-login>

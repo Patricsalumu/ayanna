@@ -35,6 +35,12 @@
         </div>
     </form>
 
+    <div class="mt-4 pt-4 border-t border-[#eadbc9] text-center">
+        <a href="{{ route('login') }}" class="inline-flex items-center justify-center w-full rounded-xl border border-[#d8c1a8] bg-white px-4 py-3 text-sm font-semibold text-[#3e2f24] hover:bg-[#f7efe7] transition">
+            Se connecter en tant que caissier ou admin
+        </a>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const input = document.getElementById('password');

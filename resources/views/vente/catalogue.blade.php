@@ -83,10 +83,16 @@
     </div>
 
     @if(!app(\App\Services\PermissionService::class)->isCashier(auth()->user()))
-      <!-- Bouton Bon de Commande -->
+      <!-- Bouton Envoyer commande -->
       <template x-if="panier.length">
-        <button @click="genererBonCommande()" class="w-full py-3 rounded-2xl bg-orange-600 text-white font-bold text-base shadow hover:bg-orange-700 transition">
-          🍲 Bon de Commande
+        <button
+          type="button"
+          @click="if (!bonCommandeEnCours && !bonCommandePrintEnCours) genererBonCommande()"
+          :disabled="bonCommandeEnCours || bonCommandePrintEnCours"
+          class="w-full min-h-[62px] rounded-2xl bg-orange-600 text-white font-black text-lg shadow hover:bg-orange-700 transition px-4 py-3 leading-tight disabled:opacity-70 disabled:cursor-not-allowed"
+        >
+          <span x-show="!bonCommandeEnCours && !bonCommandePrintEnCours" class="block">Envoyer commande</span>
+          <span x-show="bonCommandeEnCours || bonCommandePrintEnCours" class="block">Traitement...</span>
         </button>
       </template>
     @endif
@@ -147,7 +153,7 @@
         @endif
       </div>
       <div class="flex flex-row flex-wrap gap-2 mb-2 justify-between items-center">
-        <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[140px] rounded-xl bg-gray-800 text-white font-bold shadow hover:bg-gray-900 transition text-center px-4 py-0.5" @click="printAddition('proforma')">Addition</button>
+        <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[140px] rounded-xl bg-gray-800 text-white font-bold shadow hover:bg-gray-900 transition text-center px-4 py-0.5" @click="printAddition('proforma')">Préfacture</button>
         @if(!in_array(Auth::user()->role ?? null, ['comptoiriste','serveuse']))
           <form method="POST" action="{{ (isset($panier) && !empty($panier->id)) ? route('paniers.annuler', $panier->id) : '#' }}" onsubmit="return confirm('Annuler ce panier ?');" class="flex-none sm:flex-1 w-full sm:w-auto min-w-[140px]">
             @csrf
