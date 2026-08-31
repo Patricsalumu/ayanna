@@ -12,6 +12,12 @@ function posApp() {
     selectedIndex: null,
     showOptions: false,
     currentCat: null,
+    contextMenu: {
+      visible: false,
+      x: 0,
+      y: 0,
+      product: null,
+    },
     userRole: window.USER_ROLE || '',
     quantityRestrictedRoles: ['comptoiriste', 'serveuse'],
     client_id: window.CLIENT_ID || '',
@@ -120,6 +126,19 @@ function posApp() {
     },
     toggleOptions(){
       this.showOptions = !this.showOptions;
+    },
+    openProductContextMenu(event, prod) {
+      event.preventDefault();
+      this.contextMenu = {
+        visible: true,
+        x: event.clientX,
+        y: event.clientY,
+        product: prod,
+      };
+    },
+    closeProductContextMenu() {
+      this.contextMenu.visible = false;
+      this.contextMenu.product = null;
     },
     ajouterProduit(prod){
       const idx = this.panier.findIndex(i => i.id === prod.id);

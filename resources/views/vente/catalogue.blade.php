@@ -226,6 +226,8 @@
         >
           <template x-for="prod in filteredProduits" :key="prod.id">
             <div @click="ajouterProduit(prod)"
+                 @contextmenu="openProductContextMenu($event, prod)"
+                 :title="prod.nom + ' - ' + formatMoney(prod.prix_vente || prod.prix || 0)"
                  class="relative bg-white p-2 rounded-xl shadow cursor-pointer hover:ring-2 hover:ring-blue-500 transition h-[102px] min-h-[102px] max-h-[102px] flex flex-col items-center justify-end overflow-hidden">
               
               <!-- Bande colorée en bas selon la catégorie -->
@@ -237,35 +239,22 @@
                   <img :src="prod.image" class="w-[92px] h-[92px] object-cover rounded" style="flex-shrink:0;" />
                 </template>
                 <template x-if="!prod.image">
-                  <div class="w-[92px] h-[92px] rounded flex items-center justify-center" style="flex-shrink:0;">
-                    <!-- Icône produit minimaliste noir et blanc -->
+                  <div class="w-[92px] h-[92px] rounded flex items-center justify-center relative overflow-hidden bg-gray-100" style="flex-shrink:0;">
+                    <div class="absolute inset-0 flex items-center justify-center px-2 text-center text-[10px] font-bold text-gray-800 leading-tight bg-white/80 backdrop-blur-[1px]" x-text="prod.nom"></div>
                     <svg width="50" height="55" viewBox="0 0 100 110" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <!-- Corps principal de la bouteille -->
-                      <path d="M35 30 L35 95 Q35 102 42 102 L58 102 Q65 102 65 95 L65 30 Q65 27 62 27 L38 27 Q35 27 35 30 Z" 
-                            fill="none" stroke="#374151" stroke-width="2.5" stroke-linejoin="round"/>
-                      
-                      <!-- Goulot -->
+                      <path d="M35 30 L35 95 Q35 102 42 102 L58 102 Q65 102 65 95 L65 30 Q65 27 62 27 L38 27 Q35 27 35 30 Z" fill="none" stroke="#374151" stroke-width="2.5" stroke-linejoin="round"/>
                       <rect x="45" y="12" width="10" height="18" fill="none" stroke="#374151" stroke-width="2.5" rx="2" stroke-linejoin="round"/>
-                      
-                      <!-- Bouchon simple -->
                       <rect x="42" y="8" width="16" height="6" fill="#374151" rx="3"/>
-                      
-                      <!-- Étiquette épurée -->
                       <rect x="40" y="45" width="20" height="16" fill="none" stroke="#374151" stroke-width="1.5" rx="2"/>
-                      
-                      <!-- Lignes de texte sur l'étiquette -->
                       <rect x="43" y="49" width="14" height="1.2" fill="#374151" rx="0.6"/>
                       <rect x="45" y="52" width="10" height="1" fill="#6B7280" rx="0.5"/>
                       <rect x="46" y="55" width="8" height="1" fill="#6B7280" rx="0.5"/>
                       <rect x="47" y="57.5" width="6" height="1" fill="#9CA3AF" rx="0.5"/>
-                      
-                      <!-- Niveau de liquide suggéré -->
-                      <path d="M37 32 L37 93 Q37 99 42 99 L58 99 Q63 99 63 93 L63 32" 
-                            fill="none" stroke="#9CA3AF" stroke-width="1" stroke-dasharray="2,2" opacity="0.6"/>
+                      <path d="M37 32 L37 93 Q37 99 42 99 L58 99 Q63 99 63 93 L63 32" fill="none" stroke="#9CA3AF" stroke-width="1" stroke-dasharray="2,2" opacity="0.6"/>
                     </svg>
                   </div>
                 </template>
-                <span class="absolute bottom-0 left-0 right-0 bg-white text-gray-700 text-xs font-semibold truncate px-1 text-center" style="transform:translateY(40%);" x-text="prod.nom"></span>
+                <span class="absolute bottom-0 left-0 right-0 bg-white text-gray-700 text-[10px] font-semibold truncate px-1 text-center" style="transform:translateY(40%);" x-text="prod.nom" x-show="prod.image"></span>
               </div>
               <template x-if="inqte(prod.id)">
                 <div class="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full"
@@ -309,6 +298,25 @@
     </template>
   </div>
 </div>
+
+<div
+  x-show="contextMenu.visible"
+  x-transition
+  @click.away="closeProductContextMenu()"
+  :style="'position: fixed; left: ' + contextMenu.x + 'px; top: ' + contextMenu.y + 'px; z-index: 60;'"
+  class="w-52 rounded-xl border border-gray-200 bg-white shadow-2xl overflow-hidden"
+>
+  <div class="bg-gray-100 px-3 py-2 border-b border-gray-200">
+    <div class="text-sm font-bold text-gray-800" x-text="contextMenu.product ? contextMenu.product.nom : ''"></div>
+  </div>
+  <div class="px-3 py-3 text-sm text-gray-700">
+    <div class="flex justify-between gap-3">
+      <span>Prix</span>
+      <span class="font-bold text-blue-700" x-text="contextMenu.product ? formatMoney(contextMenu.product.prix_vente || contextMenu.product.prix || 0) : ''"></span>
+    </div>
+  </div>
+</div>
+
 <!-- Ticket d'addition imprimable (généré dynamiquement) -->
 <div id="ticket-addition" style="display:none;"></div>
 @vite(['resources/js/app.js'])
