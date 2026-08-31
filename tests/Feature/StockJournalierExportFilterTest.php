@@ -38,4 +38,11 @@ class StockJournalierExportFilterTest extends TestCase
         $this->assertSame('stock_journalier.pdf_80mm', $mm80['view']);
         $this->assertSame([0, 0, 226.77, 1000], $mm80['paper']);
     }
+
+    public function test_it_normalizes_selected_categories_for_export_requests(): void
+    {
+        $this->assertSame([1, 2], StockJournalierController::normalizeSelectedCategoryIds(['1', '2']));
+        $this->assertSame([], StockJournalierController::normalizeSelectedCategoryIds(['__NONE__']));
+        $this->assertSame(null, StockJournalierController::normalizeSelectedCategoryIds(null));
+    }
 }

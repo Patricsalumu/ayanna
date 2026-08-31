@@ -482,19 +482,13 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        const exportPdfForm = document.getElementById('exportPdfForm');
-        const exportOpeningForm = document.getElementById('exportOpeningForm');
+        const exportForms = document.querySelectorAll('form[id="exportPdfFormA4"], form[id="exportPdfForm80mm"], form[id="exportPdfOnlySoldA4"], form[id="exportPdfOnlySold80mm"], form[id="exportOpeningForm"]');
 
-        if (exportPdfForm) {
-            exportPdfForm.addEventListener('submit', function(e) {
-                appendSelectedCategoriesToForm(exportPdfForm);
+        exportForms.forEach(function(form) {
+            form.addEventListener('submit', function() {
+                appendSelectedCategoriesToForm(form);
             });
-        }
-        if (exportOpeningForm) {
-            exportOpeningForm.addEventListener('submit', function(e) {
-                appendSelectedCategoriesToForm(exportOpeningForm);
-            });
-        }
+        });
     });
 </script>
 @endsection

@@ -33,6 +33,24 @@ class StockJournalierController extends Controller
         return $map[strtolower($format)] ?? $map['a4'];
     }
 
+    public static function normalizeSelectedCategoryIds($rawCategoryIds): ?array
+    {
+        if ($rawCategoryIds === null) {
+            return null;
+        }
+
+        $normalized = array_values(array_filter(array_map(function ($categoryId) {
+            $value = trim((string) $categoryId);
+            if ($value === '' || $value === '__NONE__') {
+                return null;
+            }
+
+            return (int) $value > 0 ? (int) $value : null;
+        }, (array) $rawCategoryIds)));
+
+        return $normalized;
+    }
+
     public static function filterProduitsForExport($produitsByCategory, bool $onlySold = false)
     {
         if (!$onlySold) {
@@ -74,9 +92,7 @@ class StockJournalierController extends Controller
             ]);
         }
 
-        $selectedCategoryIds = $request->exists('categories')
-            ? array_values(array_filter(array_map('intval', (array) $request->input('categories', []))))
-            : null;
+        $selectedCategoryIds = self::normalizeSelectedCategoryIds($request->input('categories'));
 
         $data = $this->getStockJournalierSessionData($pointDeVenteId, $session, $selectedCategoryIds);
         return view('stock_journalier.index', $data);
@@ -328,9 +344,7 @@ class StockJournalierController extends Controller
                 'message' => 'Aucun point de vente disponible.'
             ]);
         }
-        $selectedCategoryIds = $request->exists('categories')
-            ? array_values(array_filter(array_map('intval', (array) $request->input('categories', []))))
-            : null;
+        $selectedCategoryIds = self::normalizeSelectedCategoryIds($request->input('categories'));
 
         $data = $this->getStockJournalierSessionData($pointDeVenteId, $session, $selectedCategoryIds);
         $data['produitsByCategory'] = $this->filterProduitsForExport($data['produitsByCategory'], $onlySold)
@@ -382,9 +396,7 @@ class StockJournalierController extends Controller
             return redirect()->back()->with('message', 'Aucun point de vente disponible pour l’export inventaire.');
         }
 
-        $selectedCategoryIds = $request->exists('categories')
-            ? array_values(array_filter(array_map('intval', (array) $request->input('categories', []))))
-            : null;
+        $selectedCategoryIds = self::normalizeSelectedCategoryIds($request->input('categories'));
 
         $data = $this->getStockJournalierOpeningData($pointDeVenteId, $session, $selectedCategoryIds);
 
