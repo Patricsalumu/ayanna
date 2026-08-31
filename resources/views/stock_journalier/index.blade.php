@@ -101,6 +101,10 @@
                         <input type="hidden" name="date" value="{{ $date }}">
                         <input type="hidden" name="session" value="{{ $session ?? '' }}">
                         <input type="hidden" name="export_form" value="1">
+                        <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                            <input type="checkbox" name="only_sold" value="1" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            Uniquement produits vendus
+                        </label>
                         <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 shadow transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -113,6 +117,10 @@
                         <input type="hidden" name="date" value="{{ $date }}">
                         <input type="hidden" name="session" value="{{ $session ?? '' }}">
                         <input type="hidden" name="export_form" value="1">
+                        <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                            <input type="checkbox" name="only_sold" value="1" class="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500">
+                            Uniquement produits vendus
+                        </label>
                         <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2 bg-yellow-600 text-white font-semibold rounded-lg hover:bg-yellow-700 shadow transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16" />

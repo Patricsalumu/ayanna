@@ -273,10 +273,26 @@ class StockJournalierController extends Controller
         return redirect()->back()->with('success', 'Quantité initiale enregistrée.');
     }
 
+    public static function filterProduitsForExport($produitsByCategory, bool $onlySold = false)
+    {
+        if (!$onlySold) {
+            return $produitsByCategory;
+        }
+
+        return $produitsByCategory
+            ->map(function ($produits) {
+                return $produits
+                    ->filter(fn ($produit) => (int) ($produit['q_vendue'] ?? 0) > 0)
+                    ->values();
+            })
+            ->filter(fn ($produits) => $produits->isNotEmpty());
+    }
+
     public function exportPdf(Request $request, $pointDeVenteId)
     {
         $date = $request->get('date', now()->toDateString());
         $session = $request->get('session');
+        $onlySold = $request->boolean('only_sold');
         if (!$pointDeVenteId) {
             $pointDeVenteId = $request->get('point_de_vente_id');
         }
@@ -310,6 +326,14 @@ class StockJournalierController extends Controller
             })->values();
         });
 
+        if ($onlySold) {
+            $data['produitsByCategory'] = self::filterProduitsForExport($data['produitsByCategory'], true);
+            $data['categoryTotals'] = $data['produitsByCategory']->map(function ($produits) {
+                return $produits->sum('total');
+            });
+            $data['totalVente'] = $data['categoryTotals']->sum();
+        }
+
         $fileName = 'stock_journalier_'.$data['date'];
         if ($session) {
             if (strlen($session) === 14 && ctype_digit($session)) {
@@ -335,6 +359,7 @@ class StockJournalierController extends Controller
     public function exportPdf80mm(Request $request, $pointDeVenteId)
     {
         $session = $request->get('session');
+        $onlySold = $request->boolean('only_sold');
         $selectedCategoryIds = $request->exists('categories')
             ? array_values(array_filter(array_map('intval', (array) $request->input('categories', []))))
             : null;
@@ -344,6 +369,14 @@ class StockJournalierController extends Controller
         }
 
         $data = $this->getStockJournalierSessionData($pointDeVenteId, $session, $selectedCategoryIds);
+
+        if ($onlySold) {
+            $data['produitsByCategory'] = self::filterProduitsForExport($data['produitsByCategory'], true);
+            $data['categoryTotals'] = $data['produitsByCategory']->map(function ($produits) {
+                return $produits->sum('total');
+            });
+            $data['totalVente'] = $data['categoryTotals']->sum();
+        }
 
         // prepare simplified columns and totals
         $produitsByCategory = $data['produitsByCategory'];
