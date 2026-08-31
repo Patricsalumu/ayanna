@@ -97,17 +97,60 @@
                     </div>
                 </div>
                 <div class="flex flex-col gap-2">
-                    <form method="GET" action="{{ route('stock_journalier.export_pdf', ['pointDeVente' => $pointDeVenteId, 'date' => $date, 'session' => $session ?? '']) }}" target="_blank" class="w-full" id="exportPdfForm">
+                    <form method="GET" action="{{ route('stock_journalier.export_pdf', ['pointDeVente' => $pointDeVenteId, 'date' => $date, 'session' => $session ?? '']) }}" target="_blank" class="w-full" id="exportPdfFormA4">
                         <input type="hidden" name="date" value="{{ $date }}">
                         <input type="hidden" name="session" value="{{ $session ?? '' }}">
+                        <input type="hidden" name="format" value="a4">
                         <input type="hidden" name="export_form" value="1">
                         <button type="submit" class="w-full inline-flex items-center justify-center px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 shadow transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            Exporter PDF
+                            Imprimer A4
                         </button>
                     </form>
+
+                    <form method="GET" action="{{ route('stock_journalier.export_pdf', ['pointDeVente' => $pointDeVenteId, 'date' => $date, 'session' => $session ?? '']) }}" target="_blank" class="w-full" id="exportPdfForm80mm">
+                        <input type="hidden" name="date" value="{{ $date }}">
+                        <input type="hidden" name="session" value="{{ $session ?? '' }}">
+                        <input type="hidden" name="format" value="80mm">
+                        <input type="hidden" name="export_form" value="1">
+                        <button type="submit" class="w-full inline-flex items-center justify-center px-6 py-2 bg-amber-600 text-white font-semibold rounded-lg hover:bg-amber-700 shadow transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4h10v12m-10 0h10m-10 0a2 2 0 01-2-2v-2a2 2 0 012-2m10 6a2 2 0 002-2v-2a2 2 0 00-2-2" />
+                            </svg>
+                            Imprimer 80 mm
+                        </button>
+                    </form>
+
+                    <form method="GET" action="{{ route('stock_journalier.export_pdf', ['pointDeVente' => $pointDeVenteId, 'date' => $date, 'session' => $session ?? '']) }}" target="_blank" class="w-full" id="exportPdfOnlySoldA4">
+                        <input type="hidden" name="date" value="{{ $date }}">
+                        <input type="hidden" name="session" value="{{ $session ?? '' }}">
+                        <input type="hidden" name="format" value="a4">
+                        <input type="hidden" name="only_sold" value="1">
+                        <input type="hidden" name="export_form" value="1">
+                        <button type="submit" class="w-full inline-flex items-center justify-center px-6 py-2 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 shadow transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 3" />
+                            </svg>
+                            Imprimer vendus A4
+                        </button>
+                    </form>
+
+                    <form method="GET" action="{{ route('stock_journalier.export_pdf', ['pointDeVente' => $pointDeVenteId, 'date' => $date, 'session' => $session ?? '']) }}" target="_blank" class="w-full" id="exportPdfOnlySold80mm">
+                        <input type="hidden" name="date" value="{{ $date }}">
+                        <input type="hidden" name="session" value="{{ $session ?? '' }}">
+                        <input type="hidden" name="format" value="80mm">
+                        <input type="hidden" name="only_sold" value="1">
+                        <input type="hidden" name="export_form" value="1">
+                        <button type="submit" class="w-full inline-flex items-center justify-center px-6 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 shadow transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 3" />
+                            </svg>
+                            Imprimer vendus 80 mm
+                        </button>
+                    </form>
+
                     <form method="GET" action="{{ route('stock_journalier.export_opening_pdf', ['pointDeVente' => $pointDeVenteId, 'session' => $session ?? '']) }}" target="_blank" class="w-full" id="exportOpeningForm">
                         <input type="hidden" name="date" value="{{ $date }}">
                         <input type="hidden" name="session" value="{{ $session ?? '' }}">
@@ -125,6 +168,45 @@
     </div>
 
     @if(count($produits) > 0)
+    @php
+        $totalQiValeur = 0;
+        $totalAjoutesValeur = 0;
+        $totalStockValeur = 0;
+
+        foreach ($produits as $produit) {
+            $stock = $stocks->where('produit_id', $produit->id)->last();
+            $q_init = $stock->quantite_initiale ?? 0;
+            $q_ajout = $stock->quantite_ajoutee ?? 0;
+            $prix = $produit->prix_vente;
+            $q_total = $q_init + $q_ajout;
+
+            $totalQiValeur += $q_init * $prix;
+            $totalAjoutesValeur += $q_ajout * $prix;
+            $totalStockValeur += $q_total * $prix;
+        }
+    @endphp
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4 shadow-sm">
+            <div class="text-sm font-medium text-blue-700">Total QI</div>
+            <div class="mt-2 text-2xl font-bold text-blue-900">
+                {{ optional(auth()->user()?->entreprise)->formatAmount($totalQiValeur, true, 2) }}
+            </div>
+        </div>
+        <div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 shadow-sm">
+            <div class="text-sm font-medium text-indigo-700">Total</div>
+            <div class="mt-2 text-2xl font-bold text-indigo-900">
+                {{ optional(auth()->user()?->entreprise)->formatAmount($totalStockValeur, true, 2) }}
+            </div>
+        </div>
+        <div class="bg-green-50 border border-green-200 rounded-2xl p-4 shadow-sm">
+            <div class="text-sm font-medium text-green-700">Total Ajoutés</div>
+            <div class="mt-2 text-2xl font-bold text-green-900">
+                {{ optional(auth()->user()?->entreprise)->formatAmount($totalAjoutesValeur, true, 2) }}
+            </div>
+        </div>
+    </div>
+
     <!-- Tableau moderne -->
     <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
         <div class="overflow-x-auto">

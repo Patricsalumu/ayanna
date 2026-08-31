@@ -15,6 +15,41 @@ use Barryvdh\DomPDF\Facade\Pdf; // tout en haut
 
 class StockJournalierController extends Controller
 {
+    public static function resolvePdfExportConfig(string $format = 'a4'): array
+    {
+        $map = [
+            'a4' => [
+                'view' => 'stock_journalier.pdf',
+                'paper' => 'a4',
+                'orientation' => 'portrait',
+            ],
+            '80mm' => [
+                'view' => 'stock_journalier.pdf_80mm',
+                'paper' => [0, 0, 226.77, 1000],
+                'orientation' => 'portrait',
+            ],
+        ];
+
+        return $map[strtolower($format)] ?? $map['a4'];
+    }
+
+    public static function filterProduitsForExport($produitsByCategory, bool $onlySold = false)
+    {
+        if (!$onlySold) {
+            return $produitsByCategory;
+        }
+
+        return $produitsByCategory->filter(function ($produits) {
+            return $produits->filter(function ($produit) {
+                return ($produit['q_vendue'] ?? 0) > 0;
+            })->isNotEmpty();
+        })->map(function ($produits) {
+            return $produits->filter(function ($produit) {
+                return ($produit['q_vendue'] ?? 0) > 0;
+            })->values();
+        });
+    }
+
     // Affiche la fiche de stock journalier pour une session donnée
     public function index(Request $request, $pointDeVenteId = null)
     {
@@ -272,6 +307,9 @@ class StockJournalierController extends Controller
     {
         $date = $request->get('date', now()->toDateString());
         $session = $request->get('session');
+        $format = strtolower((string) $request->get('format', 'a4'));
+        $onlySold = (bool) $request->boolean('only_sold');
+
         if (!$pointDeVenteId) {
             $pointDeVenteId = $request->get('point_de_vente_id');
         }
@@ -279,11 +317,9 @@ class StockJournalierController extends Controller
             $pointDeVenteId = auth()->user()->point_de_vente_id ?? null;
         }
         if (!$pointDeVenteId) {
-            // Si aucun point de vente n'est fourni, prendre le premier point de vente existant
             $pointDeVenteId = \App\Models\PointDeVente::first()?->id;
         }
         if (!$pointDeVenteId) {
-            // Aucun point de vente trouvé, retourner une vue vide ou un message
             return view('stock_journalier.index', [
                 'stocks' => collect(),
                 'date' => $date,
@@ -297,13 +333,14 @@ class StockJournalierController extends Controller
             : null;
 
         $data = $this->getStockJournalierSessionData($pointDeVenteId, $session, $selectedCategoryIds);
-        $data['produitsByCategory'] = $data['produitsByCategory']->map(function ($produits) {
-            return $produits->map(function ($produit) {
-                $q_total = ($produit['q_init'] ?? 0) + ($produit['q_ajout'] ?? 0);
-                $produit['q_reste'] = $q_total - ($produit['q_vendue'] ?? 0);
-                return $produit;
-            })->values();
-        });
+        $data['produitsByCategory'] = $this->filterProduitsForExport($data['produitsByCategory'], $onlySold)
+            ->map(function ($produits) {
+                return $produits->map(function ($produit) {
+                    $q_total = ($produit['q_init'] ?? 0) + ($produit['q_ajout'] ?? 0);
+                    $produit['q_reste'] = $q_total - ($produit['q_vendue'] ?? 0);
+                    return $produit;
+                })->values();
+            });
 
         $fileName = 'stock_journalier_'.$data['date'];
         if ($session) {
@@ -316,8 +353,9 @@ class StockJournalierController extends Controller
         }
         $fileName .= '.pdf';
 
-        $pdf = Pdf::loadView('stock_journalier.pdf', $data)
-            ->setPaper('a4', 'portrait');
+        $config = self::resolvePdfExportConfig($format);
+        $pdf = Pdf::loadView($config['view'], $data)
+            ->setPaper($config['paper'], $config['orientation']);
 
         $pdf->getDomPDF()->set_option('isPhpEnabled', true);
         $pdf->getDomPDF()->set_option('isRemoteEnabled', true);
