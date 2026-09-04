@@ -998,6 +998,7 @@ export function posApp() {
         alert('❌ Erreur d\'impression du bon de commande.\n\nVérifiez votre connexion internet ou réessayez.');
       } finally {
         this.bonCommandePrintEnCours = false;
+        this.bonCommandeEnCours = false;
       }
     },
     genererBonCommande() {
@@ -1072,9 +1073,7 @@ export function posApp() {
           alert('❌ Erreur de connexion avec le serveur:\n' + err.message + '\n\nVérifiez les logs du serveur pour plus de détails.');
         })
         .finally(() => {
-          if (!this.bonCommandePrintEnCours) {
-            this.bonCommandeEnCours = false;
-          }
+          this.bonCommandeEnCours = false;
         });
     },
   }
