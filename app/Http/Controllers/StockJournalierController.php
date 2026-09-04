@@ -172,6 +172,124 @@ class StockJournalierController extends Controller
 
         $totalVente = $categoryTotals->sum();
 
+        $sessionStart = $heureOuverture ?? Carbon::parse($date)->startOfDay();
+        $sessionEnd = $heureFermeture ?? Carbon::parse($date)->endOfDay();
+
+        // Règle métier demandée:
+        // - Remises = somme de total_remise des paniers de la session concernée
+        // - Créances = paniers de la session dont le mode = compte_client
+        // Une session peut être tracée par date panier OU date commande selon les flux.
+        $paniersSession = \App\Models\Panier::with(['produits', 'commande'])
+            ->where('point_de_vente_id', $pointDeVenteId)
+            ->where(function ($q) use ($sessionStart, $sessionEnd) {
+                $q->whereBetween('paniers.created_at', [$sessionStart, $sessionEnd])
+                    ->orWhereBetween('paniers.updated_at', [$sessionStart, $sessionEnd])
+                    ->orWhereHas('commande', function ($cq) use ($sessionStart, $sessionEnd) {
+                        $cq->whereBetween('created_at', [$sessionStart, $sessionEnd]);
+                    });
+            })
+            ->whereIn('status', ['valide', 'validé'])
+            ->get();
+
+        // Fallback: si la fenêtre session stricte ne retourne rien,
+        // recalculer sur la date de session pour éviter les faux zéros.
+        if ($paniersSession->isEmpty()) {
+            $paniersSession = \App\Models\Panier::with(['produits', 'commande'])
+                ->where('point_de_vente_id', $pointDeVenteId)
+                ->where(function ($q) use ($date) {
+                    $q->whereDate('paniers.created_at', $date)
+                        ->orWhereDate('paniers.updated_at', $date)
+                        ->orWhereHas('commande', function ($cq) use ($date) {
+                            $cq->whereDate('created_at', $date);
+                        });
+                })
+                ->whereIn('status', ['valide', 'validé'])
+                ->get();
+        }
+
+        $totalRemise = $paniersSession->sum(function ($panier) {
+            return (float) ($panier->total_remise ?? $panier->remise ?? 0);
+        });
+
+        $totalCreance = $paniersSession
+            ->filter(function ($panier) {
+                $rawMode = (string) ($panier->commande?->mode_paiement ?? $panier->mode_paiement ?? '');
+                $mode = strtolower(str_replace([' ', '-'], '_', $rawMode));
+                return $mode === 'compte_client';
+            })
+            ->sum(function ($panier) {
+                $montant = (float) ($panier->total_ttc ?? $panier->total ?? 0);
+
+                if ($montant <= 0 && $panier->relationLoaded('produits')) {
+                    $brut = $panier->produits->sum(function ($produit) {
+                        return ($produit->pivot->quantite ?? 0) * (($produit->pivot->prix ?? $produit->prix_vente) ?? 0);
+                    });
+                    $remise = (float) ($panier->total_remise ?? $panier->remise ?? 0);
+                    $montant = max(0, $brut - $remise);
+                }
+
+                return $montant;
+            });
+
+        $totalOffre = $paniersSession
+            ->filter(function ($panier) {
+                $rawMode = (string) ($panier->commande?->mode_paiement ?? $panier->mode_paiement ?? '');
+                $mode = strtolower(str_replace([' ', '-'], '_', $rawMode));
+                return $mode === 'offre';
+            })
+            ->sum(function ($panier) {
+                $montant = (float) ($panier->total_ttc ?? $panier->total ?? 0);
+
+                if ($montant <= 0 && $panier->relationLoaded('produits')) {
+                    $brut = $panier->produits->sum(function ($produit) {
+                        return ($produit->pivot->quantite ?? 0) * (($produit->pivot->prix ?? $produit->prix_vente) ?? 0);
+                    });
+                    $remise = (float) ($panier->total_remise ?? $panier->remise ?? 0);
+                    $montant = max(0, $brut - $remise);
+                }
+
+                return $montant;
+            });
+
+        $totauxParModePaiement = collect([
+            'Espèces' => 0.0,
+            'Mobile money' => 0.0,
+            'Carte' => 0.0,
+            'Offre' => 0.0,
+            'Compte client' => 0.0,
+        ]);
+
+        foreach ($paniersSession as $panier) {
+            $rawMode = strtolower((string) ($panier->commande?->mode_paiement ?? $panier->mode_paiement ?? ''));
+            $modeNorm = str_replace([' ', '-', 'é', 'è', 'ê', 'à'], ['_', '_', 'e', 'e', 'e', 'a'], $rawMode);
+
+            $label = match ($modeNorm) {
+                'especes', 'espece', 'cash' => 'Espèces',
+                'mobile_money', 'mobilemoney' => 'Mobile money',
+                'carte', 'card' => 'Carte',
+                'offre' => 'Offre',
+                'compte_client', 'credit', 'compteclient' => 'Compte client',
+                default => null,
+            };
+
+            if (!$label) {
+                continue;
+            }
+
+            $montant = (float) ($panier->total_ttc ?? $panier->total ?? 0);
+            if ($montant <= 0 && $panier->relationLoaded('produits')) {
+                $brut = $panier->produits->sum(function ($produit) {
+                    return ($produit->pivot->quantite ?? 0) * (($produit->pivot->prix ?? $produit->prix_vente) ?? 0);
+                });
+                $remise = (float) ($panier->total_remise ?? $panier->remise ?? 0);
+                $montant = max(0, $brut - $remise);
+            }
+
+            $totauxParModePaiement[$label] = ((float) $totauxParModePaiement[$label]) + $montant;
+        }
+
+        $soldeNet = $totalVente - $totalRemise - $totalCreance - $totalOffre;
+
         $entreprise = $pointDeVente?->entreprise ?? Entreprise::first();
 
         return compact(
@@ -192,7 +310,12 @@ class StockJournalierController extends Controller
             'heureFermeture',
             'sessionEnCours',
             'ventesParProduit',
-            'totalVente'
+            'totalVente',
+            'totalRemise',
+            'totalCreance',
+            'totalOffre',
+            'soldeNet',
+            'totauxParModePaiement'
         );
     }
 
@@ -370,20 +493,27 @@ class StockJournalierController extends Controller
 
         $data = $this->getStockJournalierSessionData($pointDeVenteId, $session, $selectedCategoryIds);
 
-        if ($onlySold) {
-            $data['produitsByCategory'] = self::filterProduitsForExport($data['produitsByCategory'], true);
-            $data['categoryTotals'] = $data['produitsByCategory']->map(function ($produits) {
-                return $produits->sum('total');
-            });
-            $data['totalVente'] = $data['categoryTotals']->sum();
-        }
-
-        // prepare simplified columns and totals
         $produitsByCategory = $data['produitsByCategory'];
-        $categoryTotals = $data['categoryTotals'];
+        $categoryTotals = $data['categoryTotals'] ?? collect();
         $totalVente = $data['totalVente'] ?? 0;
 
-        $exportData = compact('produitsByCategory', 'categoryTotals', 'totalVente') + $data;
+        if ($onlySold) {
+            $produitsByCategory = self::filterProduitsForExport($produitsByCategory, true);
+            $categoryTotals = $produitsByCategory->map(function ($produits) {
+                return $produits->sum('total');
+            });
+            $totalVente = $categoryTotals->sum();
+        }
+
+        $data['produitsByCategory'] = $produitsByCategory;
+        $data['categoryTotals'] = $categoryTotals;
+        $data['totalVente'] = $totalVente;
+
+        $exportData = [
+            'produitsByCategory' => $produitsByCategory,
+            'categoryTotals' => $categoryTotals,
+            'totalVente' => $totalVente,
+        ] + $data;
 
         // Filename and session formatting (JJ-MM HH-MM)
         $fileName = 'fiche_stock_80mm_'.$data['date'];

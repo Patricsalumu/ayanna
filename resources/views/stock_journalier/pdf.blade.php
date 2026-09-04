@@ -35,7 +35,8 @@
         <tbody>
         @foreach($produitsByCategory as $categorie => $produits)
             <tr style="background:#e0f2fe; color:#0f172a;">
-                <td colspan="8" style="padding:10px 12px; border:1px solid #bfdbfe; font-weight:700; font-size:14px;">{{ $categorie }}</td>
+                <td colspan="7" style="padding:10px 12px; border:1px solid #bfdbfe; font-weight:700; font-size:14px;">{{ $categorie }}</td>
+                <td style="padding:10px 12px; border:1px solid #bfdbfe; text-align:right; font-weight:700; font-size:13px;">{{ $company?->formatAmount($categoryTotals[$categorie] ?? 0, true, 2) }}</td>
             </tr>
             @foreach($produits as $produit)
                 <tr>
@@ -49,10 +50,6 @@
                     <td style="padding:8px; border:1px solid #dbeafe; text-align:right; font-weight:700;">{{ $company?->formatAmount($produit['total'], true, 2) }}</td>
                 </tr>
             @endforeach
-            <tr style="background:#dbeafe; color:#0f172a; font-weight:700;">
-                <td colspan="7" style="padding:10px 12px; border:1px solid #bfdbfe; text-align:right;">Total catégorie {{ $categorie }}</td>
-                <td style="padding:10px 12px; border:1px solid #bfdbfe; text-align:right;">{{ $company?->formatAmount($categoryTotals[$categorie] ?? 0, true, 2) }}</td>
-            </tr>
         @endforeach
         </tbody>
     </table>
@@ -60,5 +57,36 @@
     <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border:1px solid #bfdbfe; border-radius:12px; background:#eff6ff;">
         <div style="font-size:13px; color:#1f2937;">Total catégories : {{ count($produitsByCategory) }}</div>
         <div style="font-size:16px; font-weight:700; color:#1d4ed8;">Total vente session : {{ $company?->formatAmount($totalVente ?? 0, true, 2) }}</div>
+    </div>
+
+    <div style="margin-top:12px; border:1px solid #bfdbfe; border-radius:10px; overflow:hidden; background:#f8fafc;">
+        <div style="display:flex; justify-content:space-between; padding:8px 12px; border-bottom:1px solid #dbeafe; font-size:12px; color:#374151;">
+            <span>Remises</span>
+            <span>{{ $company?->formatAmount($totalRemise ?? 0, true, 2) }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:8px 12px; border-bottom:1px solid #dbeafe; font-size:12px; color:#374151;">
+            <span>Créances</span>
+            <span>{{ $company?->formatAmount($totalCreance ?? 0, true, 2) }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:8px 12px; border-bottom:1px solid #dbeafe; font-size:12px; color:#374151;">
+            <span>Offre</span>
+            <span>{{ $company?->formatAmount($totalOffre ?? 0, true, 2) }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding:10px 12px; font-size:14px; font-weight:700; color:#0f172a; background:#e0f2fe;">
+            <span>Solde net</span>
+            <span>{{ $company?->formatAmount($soldeNet ?? 0, true, 2) }}</span>
+        </div>
+    </div>
+
+    <div style="margin-top:12px; border:1px solid #bfdbfe; border-radius:10px; overflow:hidden; background:#ffffff;">
+        <div style="padding:8px 12px; font-size:12px; font-weight:700; color:#1f2937; border-bottom:1px solid #dbeafe; background:#f8fafc;">
+            Comptes par mode de paiement
+        </div>
+        @foreach(($totauxParModePaiement ?? collect()) as $mode => $val)
+            <div style="display:flex; justify-content:space-between; padding:8px 12px; border-bottom:1px solid #eef2ff; font-size:12px; color:#374151;">
+                <span>{{ $mode }}</span>
+                <span>{{ number_format($val, 0, ',', ' ') }} FC</span>
+            </div>
+        @endforeach
     </div>
 </div>

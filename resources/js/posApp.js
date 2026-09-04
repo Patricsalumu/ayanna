@@ -723,7 +723,18 @@ export function posApp() {
       html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Serveuse : <b>${serveuse?.name ?? '-'}</b></div>`;
       html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Table : <b>${table}</b> | Panier n° <b>${activePanierId ?? '-'}</b></div>`;
       if(type === 'paiement') {
-        html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Mode de paiement : <b>${this.paiement.modePaiement === 'espèces' ? 'Espèces' : (this.paiement.modePaiement === 'mobile_money' ? 'Mobile Money' : (this.paiement.modePaiement === 'compte_client' ? 'Compte Client' : this.paiement.modePaiement))}</b></div>`;
+        const modePaiementLibelle = this.paiement.modePaiement === 'espèces'
+          ? 'Espèces'
+          : (this.paiement.modePaiement === 'mobile_money'
+            ? 'Mobile Money'
+            : (this.paiement.modePaiement === 'compte_client'
+              ? 'Compte Client'
+              : (this.paiement.modePaiement === 'carte'
+                ? 'Carte'
+                : (this.paiement.modePaiement === 'offre'
+                  ? 'Offre'
+                  : this.paiement.modePaiement))));
+        html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Mode de paiement : <b>${modePaiementLibelle}</b></div>`;
       }
       html += `<div style='border-top:1px solid #111;margin:8px 0;'></div>`;
       html += `<table style='width:100%;font-size:15px;margin:0 auto;border-collapse:collapse;color:#111;font-weight:bold;'><thead><tr><th style='text-align:left;border-bottom:1px solid #111;padding:2px 0;font-weight:bold;'>Produit</th><th style='border-bottom:1px solid #111;padding:2px 0;font-weight:bold;'>Qté</th><th style='text-align:right;border-bottom:1px solid #111;padding:2px 0;font-weight:bold;'>Prix</th><th style='text-align:right;border-bottom:1px solid #111;padding:2px 0;font-weight:bold;'>Total</th></tr></thead><tbody>`;
