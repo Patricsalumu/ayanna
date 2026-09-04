@@ -48,20 +48,29 @@
             @endif
         </div>
         @php
-            $totalMontantsCalc = $totalMontants ?? 0;
-
+            $totalVenteCalc = $totalVente ?? $totalMontants ?? 0;
+            $totalRemiseCalc = $totalRemise ?? 0;
+            $totalOffreCalc = $totalOffre ?? 0;
             $totalPayeCalc = $totalPaye ?? 0;
             $totalCreditCalc = $totalCredit ?? 0;
         @endphp
 
-        <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="mb-6 grid grid-cols-1 md:grid-cols-6 gap-4">
             <div class="rounded-xl border border-blue-100 bg-blue-50 px-5 py-4">
                 <div class="text-sm font-medium text-blue-700">Total paniers</div>
                 <div id="totalPaniersDisplay" class="mt-1 text-2xl font-bold text-blue-900">{{ number_format($paniers->count(), 0, ',', ' ') }}</div>
             </div>
             <div class="rounded-xl border border-indigo-100 bg-indigo-50 px-5 py-4">
-                <div class="text-sm font-medium text-indigo-700">Total montant (TTC)</div>
-                <div id="totalMontantDisplay" class="mt-1 text-2xl font-bold text-indigo-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalMontantsCalc ?? 0, true, 2) }}</div>
+                <div class="text-sm font-medium text-indigo-700">Total vente</div>
+                <div id="totalVenteDisplay" class="mt-1 text-2xl font-bold text-indigo-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalVenteCalc ?? 0, true, 2) }}</div>
+            </div>
+            <div class="rounded-xl border border-rose-100 bg-rose-50 px-5 py-4">
+                <div class="text-sm font-medium text-rose-700">Remises</div>
+                <div id="totalRemiseDisplay" class="mt-1 text-2xl font-bold text-rose-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalRemiseCalc ?? 0, true, 2) }}</div>
+            </div>
+            <div class="rounded-xl border border-fuchsia-100 bg-fuchsia-50 px-5 py-4">
+                <div class="text-sm font-medium text-fuchsia-700">Offres</div>
+                <div id="totalOffreDisplay" class="mt-1 text-2xl font-bold text-fuchsia-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalOffreCalc ?? 0, true, 2) }}</div>
             </div>
             <div class="rounded-xl border border-green-100 bg-green-50 px-5 py-4">
                 <div class="text-sm font-medium text-green-700">Total payé</div>
@@ -158,6 +167,10 @@
                 <tr class="hover:bg-gray-100 {{ $panier->status !== 'annulé' ? 'cursor-pointer' : 'opacity-60' }} panier-row"
                     data-url="{{ $panier->status === 'en_cours' ? route('vente.catalogue', ['pointDeVente' => $panier->point_de_vente_id]) . '?table_id=' . $panier->table_id : '' }}"
                     data-panier-status="{{ $panier->status }}"
+                    data-mode="{{ strtolower(str_replace([' ', '-', 'é', 'è', 'ê'], ['_', '_', 'e', 'e', 'e'], $panier->commande?->mode_paiement ?? $panier->mode_paiement ?? 'compte_client')) }}"
+                    data-montant-vente="{{ $montantTtcSansRemises }}"
+                    data-remise="{{ $remise }}"
+                    data-net="{{ $netAPayer }}"
                     data-panier='@json($panierDetails)'
                     data-produits="{{ strtolower(collect($panier->produits)->pluck('nom')->implode(',')) }}">
                     <td class="p-3 font-semibold">{{ $panier->commande?->id ? 'Facture #' . $panier->commande->id : 'Panier #' . $panier->id }}</td>
@@ -170,9 +183,22 @@
                         @php
                             $modeRaw = $panier->commande?->mode_paiement ?? $panier->mode_paiement ?? 'compte_client';
                             $modeNorm = strtolower(str_replace(['_', '-', ' ', 'é', 'è', 'ê'], ['', '', '', 'e', 'e', 'e'], $modeRaw));
-                            $isCredit = str_contains($modeNorm, 'compte') || in_array($modeNorm, ['credit', 'compteclient', 'compte_client'], true);
-                            $modeLabel = $isCredit ? 'Crédit' : 'Espèces';
-                            $modeClass = $isCredit ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800';
+                            if (str_contains($modeNorm, 'compte') || in_array($modeNorm, ['credit', 'compteclient', 'compte_client'], true)) {
+                                $modeLabel = 'Crédit';
+                                $modeClass = 'bg-yellow-100 text-yellow-800';
+                            } elseif (in_array($modeNorm, ['mobilemoney', 'mobile_money', 'mobile'], true)) {
+                                $modeLabel = 'Mobile Money';
+                                $modeClass = 'bg-blue-100 text-blue-800';
+                            } elseif (in_array($modeNorm, ['carte', 'card'], true)) {
+                                $modeLabel = 'Carte';
+                                $modeClass = 'bg-indigo-100 text-indigo-800';
+                            } elseif ($modeNorm === 'offre') {
+                                $modeLabel = 'Offre';
+                                $modeClass = 'bg-fuchsia-100 text-fuchsia-800';
+                            } else {
+                                $modeLabel = 'Espèces';
+                                $modeClass = 'bg-green-100 text-green-800';
+                            }
                         @endphp
                         <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold {{ $modeClass }}">{{ $modeLabel }}</span>
                     </td>
@@ -444,31 +470,47 @@
         const table = document.querySelector('table');
         const rows = Array.from(table.querySelectorAll('tbody tr'));
         let visibleCount = 0;
-        let totalMontant = 0;
-        let totalPaye = 0;
+        let totalVente = 0;
+        let totalRemise = 0;
+        let totalOffre = 0;
         let totalCredit = 0;
+        let totalEspeces = 0;
+        let totalCarte = 0;
+        let totalMobileMoney = 0;
 
         rows.forEach(row => {
             if (row.style.display === 'none') return;
             const tds = row.querySelectorAll('td');
             if (!tds.length) return;
-            // Montant is in column index 7 (0-based)
-            const montantText = tds[7]?.textContent.trim() || '0';
-            const montant = parseFloat(montantText.replace(/[^\d,.-]/g, '').replace(',', '.')) || 0;
-            const modeText = (tds[6]?.textContent || '').toLowerCase();
+            const montantVente = Number(row.dataset.montantVente || 0);
+            const remise = Number(row.dataset.remise || 0);
+            const montantNet = Number(row.dataset.net || 0);
+            const mode = (row.dataset.mode || '').toLowerCase();
 
             visibleCount += 1;
-            totalMontant += montant;
-            if (modeText.includes('crédit') || modeText.includes('credit')) {
-                totalCredit += montant;
+            totalVente += montantVente;
+            totalRemise += remise;
+
+            if (mode.includes('compte') || mode === 'credit' || mode === 'compteclient' || mode === 'compte_client') {
+                totalCredit += montantNet;
+            } else if (mode === 'offre') {
+                totalOffre += montantNet;
+            } else if (mode === 'carte' || mode === 'card') {
+                totalCarte += montantNet;
+            } else if (mode === 'mobile_money' || mode === 'mobilemoney' || mode === 'mobile') {
+                totalMobileMoney += montantNet;
             } else {
-                totalPaye += montant;
+                totalEspeces += montantNet;
             }
         });
 
+        const totalPaye = totalEspeces + totalCarte + totalMobileMoney;
+
         // Mettre à jour l'affichage
         document.getElementById('totalPaniersDisplay').textContent = new Intl.NumberFormat('fr-FR').format(visibleCount);
-        document.getElementById('totalMontantDisplay').textContent = formatCurrency(totalMontant);
+        document.getElementById('totalVenteDisplay').textContent = formatCurrency(totalVente);
+        document.getElementById('totalRemiseDisplay').textContent = formatCurrency(totalRemise);
+        document.getElementById('totalOffreDisplay').textContent = formatCurrency(totalOffre);
         document.getElementById('totalPayeDisplay').textContent = formatCurrency(totalPaye);
         document.getElementById('totalCreditDisplay').textContent = formatCurrency(totalCredit);
     }

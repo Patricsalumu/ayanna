@@ -520,21 +520,70 @@ class PanierController extends Controller
 
         $paniersActifs = $paniers->reject(fn($panier) => $panier->status === 'annulé');
         $totalPaniers = $paniersActifs->count();
-        $totalMontants = $paniersActifs->sum(fn($panier) => $this->montantPanierAffiche($panier));
 
-        $totalPaye = $paniersActifs
-            ->filter(function ($panier) {
-                return !$this->estModeCreditPaiement($panier->commande?->mode_paiement ?? $panier->mode_paiement);
-            })
-            ->sum(fn($panier) => $this->montantPanierAffiche($panier));
+        $totalVente = $paniersActifs->sum(fn($panier) => $this->montantPanierSansRemise($panier));
+        $totalRemise = $paniersActifs->sum(fn($panier) => (float) ($panier->total_remise ?? $panier->remise ?? 0));
 
-        $totalCredit = $paniersActifs
-            ->filter(function ($panier) {
-                return $this->estModeCreditPaiement($panier->commande?->mode_paiement ?? $panier->mode_paiement);
-            })
-            ->sum(fn($panier) => $this->montantPanierAffiche($panier));
+        $totalCredit = 0.0;
+        $totalOffre = 0.0;
+        $totalEspeces = 0.0;
+        $totalCarte = 0.0;
+        $totalMobileMoney = 0.0;
 
-        return compact('paniers', 'sessions', 'selectedSession', 'selectedSessionFrom', 'selectedSessionTo', 'selectedPaymentType', 'searchTerm', 'totalPaniers', 'totalMontants', 'totalPaye', 'totalCredit', 'pointDeVenteId');
+        foreach ($paniersActifs as $panier) {
+            $mode = $this->normalizeModePaiement($panier->commande?->mode_paiement ?? $panier->mode_paiement);
+            $montantNet = $this->montantPanierAffiche($panier);
+
+            if ($this->estModeCreditPaiement($mode)) {
+                $totalCredit += $montantNet;
+                continue;
+            }
+
+            if ($this->estModeOffrePaiement($mode)) {
+                $totalOffre += $montantNet;
+                continue;
+            }
+
+            if ($this->estModeCartePaiement($mode)) {
+                $totalCarte += $montantNet;
+                continue;
+            }
+
+            if ($this->estModeMobileMoneyPaiement($mode)) {
+                $totalMobileMoney += $montantNet;
+                continue;
+            }
+
+            $totalEspeces += $montantNet;
+        }
+
+        $totalPaye = $totalEspeces + $totalCarte + $totalMobileMoney;
+        $soldeTheorique = max(0, $totalVente - $totalRemise - $totalCredit - $totalOffre);
+
+        // Alias conservé pour compatibilité avec les vues existantes.
+        $totalMontants = $totalVente;
+
+        return compact(
+            'paniers',
+            'sessions',
+            'selectedSession',
+            'selectedSessionFrom',
+            'selectedSessionTo',
+            'selectedPaymentType',
+            'searchTerm',
+            'totalPaniers',
+            'totalMontants',
+            'totalVente',
+            'totalRemise',
+            'totalOffre',
+            'totalCredit',
+            'totalPaye',
+            'totalEspeces',
+            'totalCarte',
+            'totalMobileMoney',
+            'soldeTheorique',
+            'pointDeVenteId'
+        );
     }
 
     private function normalizeModePaiement(?string $mode): string
@@ -552,6 +601,24 @@ class PanierController extends Controller
             || in_array($modeNorm, ['credit', 'compteclient', 'compte_client'], true);
     }
 
+    private function estModeCartePaiement(?string $mode): bool
+    {
+        $modeNorm = $this->normalizeModePaiement($mode);
+        return in_array($modeNorm, ['carte', 'card'], true);
+    }
+
+    private function estModeOffrePaiement(?string $mode): bool
+    {
+        $modeNorm = $this->normalizeModePaiement($mode);
+        return $modeNorm === 'offre';
+    }
+
+    private function estModeMobileMoneyPaiement(?string $mode): bool
+    {
+        $modeNorm = $this->normalizeModePaiement($mode);
+        return in_array($modeNorm, ['mobile_money', 'mobilemoney', 'mobile'], true);
+    }
+
     private function montantPanier(Panier $panier): float
     {
         return (float) $panier->produits->sum(function ($produit) {
@@ -566,6 +633,21 @@ class PanierController extends Controller
         }
 
         return (float) ($panier->total_ttc ?? $this->montantPanier($panier));
+    }
+
+    private function montantPanierSansRemise(Panier $panier): float
+    {
+        $totalTva = (float) ($panier->total_tva ?? 0);
+
+        if (($panier->status ?? '') === 'en_cours') {
+            return max(0, $this->montantPanier($panier) + $totalTva);
+        }
+
+        if ($panier->total_ht !== null) {
+            return max(0, (float) $panier->total_ht + $totalTva);
+        }
+
+        return max(0, $this->montantPanier($panier) + $totalTva);
     }
 
     private function roleNePeutPasDiminuerPanier(): bool
