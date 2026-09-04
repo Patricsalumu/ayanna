@@ -344,6 +344,22 @@
     </template>
   </div>
 </div>
+
+<div x-show="afterPrintModalOpen" x-transition style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 text-center">
+    <div class="text-2xl font-bold text-gray-800 mb-3">Impression terminée</div>
+    <p class="text-gray-600 mb-6">Que souhaitez-vous faire maintenant ?</p>
+    <div class="flex flex-col sm:flex-row gap-3 justify-center">
+      <button type="button" @click="continueCatalogueAfterPrint()" class="px-5 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">
+        Continuer sur le catalogue
+      </button>
+      <button type="button" @click="logoutServeuse()" class="px-5 py-3 rounded-xl bg-gray-800 text-white font-semibold hover:bg-gray-700 transition">
+        Déconnexion
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Ticket d'addition imprimable (généré dynamiquement) -->
 <div id="ticket-addition" style="display:none;"></div>
 @vite(['resources/js/app.js'])

@@ -80,9 +80,6 @@
                      title="Entrées-sorties">
                      Entrées-sorties
                   </a>
-                  @else
-                  <a href="{{ route('paniers.jour') }}" class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4 block" title="Mes factures">Mes factures</a>
-                  <a href="{{ route('bon-commande.index', isset($pointDeVente) && is_object($pointDeVente) ? ['point_de_vente_id' => $pointDeVente->id] : []) }}" class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4 block" title="Mes bons">Mes bons</a>
                   @endif
                   @php
                       $hasPanierEnCours = (isset($pointDeVente) && is_object($pointDeVente) && method_exists($pointDeVente, 'getAttribute')) ? \App\Models\Panier::where('point_de_vente_id', $pointDeVente->id)

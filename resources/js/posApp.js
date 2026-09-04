@@ -36,6 +36,7 @@ export function posApp() {
     search: window.INITIAL_SEARCH || '',
     selectedIndex: null,
     showOptions: false,
+    afterPrintModalOpen: false,
     currentCat: (() => {
       if (window.INITIAL_CATEGORY !== undefined && window.INITIAL_CATEGORY !== null && window.INITIAL_CATEGORY !== '') {
         return Number(window.INITIAL_CATEGORY);
@@ -160,6 +161,17 @@ export function posApp() {
       }
 
       window.location.href = '/serveuse-login';
+    },
+    openAfterPrintModal() {
+      this.afterPrintModalOpen = true;
+    },
+    closeAfterPrintModal() {
+      this.afterPrintModalOpen = false;
+    },
+    continueCatalogueAfterPrint() {
+      this.afterPrintModalOpen = false;
+      this.mode = 'commande';
+      this.selectedIndex = null;
     },
     
     get totalHt(){
@@ -734,15 +746,39 @@ export function posApp() {
       html += `<div style='text-align:center;font-size:13px;margin-top:10px;color:#111;font-weight:bold;'>Généré par Ayanna &copy; | ${dateStr} ${heureStr}</div>`;
       html += `</div>`;
       document.getElementById('ticket-addition').innerHTML = html;
-      const printWindow = window.open('', '', 'width=900,height=800');
+
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '-9999px';
+      iframe.style.bottom = '-9999px';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+
+      const printWindow = iframe.contentWindow;
+      printWindow.document.open();
       printWindow.document.write('<html><head><title>Préfacture</title>');
       printWindow.document.write('<style>html,body{margin:0;padding:0;background:#fff;color:#111;}body{display:flex;justify-content:center;}@media print{body{width:75mm!important;background:#fff;color:#111;}}</style>');
-      printWindow.document.write('</head><body >');
+      printWindow.document.write('</head><body>');
       printWindow.document.write(html);
       printWindow.document.write('</body></html>');
       printWindow.document.close();
       printWindow.focus();
-      setTimeout(()=>{printWindow.print(); printWindow.close();}, 800);
+
+      setTimeout(() => {
+        try {
+          printWindow.print();
+        } catch (printErr) {
+          console.error('Erreur lors de l’impression de la préfacture :', printErr);
+        }
+      }, 300);
+
+      setTimeout(() => {
+        try { iframe.remove(); } catch (e) {}
+        this.openAfterPrintModal();
+      }, 1000);
+
       if (panier.length && activePanierId) {
         fetch(`/panier/impression/${activePanierId}`, {
           method: 'POST',
@@ -822,20 +858,9 @@ export function posApp() {
           } catch (e) {}
         }, 600);
 
-        const redirectToPlanVente = () => {
-          const entrepriseId = window.ENTREPRISE_ID || window.ENTREPRISE?.id || '';
-          const pointDeVenteId = window.POINT_DE_VENTE_ID || '';
-          const salleId = window.SALLE_ID || '';
-          if (entrepriseId && salleId && pointDeVenteId) {
-            window.location.href = `/entreprises/${encodeURIComponent(entrepriseId)}/salles/${encodeURIComponent(salleId)}/plan-vente?point_de_vente_id=${encodeURIComponent(pointDeVenteId)}`;
-          } else if (pointDeVenteId) {
-            window.location.href = `/vente/catalogue/${encodeURIComponent(pointDeVenteId)}`;
-          } else {
-            window.location.reload();
-          }
-        };
-
-        setTimeout(redirectToPlanVente, 500);
+        setTimeout(() => {
+          this.openAfterPrintModal();
+        }, 500);
       } catch (err) {
         console.error('Erreur impression bon commande :', err);
         alert('❌ Erreur d\'impression du bon de commande.\n\nVérifiez votre connexion internet ou réessayez.');
