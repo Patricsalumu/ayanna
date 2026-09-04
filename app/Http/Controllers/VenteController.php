@@ -416,6 +416,106 @@ class VenteController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    public function syncPanier(Request $request)
+    {
+        try {
+            $tableId = $request->input('table_id');
+            $pointDeVenteId = $request->input('point_de_vente_id');
+            $items = $request->input('panier', []);
+
+            if (!$tableId || !$pointDeVenteId) {
+                return response()->json(['success' => false, 'error' => 'Aucune table ou point de vente sélectionné'], 422);
+            }
+
+            if (!is_array($items)) {
+                return response()->json(['success' => false, 'error' => 'Le panier est invalide'], 422);
+            }
+
+            $panier = Panier::firstOrCreate(
+                ['table_id' => $tableId, 'status' => 'en_cours'],
+                [
+                    'point_de_vente_id' => $pointDeVenteId,
+                    'opened_by' => Auth::id(),
+                ]
+            );
+
+            $syncData = [];
+            foreach ($items as $item) {
+                $produitId = $item['id'] ?? null;
+                $quantite = (int) ($item['qte'] ?? 0);
+                $prix = (float) ($item['prix'] ?? 0);
+
+                if (!$produitId || $quantite <= 0) {
+                    continue;
+                }
+
+                $syncData[(int) $produitId] = [
+                    'quantite' => $quantite,
+                    'prix' => $prix,
+                ];
+            }
+
+            $panier->produits()->sync($syncData);
+            $panier->update([
+                'point_de_vente_id' => $pointDeVenteId,
+                'last_modified_by' => Auth::id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'panier_id' => $panier->id,
+                'count' => count($syncData),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Erreur syncPanier: '.$e->getMessage(), ['exception' => $e]);
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur serveur: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function getPanierEnBase(Request $request)
+    {
+        $panierId = $request->query('panier_id');
+        $tableId = $request->query('table_id');
+        $pointDeVenteId = $request->query('point_de_vente_id');
+
+        $query = Panier::query()->where('status', 'en_cours')->with('produits');
+
+        if ($panierId) {
+            $query->where('id', $panierId);
+        } elseif ($tableId && $pointDeVenteId) {
+            $query->where('table_id', $tableId)
+                ->where('point_de_vente_id', $pointDeVenteId);
+        } elseif ($tableId) {
+            $query->where('table_id', $tableId);
+        } else {
+            return response()->json(['success' => false, 'error' => 'Identifiant du panier ou de la table manquant'], 422);
+        }
+
+        $panier = $query->first();
+
+        if (!$panier) {
+            return response()->json(['success' => true, 'panier' => [], 'panier_id' => null]);
+        }
+
+        $items = $panier->produits->map(function ($produit) use ($panier) {
+            $salleId = \App\Models\TableResto::find($panier->table_id)?->salle_id;
+            return [
+                'id' => $produit->id,
+                'nom' => $produit->nom,
+                'prix' => $produit->pivot->prix ?? $produit->prixPourSalle($salleId),
+                'qte' => (int) $produit->pivot->quantite,
+                'image' => $produit->image ? asset('storage/'.$produit->image) : null,
+                'cat_id' => $produit->categorie_id,
+                'panier_id' => $panier->id,
+            ];
+        })->filter(fn ($item) => (int) ($item['qte'] ?? 0) > 0)->values()->all();
+
+        return response()->json(['success' => true, 'panier' => $items, 'panier_id' => $panier->id]);
+    }
+
     public function valider(Request $request)
     {
         try {

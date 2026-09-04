@@ -8,8 +8,31 @@ export function posApp() {
     bonCommandePrintEnCours: false,
     showNavMenu: false,
     showPaiement: false,
-    produits: window.PRODUITS_ARRAY,
-    panier: window.PANIER_ARRAY,
+    produits: (() => {
+      const cached = localStorage.getItem('ayanna_catalogue_produits');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length) {
+            return parsed;
+          }
+        } catch (e) {}
+      }
+      return window.PRODUITS_ARRAY || [];
+    })(),
+    panier: (() => {
+      const key = `ayanna_panier_${window.TABLE_COURANTE || 'no-table'}`;
+      const cached = localStorage.getItem(key);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed)) {
+            return parsed;
+          }
+        } catch (e) {}
+      }
+      return window.PANIER_ARRAY || [];
+    })(),
     search: window.INITIAL_SEARCH || '',
     selectedIndex: null,
     showOptions: false,
@@ -67,6 +90,45 @@ export function posApp() {
         return '';
       }
       return value.length > maxLength ? `${value.slice(0, maxLength)}…` : value;
+    },
+    getLocalCacheKey(prefix) {
+      return `${prefix}_${window.POINT_DE_VENTE_ID || 'global'}_${window.TABLE_COURANTE || 'no-table'}`;
+    },
+    persistCachedCart() {
+      const key = this.getLocalCacheKey('ayanna_panier');
+      localStorage.setItem(key, JSON.stringify(this.panier || []));
+      localStorage.setItem('ayanna_catalogue_produits', JSON.stringify(this.produits || []));
+    },
+    async refreshCatalogueFromServer() {
+      try {
+        const response = await fetch(`${window.location.pathname}?ajax=1`, {
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (Array.isArray(data.produits)) {
+          this.produits = data.produits;
+          localStorage.setItem('ayanna_catalogue_produits', JSON.stringify(this.produits));
+        }
+
+        if (Array.isArray(data.tables)) {
+          localStorage.setItem('ayanna_tables', JSON.stringify(data.tables));
+        }
+
+        if (Array.isArray(data.serveuses)) {
+          localStorage.setItem('ayanna_serveuses', JSON.stringify(data.serveuses));
+        }
+      } catch (error) {
+        console.warn('Rafraîchissement catalogue impossible:', error);
+        alert('Impossible de rafraîchir les données pour le moment. Le cache local reste actif.');
+      }
     },
     
     get totalHt(){
@@ -149,6 +211,46 @@ export function posApp() {
         return null;
       }
     },
+    async syncPanierToServer() {
+      if (!window.TABLE_COURANTE || !window.POINT_DE_VENTE_ID) {
+        return { success: true, skipped: true };
+      }
+
+      const payload = (this.panier || []).filter(item => Number(item.qte || 0) > 0).map(item => ({
+        id: item.id,
+        qte: Number(item.qte || 0),
+        prix: Number(item.prix || 0),
+        nom: item.nom || '',
+      }));
+
+      if (!payload.length) {
+        return { success: true, skipped: true };
+      }
+
+      const response = await fetch('/vente/panier/sync', {
+        method: 'POST',
+        headers: {
+          'X-CSRF-TOKEN': window.CSRF_TOKEN,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          table_id: window.TABLE_COURANTE,
+          point_de_vente_id: window.POINT_DE_VENTE_ID,
+          panier: payload,
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Impossible de sauvegarder le panier');
+      }
+
+      if (data.panier_id) {
+        window.PANIER_ID = data.panier_id;
+      }
+
+      return data;
+    },
     selectCat(id) {
       this.currentCat = Number(id);
     },
@@ -159,30 +261,9 @@ export function posApp() {
       const idx = this.panier.findIndex(i => i.id === prod.id);
       if (idx >= 0) this.panier[idx].qte++;
       else this.panier.push({ ...prod, qte: 1 });
-      fetch(`/vente/panier/ajouter/${prod.id}`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': window.CSRF_TOKEN,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            quantite: 1,
-            table_id: window.TABLE_COURANTE,
-            point_de_vente_id: window.POINT_DE_VENTE_ID
-        })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          this.panier = data.panier;
-        } else {
-          alert(data.error || "Une erreur s'est produite");
-        }
-      })
-      .catch(err => {
-        console.error("Erreur réseau :", err);
-        alert("Erreur de connexion avec le serveur");
-      });
+
+      this.persistCachedCart();
+      return;
     },
     setClient(id) {
       fetch(window.SET_CLIENT_URL, {
@@ -401,40 +482,17 @@ export function posApp() {
           item.qte--;
         }
       }
-      // Appel AJAX pour MAJ la base si la quantité a changé
+      // Sauvegarde locale seulement : la commande finale sera enregistrée en base
       if(item.qte !== oldQte) {
         if(this.isQuantityRestricted() && item.qte < oldQte && !passwordAdmin) {
           item.qte = oldQte;
           return;
         }
-        fetch(`/panier/modifier-produit/${item.id}`, {
-          method: 'POST',
-          headers: {
-            'X-CSRF-TOKEN': window.CSRF_TOKEN,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            quantite: item.qte,
-            table_id: window.TABLE_COURANTE,
-            point_de_vente_id: window.POINT_DE_VENTE_ID,
-            password_admin: passwordAdmin
-          })
-        })
-        .then(res => res.json())
-        .then(data => {
-          if(data.success) {
-            this.panier = data.panier ? data.panier.filter(p => p.qte > 0) : [];
-            if(this.selectedIndex !== null && this.selectedIndex >= this.panier.length) {
-              this.selectedIndex = this.panier.length > 0 ? this.panier.length-1 : null;
-            }
-          } else {
-            alert(data.error || "Erreur lors de la mise à jour du panier");
-          }
-        })
-        .catch(err => {
-          console.error("Erreur réseau :", err);
-          alert("Erreur de connexion avec le serveur");
-        });
+        this.panier = this.panier.filter(p => p.qte > 0);
+        this.persistCachedCart();
+        if(this.selectedIndex !== null && this.selectedIndex >= this.panier.length) {
+          this.selectedIndex = this.panier.length > 0 ? this.panier.length-1 : null;
+        }
       }
     },
     ajouterChiffre(valeur) {
@@ -455,59 +513,58 @@ export function posApp() {
       }
     },
     validerPaiement() {
-      // Exemple de logique de validation du paiement
       if (this.paiement.montantRecu <= 0) {
         alert('Veuillez saisir un montant reçu supérieur à zéro.');
         return;
       }
-      // Appel AJAX pour valider le paiement côté serveur
-      fetch('/vente/valider', {
-        method: 'POST',
-        headers: {
-          'X-CSRF-TOKEN': window.CSRF_TOKEN,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          montant_recu: this.paiement.montantRecu,
-          monnaie: this.paiement.monnaie,
-          mode_paiement: this.paiement.modePaiement,
-          client_id: this.paiement.client_id,
-          serveuse_id: this.paiement.serveuse_id,
-          remise: this.canApplyDiscount ? this.remise : 0,
-          table_id: window.TABLE_COURANTE,
-          point_de_vente_id: window.POINT_DE_VENTE_ID,
-          panier_id: (this.panier && this.panier.length && this.panier[0].panier_id) ? this.panier[0].panier_id : (window.PANIER_ID || null)
+
+      this.syncPanierToServer()
+        .then(() => fetch('/vente/valider', {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': window.CSRF_TOKEN,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            montant_recu: this.paiement.montantRecu,
+            monnaie: this.paiement.monnaie,
+            mode_paiement: this.paiement.modePaiement,
+            client_id: this.paiement.client_id,
+            serveuse_id: this.paiement.serveuse_id,
+            remise: this.canApplyDiscount ? this.remise : 0,
+            table_id: window.TABLE_COURANTE,
+            point_de_vente_id: window.POINT_DE_VENTE_ID,
+            panier_id: (this.panier && this.panier.length && this.panier[0].panier_id) ? this.panier[0].panier_id : (window.PANIER_ID || null)
+          })
+        }))
+        .then(res => res.json())
+        .then(data => {
+          if(data.notification) {
+            alert(data.notification);
+          }
+          if(data.success && data.redirect_url) {
+            window.location.href = data.redirect_url;
+          } else if(data.success && data.nouveau_panier_id) {
+            alert('Paiement validé ! Nouveau panier prêt.');
+            window.location.reload();
+          } else if(data.success) {
+            alert('Paiement validé !');
+            this.mode = 'commande';
+            this.paiement.montantRecu = 0;
+            this.paiement.monnaie = 0;
+          } else {
+            alert(data.error || 'Erreur lors du paiement');
+          }
         })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if(data.notification) {
-          alert(data.notification);
-        }
-        if(data.success && data.redirect_url) {
-          window.location.href = data.redirect_url;
-        } else if(data.success && data.nouveau_panier_id) {
-          alert('Paiement validé ! Nouveau panier prêt.');
-          // Recharge la page avec le nouvel ID de panier/table (ou reload pour rafraîchir l'état)
-          window.location.reload();
-        } else if(data.success) {
-          alert('Paiement validé !');
-          this.mode = 'commande';
-          this.paiement.montantRecu = 0;
-          this.paiement.monnaie = 0;
-        } else {
-          alert(data.error || 'Erreur lors du paiement');
-        }
-      })
-      .catch(() => alert('Erreur de connexion avec le serveur'));
+        .catch(() => alert('Erreur de connexion avec le serveur'));
     },
     async validerEtImprimer() {
-      // Même logique que validerPaiement mais imprime si succès
       if (this.paiement.montantRecu <= 0) {
         alert('Veuillez saisir un montant reçu supérieur à zéro.');
         return;
       }
       try {
+        await this.syncPanierToServer();
         const response = await fetch('/vente/valider', {
           method: 'POST',
           headers: {
@@ -544,59 +601,103 @@ export function posApp() {
         alert('Erreur de connexion avec le serveur');
       }
     },
-    printAddition(type = 'proforma') {
-      const panier = this.panier || [];
+    async printAddition(type = 'proforma') {
+      const tableId = window.TABLE_COURANTE;
+      const pointDeVenteId = window.POINT_DE_VENTE_ID;
+      const panierId = window.PANIER_ID || null;
+      let panier = Array.isArray(this.panier) ? this.panier.filter(item => Number(item.qte || 0) > 0) : [];
+
+      try {
+        const payloadExists = panier.length > 0;
+        if (payloadExists) {
+          await this.syncPanierToServer();
+        }
+      } catch (error) {
+        console.warn('Synchronisation panier avant impression impossible:', error);
+      }
+
+      const query = new URLSearchParams();
+      if (window.PANIER_ID) {
+        query.set('panier_id', String(window.PANIER_ID));
+      } else if (panierId) {
+        query.set('panier_id', String(panierId));
+      } else if (tableId) {
+        query.set('table_id', String(tableId));
+      }
+      if (pointDeVenteId) {
+        query.set('point_de_vente_id', String(pointDeVenteId));
+      }
+
+      if (query.toString()) {
+        try {
+          const response = await fetch(`/vente/panier/base?${query.toString()}`);
+          const data = await response.json();
+          if (data && Array.isArray(data.panier)) {
+            panier = data.panier.filter(item => Number(item.qte || 0) > 0);
+            if (data.panier_id) {
+              window.PANIER_ID = data.panier_id;
+            }
+          }
+        } catch (error) {
+          console.warn('Impossible de récupérer le panier enregistré en base pour l’impression:', error);
+          panier = [];
+        }
+      }
+
+      if ((!panier || !panier.length) && Array.isArray(this.panier) && this.panier.length) {
+        panier = this.panier.filter(item => Number(item.qte || 0) > 0);
+      }
+
       const table = window.TABLE_COURANTE_LABEL || '';
-      const pointDeVente = window.POINT_DE_VENTE_NOM || '';
       const entreprise = window.ENTREPRISE || {};
-      // Infos client/serveuse/table/panier
       const client = this.paiement.client_id ? (window.CLIENTS?.find?.(c => c.id == this.paiement.client_id) ?? null) : null;
       const serveuse = this.paiement.serveuse_id ? (window.SERVEUSES?.find?.(s => s.id == this.paiement.serveuse_id) ?? null) : null;
-      const panierId = window.PANIER_ID;
+      const activePanierId = window.PANIER_ID || panierId;
+
+      const baseTotalHt = panier.reduce((sum, item) => sum + (Number(item.qte || 0) * Number(item.prix || 0)), 0);
+      const baseTotalRemise = Number(this.totalRemise || 0);
+      const baseTotal = Math.max(0, baseTotalHt - baseTotalRemise);
       let total = 0;
       let now = new Date();
       let dateStr = now.toLocaleDateString('fr-FR');
       let heureStr = now.toLocaleTimeString('fr-FR');
       let html = `<div style='width:75mm;padding:0;margin:0;font-family:monospace;background:#fff;color:#111;box-sizing:border-box;font-weight:bold;'>`;
-      // Type de reçu
       if(type === 'proforma') {
         html += `<div style='text-align:center;font-size:20px;font-weight:bold;color:#111;margin-bottom:6px;letter-spacing:0.5px;'>PRE-FACTURE</div>`;
       } else {
         html += `<div style='text-align:center;font-size:20px;font-weight:bold;color:#111;margin-bottom:6px;letter-spacing:0.5px;'>REÇU DE PAIEMENT</div>`;
       }
-      // Logo
       if(entreprise.logo) {
         html += `<div style='text-align:center;'><img src='${window.location.origin}/storage/${entreprise.logo}' style='max-width:56px;max-height:56px;margin-bottom:6px;display:block;margin-left:auto;margin-right:auto;'/></div>`;
       }
-      // Nom + infos entreprise
       html += `<div style='text-align:center;font-weight:bold;font-size:20px;color:#111;'>${entreprise.nom ?? ''}</div>`;
       if(entreprise.numero_entreprise) html += `<div style='text-align:center;font-size:14px;color:#111;'>N° Entreprise : ${entreprise.numero_entreprise}</div>`;
       if(entreprise.email) html += `<div style='text-align:center;font-size:14px;color:#111;'>${entreprise.email}</div>`;
       if(entreprise.telephone) html += `<div style='text-align:center;font-size:14px;color:#111;'>${entreprise.telephone}</div>`;
       if(entreprise.adresse) html += `<div style='text-align:center;font-size:14px;color:#111;'>${entreprise.adresse}</div>`;
       html += `<div style='border-top:1px solid #111;margin:8px 0;'></div>`;
-      // Infos client/serveuse/table/panier
       html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Client : <b>${client?.nom ?? '-'}</b></div>`;
       html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Serveuse : <b>${serveuse?.name ?? '-'}</b></div>`;
-      html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Table : <b>${table}</b> | Panier n° <b>${panierId ?? '-'}</b></div>`;
+      html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Table : <b>${table}</b> | Panier n° <b>${activePanierId ?? '-'}</b></div>`;
       if(type === 'paiement') {
         html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Mode de paiement : <b>${this.paiement.modePaiement === 'espèces' ? 'Espèces' : (this.paiement.modePaiement === 'mobile_money' ? 'Mobile Money' : (this.paiement.modePaiement === 'compte_client' ? 'Compte Client' : this.paiement.modePaiement))}</b></div>`;
       }
       html += `<div style='border-top:1px solid #111;margin:8px 0;'></div>`;
-      // Tableau produits
       html += `<table style='width:100%;font-size:15px;margin:0 auto;border-collapse:collapse;color:#111;font-weight:bold;'><thead><tr><th style='text-align:left;border-bottom:1px solid #111;padding:2px 0;font-weight:bold;'>Produit</th><th style='border-bottom:1px solid #111;padding:2px 0;font-weight:bold;'>Qté</th><th style='text-align:right;border-bottom:1px solid #111;padding:2px 0;font-weight:bold;'>Prix</th><th style='text-align:right;border-bottom:1px solid #111;padding:2px 0;font-weight:bold;'>Total</th></tr></thead><tbody>`;
-      panier.filter(item=>item.qte>0).forEach(item => {
-        const lineTotal = item.qte * item.prix;
+      panier.forEach(item => {
+        const qte = Number(item.qte || 0);
+        const prix = Number(item.prix || 0);
+        const lineTotal = qte * prix;
         total += lineTotal;
-        html += `<tr><td style='word-break:break-all;padding:2px 0;border-bottom:1px solid rgba(17,17,17,0.4);color:#111;font-weight:bold;'>${item.nom}</td><td style='text-align:center;padding:2px 0;border-bottom:1px solid rgba(17,17,17,0.4);color:#111;font-weight:bold;'>${item.qte}</td><td style='text-align:right;padding:2px 0;border-bottom:1px solid rgba(17,17,17,0.4);color:#111;font-weight:bold;'>${this.formatMoney(item.prix)}</td><td style='text-align:right;padding:2px 0;border-bottom:1px solid rgba(17,17,17,0.4);color:#111;font-weight:bold;'>${this.formatMoney(lineTotal)}</td></tr>`;
+        html += `<tr><td style='word-break:break-all;padding:2px 0;border-bottom:1px solid rgba(17,17,17,0.4);color:#111;font-weight:bold;'>${item.nom}</td><td style='text-align:center;padding:2px 0;border-bottom:1px solid rgba(17,17,17,0.4);color:#111;font-weight:bold;'>${qte}</td><td style='text-align:right;padding:2px 0;border-bottom:1px solid rgba(17,17,17,0.4);color:#111;font-weight:bold;'>${this.formatMoney(prix)}</td><td style='text-align:right;padding:2px 0;border-bottom:1px solid rgba(17,17,17,0.4);color:#111;font-weight:bold;'>${this.formatMoney(lineTotal)}</td></tr>`;
       });
       html += `</tbody></table>`;
       html += `<div style='border-top:1px solid #111;margin:8px 0;'></div>`;
-      html += `<div style='text-align:right;font-size:16px;color:#111;font-weight:bold;'>Sous-total : ${this.formatMoney(this.totalHt)}</div>`;
-      html += `<div style='text-align:right;font-size:16px;color:#111;font-weight:bold;'>Remise : ${this.formatMoney(this.totalRemise)}</div>`;
-      html += `<div style='text-align:right;font-size:20px;font-weight:bold;color:#111;'>Net à payer : ${this.formatMoney(this.total)}</div>`;
-      if (this.showFEquivalent(this.total)) {
-        html += `<div style='text-align:right;font-size:15px;color:#111;font-weight:bold;'>Équivalent F : ${this.formatFEquivalent(this.total)}</div>`;
+      html += `<div style='text-align:right;font-size:16px;color:#111;font-weight:bold;'>Sous-total : ${this.formatMoney(baseTotalHt)}</div>`;
+      html += `<div style='text-align:right;font-size:16px;color:#111;font-weight:bold;'>Remise : ${this.formatMoney(baseTotalRemise)}</div>`;
+      html += `<div style='text-align:right;font-size:20px;font-weight:bold;color:#111;'>Net à payer : ${this.formatMoney(baseTotal)}</div>`;
+      if (this.showFEquivalent(baseTotal)) {
+        html += `<div style='text-align:right;font-size:15px;color:#111;font-weight:bold;'>Équivalent F : ${this.formatFEquivalent(baseTotal)}</div>`;
       }
       html += `<div style='text-align:center;font-size:15px;margin-top:12px;color:#111;font-weight:bold;'>Merci pour votre visite !</div>`;
       html += `<div style='text-align:center;font-size:13px;margin-top:10px;color:#111;font-weight:bold;'>Généré par Ayanna &copy; | ${dateStr} ${heureStr}</div>`;
@@ -611,16 +712,15 @@ export function posApp() {
       printWindow.document.close();
       printWindow.focus();
       setTimeout(()=>{printWindow.print(); printWindow.close();}, 800);
-      // Enregistrement du snapshot d'impression
-      if (panier.length && panierId) {
-        fetch(`/panier/impression/${panierId}`, {
+      if (panier.length && activePanierId) {
+        fetch(`/panier/impression/${activePanierId}`, {
           method: 'POST',
           headers: {
             'X-CSRF-TOKEN': window.CSRF_TOKEN,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            total: total,
+            total: baseTotal,
             produits: panier
           })
         })
@@ -737,57 +837,57 @@ export function posApp() {
 
       console.log('🔵 Envoi bon commande:', { panierId, serveuse_id: this.paiement.serveuse_id });
 
-      // Appel AJAX pour générer le bon
-      fetch('/bon-commande/create', {
-        method: 'POST',
-        headers: {
-          'X-CSRF-TOKEN': window.CSRF_TOKEN,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          panier_id: panierId,
-          serveuse_id: this.paiement.serveuse_id
-        })
-      })
-      .then(res => {
-        console.log('🔵 Réponse reçue:', res.status);
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(data => {
-        console.log('🔵 Données reçues:', data);
-        this.showModal = false;
-
-        if (data.code === 'no_serveuse') {
-          alert('❌ ' + data.error);
-          return;
-        }
-
-        if (data.code === 'no_new_products') {
-          alert('⚠️ Aucun nouveau produit à imprimer.\n\nVeuillez ajouter des produits au panier.');
-          return;
-        }
-
-        if (data.success) {
-          this.printBonCommande(data.bon_id);
-        } else {
-          alert('❌ Erreur : ' + (data.error || 'Impossible de générer le bon'));
-          if (data.message) {
-            console.error('Erreur détaillée:', data.message);
+      this.syncPanierToServer()
+        .then(() => fetch('/bon-commande/create', {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': window.CSRF_TOKEN,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            panier_id: panierId,
+            serveuse_id: this.paiement.serveuse_id
+          })
+        }))
+        .then(res => {
+          console.log('🔵 Réponse reçue:', res.status);
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
           }
-        }
-      })
-      .catch(err => {
-        console.error('❌ Erreur:', err);
-        alert('❌ Erreur de connexion avec le serveur:\n' + err.message + '\n\nVérifiez les logs du serveur pour plus de détails.');
-      })
-      .finally(() => {
-        if (!this.bonCommandePrintEnCours) {
-          this.bonCommandeEnCours = false;
-        }
-      });
+          return res.json();
+        })
+        .then(data => {
+          console.log('🔵 Données reçues:', data);
+          this.showModal = false;
+
+          if (data.code === 'no_serveuse') {
+            alert('❌ ' + data.error);
+            return;
+          }
+
+          if (data.code === 'no_new_products') {
+            alert('⚠️ Aucun nouveau produit à imprimer.\n\nVeuillez ajouter des produits au panier.');
+            return;
+          }
+
+          if (data.success) {
+            this.printBonCommande(data.bon_id);
+          } else {
+            alert('❌ Erreur : ' + (data.error || 'Impossible de générer le bon'));
+            if (data.message) {
+              console.error('Erreur détaillée:', data.message);
+            }
+          }
+        })
+        .catch(err => {
+          console.error('❌ Erreur:', err);
+          alert('❌ Erreur de connexion avec le serveur:\n' + err.message + '\n\nVérifiez les logs du serveur pour plus de détails.');
+        })
+        .finally(() => {
+          if (!this.bonCommandePrintEnCours) {
+            this.bonCommandeEnCours = false;
+          }
+        });
     },
   }
 }
