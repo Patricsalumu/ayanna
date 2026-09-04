@@ -13,7 +13,17 @@ export function posApp() {
     search: window.INITIAL_SEARCH || '',
     selectedIndex: null,
     showOptions: false,
-    currentCat: (window.INITIAL_CATEGORY !== undefined && window.INITIAL_CATEGORY !== null && window.INITIAL_CATEGORY !== '') ? Number(window.INITIAL_CATEGORY) : null,
+    currentCat: (() => {
+      if (window.INITIAL_CATEGORY !== undefined && window.INITIAL_CATEGORY !== null && window.INITIAL_CATEGORY !== '') {
+        return Number(window.INITIAL_CATEGORY);
+      }
+
+      const categories = (window.PRODUITS_ARRAY || [])
+        .map(p => Number(p?.categorie_id))
+        .filter(value => Number.isFinite(value));
+
+      return categories.length ? categories[0] : null;
+    })(),
     userRole: window.USER_ROLE || '',
     canAddProducts: window.CAN_ADD_PRODUCTS !== false,
     canApplyDiscount: window.CAN_APPLY_DISCOUNT === true,
@@ -72,12 +82,22 @@ export function posApp() {
       return Math.max(0, this.totalHt - this.totalRemise);
     },
     get filteredProduits(){
+      const query = (this.search || '').trim().toLowerCase();
+
       return this.produits.filter(p => {
         const prodCat = p?.categorie_id !== undefined && p?.categorie_id !== null ? Number(p.categorie_id) : null;
         const activeCat = this.currentCat !== undefined && this.currentCat !== null && this.currentCat !== '' ? Number(this.currentCat) : null;
-        const catMatches = (activeCat === null) || (prodCat !== null && prodCat === activeCat);
-        const searchMatches = (!this.search) || (p.nom && p.nom.toLowerCase().includes(this.search.toLowerCase()));
-        return catMatches && searchMatches;
+        const nameMatches = (p.nom && p.nom.toLowerCase().includes(query));
+
+        if (query) {
+          return nameMatches;
+        }
+
+        if (activeCat === null) {
+          return true;
+        }
+
+        return prodCat !== null && prodCat === activeCat;
       });
     },
     get panierAffiche() {
@@ -129,8 +149,8 @@ export function posApp() {
         return null;
       }
     },
-    selectCat(id){
-      this.currentCat = id;
+    selectCat(id) {
+      this.currentCat = Number(id);
     },
     toggleOptions(){
       this.showOptions = !this.showOptions;

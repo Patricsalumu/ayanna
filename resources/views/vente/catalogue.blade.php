@@ -189,27 +189,23 @@
   <div class="w-full md:w-2/3 flex flex-col gap-4">
     <template x-if="mode === 'commande'">
       <div>
-        <form method="GET" action="{{ route('vente.catalogue', ['pointDeVente' => $pointDeVente->id]) }}" class="w-full">
+        <div class="w-full" @submit.prevent>
           @if($tableCourante)
             <input type="hidden" name="table_id" value="{{ $tableCourante }}">
           @endif
-          <input type="hidden" name="categorie" x-model="currentCat" :value="currentCat">
           {{-- Barre de recherche centrée --}}
           <div class="flex justify-center items-center mb-4">
             <div class="flex w-full max-w-md">
-              <input x-model="search" name="search" type="text" value="{{ $search ?? '' }}" placeholder="Rechercher un produit..."
-                     class="flex-1 px-4 py-3 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"/>
-              <button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-r-lg hover:bg-blue-700 transition">
-                🔍
+              <input x-model.debounce.200ms="search" type="text" value="{{ $search ?? '' }}" placeholder="Rechercher un produit..."
+                     class="flex-1 px-4 py-3 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
+                     autocomplete="off"/>
+              <button type="button" @click="search = ''" class="bg-blue-600 text-white px-6 py-3 rounded-r-lg hover:bg-blue-700 transition">
+                ✕
               </button>
             </div>
           </div>
           {{-- Catégories avec couleurs --}}
           <div class="flex flex-wrap gap-2 mb-4">
-            <a href="{{ route('vente.catalogue', ['pointDeVente' => $pointDeVente->id] + ($tableCourante ? ['table_id' => $tableCourante] : [])) }}"
-               class="px-4 py-2 rounded-lg transition shadow {{ $categorieActive ? 'bg-gray-200 text-gray-700' : 'bg-gray-600 text-white font-bold ring-2 ring-gray-300' }}">
-              Toutes
-            </a>
             @php
               $colors = [
                 'red' => ['bg-red-500', 'text-white', 'ring-red-300', 'bg-red-100', 'text-red-700', 'border-red-400'],
@@ -229,22 +225,17 @@
               @php
                 $colorKey = $colorKeys[$index % count($colorKeys)];
                 $colorClasses = $colors[$colorKey];
-                $query = ['pointDeVente' => $pointDeVente->id, 'categorie' => $cat->id];
-                if ($tableCourante) {
-                    $query['table_id'] = $tableCourante;
-                }
-                if ($search) {
-                    $query['search'] = $search;
-                }
               @endphp
-              <a href="{{ route('vente.catalogue', $query) }}"
-                 class="px-4 py-2 rounded-lg transition shadow {{ $categorieActive === $cat->id ? $colorClasses[0].' '.$colorClasses[1].' font-bold ring-2 '.$colorClasses[2] : $colorClasses[3].' '.$colorClasses[4] }}"
-                 data-cat-color="{{ $colorKey }}">
+              <button type="button"
+                      @click="selectCat({{ $cat->id }})"
+                      class="px-4 py-2 rounded-lg transition shadow text-sm font-semibold"
+                      :class="currentCat === {{ $cat->id }} ? '{{ $colorClasses[0] }} {{ $colorClasses[1] }} font-bold ring-2 {{ $colorClasses[2] }}' : '{{ $colorClasses[3] }} {{ $colorClasses[4] }}'"
+                      data-cat-color="{{ $colorKey }}">
                 {{ $cat->nom }}
-              </a>
+              </button>
             @endforeach
           </div>
-        </form>
+        </div>
 
         {{-- Grille catalogue --}}
         <div
@@ -325,7 +316,7 @@
 <script>
 window.PRODUITS_ARRAY = @json($produitsArray);
 window.PANIER_ARRAY = @json($produitsPanier);
-window.INITIAL_CATEGORY = @json($categorieActive ?? null);
+window.INITIAL_CATEGORY = @json($categorieActive ?? $categories->first()?->id ?? null);
 window.INITIAL_SEARCH = @json($search ?? '');
 window.CLIENT_ID = @json($client_id ?? '');
 window.SERVEUSE_ID = @json($serveuse_id ?? '');

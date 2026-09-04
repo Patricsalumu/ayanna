@@ -35,12 +35,14 @@ class VenteController extends Controller
             }
             $categorieActiveRaw = $request->input('categorie');
             $categorieActive = null;
+
             if ($categorieActiveRaw !== null && $categorieActiveRaw !== '') {
                 $categorieActive = (int) $categorieActiveRaw;
                 if (!$categories->contains('id', $categorieActive)) {
                     $categorieActive = null;
                 }
             }
+
             $search = trim((string) $request->input('search', ''));
 
             $produitsQuery = \App\Models\Produit::with('salles');
@@ -149,6 +151,17 @@ class VenteController extends Controller
                     'nom' => $m->nom,
                 ];
             })->toArray();
+
+            if ($request->boolean('ajax') || $request->expectsJson()) {
+                return response()->json([
+                    'categorie_id' => $categorieActive,
+                    'produits' => $produitsArray,
+                    'categories' => $categories->map(fn ($categorie) => [
+                        'id' => $categorie->id,
+                        'nom' => $categorie->nom,
+                    ])->values()->all(),
+                ]);
+            }
 
             return view('vente.catalogue', [
                 'pointDeVente' => $pointDeVente,
