@@ -10,9 +10,20 @@
         <h2 class="text-xl font-semibold flex items-center gap-2">
           🛒 Panier
         </h2>
-        <button @click="toggleOptions" class="text-gray-500 hover:text-gray-700">
-          <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M6 10a2 2..."/></svg>
-        </button>
+        <div class="flex items-center gap-2">
+          @if(in_array(auth()->user()?->role, ['Serveuse', 'serveuse'], true))
+            <form method="POST" action="{{ route('logout') }}" class="inline-block">
+              @csrf
+              <input type="hidden" name="serveuse_logout" value="1">
+              <button type="submit" class="rounded bg-gray-800 px-3 py-2 text-white text-xs font-semibold hover:bg-gray-700">
+                Déconnexion
+              </button>
+            </form>
+          @endif
+          <button @click="toggleOptions" class="text-gray-500 hover:text-gray-700">
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M6 10a2 2..."/></svg>
+          </button>
+        </div>
       </div>
 
       <template x-if="panier.length">
@@ -194,14 +205,37 @@
             <input type="hidden" name="table_id" value="{{ $tableCourante }}">
           @endif
           {{-- Barre de recherche centrée --}}
-          <div class="flex justify-center items-center mb-4">
-            <div class="flex w-full max-w-md">
-              <input x-model.debounce.200ms="search" type="text" value="{{ $search ?? '' }}" placeholder="Rechercher un produit..."
-                     class="flex-1 px-4 py-3 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
-                     autocomplete="off"/>
-              <button type="button" @click="search = ''" class="bg-blue-600 text-white px-6 py-3 rounded-r-lg hover:bg-blue-700 transition">
-                ✕
-              </button>
+          <div class="mb-4">
+            <div class="flex w-full items-center gap-2">
+              <div class="flex flex-1 min-w-0 items-center">
+                <input x-model.debounce.200ms="search" type="text" value="{{ $search ?? '' }}" placeholder="Rechercher un produit..."
+                       class="w-full px-4 py-3 border rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
+                       autocomplete="off"/>
+                <button type="button" @click="search = ''" class="bg-blue-600 text-white px-6 py-3 rounded-r-lg hover:bg-blue-700 transition whitespace-nowrap">
+                  ✕
+                </button>
+              </div>
+
+              @php
+                $retourPlanUrl = route('salle.plan.vente', [
+                    'entreprise' => $pointDeVente->entreprise_id,
+                    'salle' => session('salle_id') ?? $pointDeVente->salles->first()?->id,
+                    'point_de_vente_id' => $pointDeVente->id,
+                ]);
+              @endphp
+              <a href="{{ $retourPlanUrl }}" class="inline-flex items-center justify-center rounded bg-slate-700 px-4 py-3 text-white text-sm font-semibold hover:bg-slate-800 transition whitespace-nowrap min-w-[120px]">
+                Retour plan
+              </a>
+
+              @if(in_array(auth()->user()?->role, ['Serveuse', 'serveuse'], true))
+                <form method="POST" action="{{ route('logout') }}" class="inline-block">
+                  @csrf
+                  <input type="hidden" name="serveuse_logout" value="1">
+                  <button type="submit" class="rounded bg-gray-800 px-4 py-3 text-white text-sm font-semibold hover:bg-gray-700 transition whitespace-nowrap min-w-[120px]">
+                    Déconnexion
+                  </button>
+                </form>
+              @endif
             </div>
           </div>
           {{-- Catégories avec couleurs --}}
