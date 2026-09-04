@@ -100,8 +100,11 @@ export function posApp() {
       localStorage.setItem('ayanna_catalogue_produits', JSON.stringify(this.produits || []));
     },
     async refreshCatalogueFromServer() {
+      const refreshUrl = new URL(window.location.href);
+      refreshUrl.searchParams.set('ajax', '1');
+
       try {
-        const response = await fetch(`${window.location.pathname}?ajax=1`, {
+        const response = await fetch(refreshUrl.toString(), {
           headers: {
             'Accept': 'application/json',
             'X-Requested-With': 'XMLHttpRequest'
@@ -112,23 +115,51 @@ export function posApp() {
           throw new Error(`HTTP ${response.status}`);
         }
 
-        const data = await response.json();
-        if (Array.isArray(data.produits)) {
+        const data = await response.json().catch(() => null);
+        if (data && Array.isArray(data.produits)) {
           this.produits = data.produits;
           localStorage.setItem('ayanna_catalogue_produits', JSON.stringify(this.produits));
         }
 
-        if (Array.isArray(data.tables)) {
+        if (data && Array.isArray(data.tables)) {
           localStorage.setItem('ayanna_tables', JSON.stringify(data.tables));
         }
 
-        if (Array.isArray(data.serveuses)) {
+        if (data && Array.isArray(data.serveuses)) {
           localStorage.setItem('ayanna_serveuses', JSON.stringify(data.serveuses));
+        }
+
+        if (!data || !Array.isArray(data.produits)) {
+          window.location.reload();
         }
       } catch (error) {
         console.warn('Rafraîchissement catalogue impossible:', error);
-        alert('Impossible de rafraîchir les données pour le moment. Le cache local reste actif.');
+        window.location.reload();
       }
+    },
+    async logoutServeuse() {
+      try {
+        const response = await fetch('/logout', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': window.CSRF_TOKEN,
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify({ serveuse_logout: true }),
+          credentials: 'same-origin',
+        });
+
+        if (response.redirected || response.ok) {
+          window.location.href = '/serveuse-login';
+          return;
+        }
+      } catch (error) {
+        console.warn('Déconnexion serveuse impossible via fetch:', error);
+      }
+
+      window.location.href = '/serveuse-login';
     },
     
     get totalHt(){

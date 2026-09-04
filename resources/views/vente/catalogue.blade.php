@@ -227,18 +227,14 @@
                 Retour plan
               </a>
 
-              <button type="button" @click="refreshCatalogueFromServer()" class="inline-flex items-center justify-center rounded bg-emerald-600 px-4 py-3 text-white text-sm font-semibold hover:bg-emerald-700 transition whitespace-nowrap min-w-[120px]">
+              <button type="button" @click.prevent="refreshCatalogueFromServer()" class="inline-flex items-center justify-center rounded bg-emerald-600 px-4 py-3 text-white text-sm font-semibold hover:bg-emerald-700 transition whitespace-nowrap min-w-[120px]">
                 Rafraîchir
               </button>
 
               @if(in_array(auth()->user()?->role, ['Serveuse', 'serveuse'], true))
-                <form method="POST" action="{{ route('logout') }}" class="inline-block">
-                  @csrf
-                  <input type="hidden" name="serveuse_logout" value="1">
-                  <button type="submit" class="rounded bg-gray-800 px-4 py-3 text-white text-sm font-semibold hover:bg-gray-700 transition whitespace-nowrap min-w-[120px]">
-                    Déconnexion
-                  </button>
-                </form>
+                <button type="button" @click.prevent="logoutServeuse()" class="rounded bg-gray-800 px-4 py-3 text-white text-sm font-semibold hover:bg-gray-700 transition whitespace-nowrap min-w-[120px]">
+                  Déconnexion
+                </button>
               @endif
             </div>
           </div>
