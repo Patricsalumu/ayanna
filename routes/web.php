@@ -250,6 +250,7 @@ Route::prefix('transferts')->name('transferts.')->group(function () {
 Route::middleware(['auth'])->prefix('bon-commande')->name('bon-commande.')->group(function () {
     Route::get('/', [\App\Http\Controllers\BonCommandeController::class, 'index'])->name('index');
     Route::post('/create', [\App\Http\Controllers\BonCommandeController::class, 'store'])->name('store');
+    Route::get('/panier/{panierId}/last', [\App\Http\Controllers\BonCommandeController::class, 'dernierPourPanier'])->name('panier.last');
     Route::get('/{id}', [\App\Http\Controllers\BonCommandeController::class, 'show'])->name('show');
     Route::get('/{id}/print', [\App\Http\Controllers\BonCommandeController::class, 'print'])->name('print');
     Route::get('/{id}/reprint', [\App\Http\Controllers\BonCommandeController::class, 'reprint'])->name('reprint');

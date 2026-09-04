@@ -94,17 +94,27 @@
     </div>
 
     @if(!app(\App\Services\PermissionService::class)->isCashier(auth()->user()))
-      <!-- Bouton Envoyer commande -->
       <template x-if="panier.length">
-        <button
-          type="button"
-          @click="if (!bonCommandeEnCours && !bonCommandePrintEnCours) genererBonCommande()"
-          :disabled="bonCommandeEnCours || bonCommandePrintEnCours"
-          class="w-full min-h-[62px] rounded-2xl bg-orange-600 text-white font-black text-lg shadow hover:bg-orange-700 transition px-4 py-3 leading-tight disabled:opacity-70 disabled:cursor-not-allowed"
-        >
-          <span x-show="!bonCommandeEnCours && !bonCommandePrintEnCours" class="block">Envoyer commande</span>
-          <span x-show="bonCommandeEnCours || bonCommandePrintEnCours" class="block">Traitement...</span>
-        </button>
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            @click="if (!bonCommandeEnCours && !bonCommandePrintEnCours) genererBonCommande()"
+            :disabled="bonCommandeEnCours || bonCommandePrintEnCours"
+            class="min-h-[62px] rounded-2xl bg-orange-600 text-white font-black text-lg shadow hover:bg-orange-700 transition px-4 py-3 leading-tight disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            <span x-show="!bonCommandeEnCours && !bonCommandePrintEnCours" class="block">Commander</span>
+            <span x-show="bonCommandeEnCours || bonCommandePrintEnCours" class="block">Traitement...</span>
+          </button>
+
+          <button
+            type="button"
+            @click="if (!bonCommandeEnCours && !bonCommandePrintEnCours) imprimerFactureBon()"
+            :disabled="bonCommandeEnCours || bonCommandePrintEnCours"
+            class="min-h-[62px] rounded-2xl bg-blue-600 text-white font-black text-lg shadow hover:bg-blue-700 transition px-4 py-3 leading-tight disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            <span class="block">Facture bon</span>
+          </button>
+        </div>
       </template>
     @endif
 
@@ -127,9 +137,7 @@
           style="height:40px;"
           x-model="paiement.serveuse_id"
           @change="setServeuse(paiement.serveuse_id)"
-          @if(Auth::user() && (Auth::user()->role === 'Serveuse' || Auth::user()->role === 'serveuse'))
-            disabled
-          @endif
+          disabled
         >
           <option value="">Serveuse</option>
           @foreach($serveuses as $s)
@@ -164,10 +172,12 @@
         @endif
       </div>
       <div class="flex flex-row flex-wrap gap-2 mb-2 justify-between items-center">
-        <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[140px] rounded-xl bg-gray-800 text-white 
-        font-bold shadow hover:bg-gray-900 transition text-center px-4 py-0.5" @click="printAddition('proforma')">
-        Préfacture</button>
-        @if(!in_array(Auth::user()->role ?? null, ['comptoiriste','serveuse']))
+        @if(!app(\App\Services\PermissionService::class)->isCashier(auth()->user()))
+          <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[140px] rounded-xl bg-gray-800 text-white 
+          font-bold shadow hover:bg-gray-900 transition text-center px-4 py-0.5" @click="printAddition('proforma')">
+          Préfacture</button>
+        @endif
+        @if(!app(\App\Services\PermissionService::class)->isCashier(auth()->user()))
           <form method="POST" action="{{ (isset($panier) && !empty($panier->id)) ? route('paniers.annuler', $panier->id) : '#' }}" onsubmit="return confirm('Annuler ce panier ?');" class="flex-none sm:flex-1 w-full sm:w-auto min-w-[140px]">
             @csrf
             @method('PATCH')

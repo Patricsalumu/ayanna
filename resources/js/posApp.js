@@ -815,6 +815,138 @@ export function posApp() {
       const montantF = val * taux;
       return `${montantF.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} F`;
     },
+    async imprimerFactureBon() {
+      const panierId = (this.panier && this.panier.length && this.panier[0].panier_id) ? this.panier[0].panier_id : window.PANIER_ID;
+      if (!panierId) {
+        alert('❌ Aucun panier actif pour imprimer la facture du bon.');
+        return;
+      }
+
+      try {
+        const response = await fetch(`/bon-commande/panier/${panierId}/last`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!data.success || !data.bon_id) {
+          alert('❌ Aucun bon de commande n’a encore été généré pour ce panier.');
+          return;
+        }
+
+        const bonItems = Array.isArray(data.produits) ? data.produits : [];
+        if (!bonItems.length) {
+          alert('❌ Le dernier bon de commande ne contient aucun produit à imprimer.');
+          return;
+        }
+
+        this.imprimerTicketFactureBon({
+          bon_id: data.bon_id,
+          panier_id: data.panier_id ?? panierId,
+          numero_bon: data.numero_bon,
+          commande_no: data.commande_no ?? 1,
+          produits: bonItems,
+          table: window.TABLE_COURANTE_LABEL || '',
+          client: this.paiement.client_id ? (window.CLIENTS?.find?.(c => c.id == this.paiement.client_id) ?? null) : null,
+          serveuse: this.paiement.serveuse_id ? (window.SERVEUSES?.find?.(s => s.id == this.paiement.serveuse_id) ?? null) : null,
+        });
+      } catch (err) {
+        console.error('Erreur récupération du dernier bon pour facture:', err);
+        alert('❌ Impossible d’imprimer la facture du dernier bon pour ce panier.');
+      }
+    },
+    imprimerTicketFactureBon({ bon_id, panier_id, numero_bon, commande_no, produits, table, client, serveuse }) {
+      const entreprise = window.ENTREPRISE || {};
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('fr-FR');
+      const heureStr = now.toLocaleTimeString('fr-FR');
+
+      const lignes = (produits || []).map(item => {
+        const produitRef = Array.isArray(this.panier)
+          ? this.panier.find(p => Number(p.id) === Number(item.produit_id) || p.nom === item.nom)
+          : null;
+
+        const qte = Number(item.quantite || 0);
+        const prix = Number(produitRef?.prix || 0);
+        const totalLigne = qte * prix;
+
+        return {
+          nom: item.nom || 'Produit',
+          qte,
+          prix,
+          total: totalLigne,
+        };
+      }).filter(item => item.qte > 0);
+
+      const totalHt = lignes.reduce((sum, item) => sum + item.total, 0);
+      const totalRemise = Number(this.totalRemise || 0);
+      const totalFinal = Math.max(0, totalHt - totalRemise);
+
+      let html = `<div style='width:75mm;padding:0;margin:0;font-family:monospace;background:#fff;color:#111;box-sizing:border-box;font-weight:bold;'>`;
+      html += `<div style='text-align:center;font-size:20px;font-weight:bold;color:#111;margin-bottom:6px;letter-spacing:0.5px;'>FACTURE BON</div>`;
+      if (entreprise.logo) {
+        html += `<div style='text-align:center;'><img src='${window.location.origin}/storage/${entreprise.logo}' style='max-width:56px;max-height:56px;margin-bottom:6px;display:block;margin-left:auto;margin-right:auto;'/></div>`;
+      }
+      html += `<div style='text-align:center;font-weight:bold;font-size:20px;color:#111;'>${entreprise.nom ?? ''}</div>`;
+      if (entreprise.numero_entreprise) html += `<div style='text-align:center;font-size:14px;color:#111;'>N° Entreprise : ${entreprise.numero_entreprise}</div>`;
+      if (entreprise.email) html += `<div style='text-align:center;font-size:14px;color:#111;'>${entreprise.email}</div>`;
+      if (entreprise.telephone) html += `<div style='text-align:center;font-size:14px;color:#111;'>${entreprise.telephone}</div>`;
+      if (entreprise.adresse) html += `<div style='text-align:center;font-size:14px;color:#111;'>${entreprise.adresse}</div>`;
+      html += `<div style='border-top:1px solid #111;margin:8px 0;'></div>`;
+      html += `<div style='font-size:15px;color:#111;font-weight:bold;display:flex;justify-content:space-between;gap:8px;'><span>Facture <b>${numero_bon ?? bon_id ?? '-'}</b></span><span>Commande No <b>${Number(commande_no) || 1}</b></span></div>`;
+      html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Client : <b>${client?.nom ?? '-'}</b></div>`;
+      html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Serveuse : <b>${serveuse?.name ?? '-'}</b></div>`;
+      html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Table : <b>${table}</b></div>`;
+      html += `<div style='border-top:1px solid #111;margin:8px 0;'></div>`;
+      html += `<table style='width:100%;font-size:15px;margin:0 auto;border-collapse:collapse;color:#111;font-weight:bold;'><thead><tr><th style='text-align:left;border-bottom:1px solid #111;padding:2px 0;font-weight:bold;'>Produit</th><th style='border-bottom:1px solid #111;padding:2px 0;font-weight:bold;'>Qté</th><th style='text-align:right;border-bottom:1px solid #111;padding:2px 0;font-weight:bold;'>Prix</th><th style='text-align:right;border-bottom:1px solid #111;padding:2px 0;font-weight:bold;'>Total</th></tr></thead><tbody>`;
+      lignes.forEach(item => {
+        html += `<tr>`;
+        html += `<td style='word-break:break-all;padding:2px 0;border-bottom:1px solid rgba(17,17,17,0.4);color:#111;font-weight:bold;'>${item.nom}</td>`;
+        html += `<td style='text-align:center;padding:2px 0;border-bottom:1px solid rgba(17,17,17,0.4);color:#111;font-weight:bold;'>${item.qte}</td>`;
+        html += `<td style='text-align:right;padding:2px 0;border-bottom:1px solid rgba(17,17,17,0.4);color:#111;font-weight:bold;'>${this.formatMoney(item.prix)}</td>`;
+        html += `<td style='text-align:right;padding:2px 0;border-bottom:1px solid rgba(17,17,17,0.4);color:#111;font-weight:bold;'>${this.formatMoney(item.total)}</td>`;
+        html += `</tr>`;
+      });
+      html += `</tbody></table>`;
+      html += `<div style='border-top:1px solid #111;margin:8px 0;'></div>`;
+      html += `<div style='text-align:right;font-size:16px;color:#111;font-weight:bold;'>Sous-total : ${this.formatMoney(totalHt)}</div>`;
+      html += `<div style='text-align:right;font-size:16px;color:#111;font-weight:bold;'>Remise : ${this.formatMoney(totalRemise)}</div>`;
+      html += `<div style='text-align:right;font-size:20px;font-weight:bold;color:#111;'>Net à payer : ${this.formatMoney(totalFinal)}</div>`;
+      if (this.showFEquivalent(totalFinal)) {
+        html += `<div style='text-align:right;font-size:15px;color:#111;font-weight:bold;'>Équivalent F : ${this.formatFEquivalent(totalFinal)}</div>`;
+      }
+      html += `<div style='text-align:center;font-size:15px;margin-top:12px;color:#111;font-weight:bold;'>Merci pour votre visite !</div>`;
+      html += `<div style='text-align:center;font-size:13px;margin-top:10px;color:#111;font-weight:bold;'>Généré par Ayanna &copy; | ${dateStr} ${heureStr}</div>`;
+      html += `</div>`;
+
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '-9999px';
+      iframe.style.bottom = '-9999px';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+
+      const printWindow = iframe.contentWindow;
+      printWindow.document.open();
+      printWindow.document.write('<html><head><title>Facture bon</title>');
+      printWindow.document.write('<style>html,body{margin:0;padding:0;background:#fff;color:#111;}body{display:flex;justify-content:center;}@media print{body{width:75mm!important;background:#fff;color:#111;}}</style>');
+      printWindow.document.write('</head><body>');
+      printWindow.document.write(html);
+      printWindow.document.write('</body></html>');
+      printWindow.document.close();
+      printWindow.focus();
+
+      setTimeout(() => {
+        try { printWindow.print(); } catch (err) { console.error('Erreur impression facture bon:', err); }
+      }, 300);
+
+      setTimeout(() => {
+        try { iframe.remove(); } catch (e) {}
+        this.openAfterPrintModal();
+      }, 1000);
+    },
     async printBonCommande(bonId) {
       if (this.bonCommandePrintEnCours) {
         return;

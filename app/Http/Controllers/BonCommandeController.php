@@ -238,6 +238,52 @@ class BonCommandeController extends Controller
     /**
      * Affiche le formulaire d'impression d'un bon
      */
+    public function dernierPourPanier($panierId)
+    {
+        $bon = BonCommande::where('panier_id', $panierId)
+            ->orderByDesc('created_at')
+            ->first();
+
+        if (!$bon) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Aucun bon trouvé pour ce panier.',
+            ], 404);
+        }
+
+        $produits = $bon->produits_json ?? [];
+
+        if (is_string($produits)) {
+            $decoded = json_decode($produits, true);
+            $produits = is_array($decoded) ? $decoded : [];
+        }
+
+        if (!is_array($produits)) {
+            $produits = [];
+        }
+
+        $bonsDuPanier = BonCommande::where('panier_id', $panierId)
+            ->orderBy('created_at')
+            ->get();
+
+        $commandeNo = 1;
+        foreach ($bonsDuPanier as $index => $bonsItem) {
+            if ((int) $bonsItem->id === (int) $bon->id) {
+                $commandeNo = $index + 1;
+                break;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'bon_id' => $bon->id,
+            'panier_id' => (int) $panierId,
+            'numero_bon' => $bon->numero_bon,
+            'commande_no' => $commandeNo,
+            'produits' => $produits,
+        ]);
+    }
+
     public function show($id)
     {
         $bon = BonCommande::with(['panier.pointDeVente.entreprise', 'serveuse', 'client'])
