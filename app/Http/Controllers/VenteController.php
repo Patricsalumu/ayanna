@@ -656,19 +656,27 @@ class VenteController extends Controller
             $panier->save();
 
             $montantTotal = (float) $panier->total_ttc;
+            $isCompteClient = ($data['mode_paiement'] ?? null) === 'compte_client';
             $montantRecu = (float) ($data['montant_recu'] ?? $data['montant'] ?? $montantTotal);
-            if ($montantRecu <= 0) {
-                throw new \Exception('Le montant reçu doit être supérieur à zéro.');
-            }
 
-            $montantPaye = min($montantRecu, $montantTotal);
-            $montantRestant = max(0, $montantTotal - $montantPaye);
+            if ($isCompteClient) {
+                // En mode créance, aucun paiement initial ne doit être enregistré.
+                $montantPaye = 0.0;
+                $montantRestant = $montantTotal;
+            } else {
+                if ($montantRecu <= 0) {
+                    throw new \Exception('Le montant reçu doit être supérieur à zéro.');
+                }
+
+                $montantPaye = min($montantRecu, $montantTotal);
+                $montantRestant = max(0, $montantTotal - $montantPaye);
+            }
 
             // 2. Créer la commande à partir du panier (seulement les champs qui existent dans la table)
             $commande = new Commande();
             $commande->panier_id = $panier->id;
             $commande->mode_paiement = $data['mode_paiement'];
-            $commande->statut = $montantRestant <= 0 ? 'payé' : 'validé';
+            $commande->statut = (!$isCompteClient && $montantRestant <= 0) ? 'payé' : 'validé';
             $commande->created_at = now();
             
             Log::info('[VALIDATION PAIEMENT] Données commande à sauvegarder', [
@@ -682,16 +690,18 @@ class VenteController extends Controller
             $commande->save();
             Log::info('[VALIDATION PAIEMENT] Commande créée', ['commande_id' => $commande->id]);
 
-            \App\Models\Paiement::create([
-                'commande_id' => $commande->id,
-                'montant' => $montantPaye,
-                'montant_restant' => $montantRestant,
-                'mode' => $data['mode_paiement'],
-                'date_paiement' => now()->toDateString(),
-                'est_solde' => $montantRestant <= 0,
-                'user_id' => Auth::id(),
-                'statut' => 'validé',
-            ]);
+            if (!$isCompteClient) {
+                \App\Models\Paiement::create([
+                    'commande_id' => $commande->id,
+                    'montant' => $montantPaye,
+                    'montant_restant' => $montantRestant,
+                    'mode' => $data['mode_paiement'],
+                    'date_paiement' => now()->toDateString(),
+                    'est_solde' => $montantRestant <= 0,
+                    'user_id' => Auth::id(),
+                    'statut' => 'validé',
+                ]);
+            }
 
             // 3. ENREGISTREMENT COMPTABLE AUTOMATIQUE
             try {

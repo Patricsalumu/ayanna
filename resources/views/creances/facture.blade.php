@@ -1,300 +1,155 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reçu de paiement #{{ $commande->id }}</title>
+    <title>Recu paiement #{{ $commande->id }}</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            color: #333;
-            line-height: 1.4;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #3B82F6;
-            padding-bottom: 20px;
-        }
-        .company-name {
-            font-size: 24px;
-            font-weight: bold;
-            color: #1F2937;
-            margin-bottom: 5px;
-        }
-        .document-title {
-            font-size: 18px;
-            color: #3B82F6;
-            margin-top: 10px;
-        }
-        .info-section {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 30px;
-        }
-        .info-box {
-            width: 45%;
-            padding: 15px;
-            border: 1px solid #E5E7EB;
-            border-radius: 8px;
-            background-color: #F9FAFB;
-        }
-        .info-box h3 {
-            margin: 0 0 10px 0;
-            color: #1F2937;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-            font-size: 12px;
-        }
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-        .table th,
-        .table td {
-            border: 1px solid #D1D5DB;
-            padding: 10px;
-            text-align: left;
-            font-size: 12px;
-        }
-        .table th {
-            background-color: #F3F4F6;
-            font-weight: bold;
-            color: #374151;
-        }
-        .table .text-right {
-            text-align: right;
-        }
-        .table .text-center {
-            text-align: center;
-        }
-        .total-row {
-            background-color: #FEF3C7;
-            font-weight: bold;
-        }
-        .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #E5E7EB;
-            text-align: center;
-            font-size: 10px;
-            color: #6B7280;
-        }
-        .status-paid {
-            color: #059669;
-            font-weight: bold;
-        }
-        .status-pending {
-            color: #D97706;
-            font-weight: bold;
-        }
-        .paiements-section {
-            margin-top: 30px;
-        }
-        .no-print {
-            margin-top: 30px;
-            text-align: center;
-        }
-        .btn {
-            display: inline-block;
-            padding: 10px 20px;
-            margin: 0 10px;
-            background-color: #3B82F6;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        .btn:hover {
-            background-color: #2563EB;
-        }
-        .btn-secondary {
-            background-color: #6B7280;
-        }
-        .btn-secondary:hover {
-            background-color: #4B5563;
-        }
+        html, body { margin: 0; padding: 0; background: #fff; color: #111; }
+        body { display: flex; justify-content: center; font-family: monospace; }
+        .ticket { width: 75mm; padding: 0; margin: 0; box-sizing: border-box; font-weight: bold; }
+        .center { text-align: center; }
+        .line { border-top: 1px solid #111; margin: 8px 0; }
+        .row { font-size: 15px; color: #111; font-weight: bold; }
+        .title { font-size: 20px; letter-spacing: 0.5px; margin-bottom: 6px; }
+        table { width: 100%; border-collapse: collapse; font-size: 15px; color: #111; }
+        th { border-bottom: 1px solid #111; padding: 2px 0; }
+        td { padding: 2px 0; border-bottom: 1px solid rgba(17, 17, 17, 0.4); }
+        .left { text-align: left; word-break: break-all; }
+        .right { text-align: right; }
+        .mid { text-align: center; }
+        .total { text-align: right; font-size: 16px; }
+        .total-main { text-align: right; font-size: 20px; }
+        .small { font-size: 13px; }
+        .no-print { margin: 14px 0; text-align: center; font-family: Arial, sans-serif; }
+        .btn { display: inline-block; padding: 8px 12px; border-radius: 6px; text-decoration: none; background: #2563eb; color: #fff; font-size: 13px; }
         @media print {
-            .no-print {
-                display: none;
-            }
-            body {
-                padding: 0;
-            }
+            .no-print { display: none; }
+            body { width: 75mm !important; }
         }
     </style>
 </head>
 <body>
-    <!-- En-tête -->
-    <div class="header">
-        <div class="company-name">{{ $commande->panier->pointDeVente->entreprise->nom ?? 'Ayanna' }}</div>
-        <div style="font-size: 12px; color: #6B7280;">
-            {{ $commande->panier->pointDeVente->nom ?? 'Point de vente' }}
-        </div>
-        <div class="document-title">REÇU DE PAIEMENT</div>
-        <div style="font-size: 14px; margin-top: 10px;">
-            Facture N° {{ $commande->id }} - {{ \Carbon\Carbon::parse($commande->created_at)->format('d/m/Y') }}
-        </div>
-    </div>
+    @php
+        $entreprise = $commande->panier->pointDeVente->entreprise ?? null;
+        $devise = $entreprise->devise ?? '$';
+        $modeRaw = $commande->mode_paiement ?? $commande->panier->mode_paiement ?? 'compte_client';
+        $modeNorm = strtolower(str_replace([' ', '-', 'é', 'è', 'ê', 'à'], ['_', '_', 'e', 'e', 'e', 'a'], $modeRaw));
+        $modeLabel = match ($modeNorm) {
+            'mobile_money', 'mobilemoney', 'mobile' => 'Mobile Money',
+            'carte', 'card' => 'Carte',
+            'offre' => 'Offre',
+            'compte_client', 'compteclient', 'credit' => 'Compte Client',
+            default => 'Especes',
+        };
 
-    <!-- Informations -->
-    <div class="info-section">
-        <div class="info-box">
-            <h3>INFORMATIONS CLIENT</h3>
-            <div class="info-row">
-                <span>Client :</span>
-                <span>{{ $commande->panier->client->nom ?? 'N/A' }}</span>
-            </div>
-            <div class="info-row">
-                <span>Table :</span>
-                <span>{{ $commande->panier->tableResto->numero ?? 'N/A' }}</span>
-            </div>
-            <div class="info-row">
-                <span>Serveuse :</span>
-                <span>{{ $commande->panier->serveuse->name ?? 'N/A' }}</span>
-            </div>
-        </div>
+        $montantTotal = 0.0;
+        foreach ($commande->panier->produits as $produit) {
+            $montantTotal += ((float) $produit->pivot->quantite) * ((float) ($produit->pivot->prix ?? $produit->prix_vente ?? 0));
+        }
+        $remise = (float) ($commande->panier->total_remise ?? $commande->panier->remise ?? 0);
+        $netAPayer = max(0, $montantTotal - $remise);
+        $paiementsReels = $commande->paiements->filter(function ($paiement) {
+            $mode = strtolower(str_replace([' ', '-', 'é', 'è', 'ê', 'à'], ['_', '_', 'e', 'e', 'e', 'a'], (string) ($paiement->mode ?? '')));
+            return !in_array($mode, ['compte_client', 'compteclient', 'credit'], true);
+        });
 
-        <div class="info-box">
-            <h3>INFORMATIONS COMMANDE</h3>
-            <div class="info-row">
-                <span>Date commande :</span>
-                <span>{{ \Carbon\Carbon::parse($commande->created_at)->format('d/m/Y H:i') }}</span>
-            </div>
-            <div class="info-row">
-                <span>Mode paiement :</span>
-                <span>Compte client</span>
-            </div>
-            <div class="info-row">
-                <span>Statut :</span>
-                <span class="{{ $commande->statut === 'payé' ? 'status-paid' : 'status-pending' }}">
-                    {{ $commande->statut === 'payé' ? 'PAYÉ' : 'EN ATTENTE' }}
-                </span>
-            </div>
-        </div>
-    </div>
+        $montantPayeBrut = (float) $paiementsReels->sum('montant');
+        $montantPaye = max(0, min($netAPayer, $montantPayeBrut));
+        $montantRestant = max(0, $netAPayer - $montantPaye);
 
-    <!-- Détail des produits -->
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Produit</th>
-                <th class="text-center">Quantité</th>
-                <th class="text-right">Prix unitaire</th>
-                <th class="text-right">Total</th>
-            </tr>
-        </thead>
-        <tbody>
-            @php
-                $montantTotal = 0;
-            @endphp
-            @foreach($commande->panier->produits as $produit)
-                @php
-                    $totalProduit = $produit->pivot->quantite * (($produit->pivot->prix ?? $produit->prix_vente) ?? 0);
-                    $montantTotal += $totalProduit;
-                @endphp
+        if ($montantPaye <= 0.00001) {
+            $statutLabel = 'NON PAYE';
+        } elseif ($montantPaye < $netAPayer) {
+            $statutLabel = 'PARTIEL';
+        } else {
+            $statutLabel = 'PAYE';
+        }
+    @endphp
+
+    <div class="ticket">
+        <div class="center title">RECU DE PAIEMENT</div>
+        @if($entreprise && $entreprise->logo)
+            <div class="center">
+                <img src="{{ asset('storage/'.$entreprise->logo) }}" alt="Logo" style="max-width:56px;max-height:56px;margin-bottom:6px;display:block;margin-left:auto;margin-right:auto;">
+            </div>
+        @endif
+        <div class="center" style="font-size:20px;">{{ $entreprise->nom ?? 'Ayanna' }}</div>
+        @if($entreprise?->numero_entreprise)
+            <div class="center row">N° Entreprise : {{ $entreprise->numero_entreprise }}</div>
+        @endif
+        @if($entreprise?->email)
+            <div class="center row">{{ $entreprise->email }}</div>
+        @endif
+        @if($entreprise?->telephone)
+            <div class="center row">{{ $entreprise->telephone }}</div>
+        @endif
+        @if($entreprise?->adresse)
+            <div class="center row">{{ $entreprise->adresse }}</div>
+        @endif
+
+        <div class="line"></div>
+        <div class="row">Facture n° <b>{{ $commande->id }}</b></div>
+        <div class="row">Client : <b>{{ $commande->panier->client->nom ?? '-' }}</b></div>
+        <div class="row">Serveuse : <b>{{ $commande->panier->serveuse->name ?? '-' }}</b></div>
+        <div class="row">Table : <b>{{ $commande->panier->tableResto->numero ?? $commande->panier->table_id }}</b> | Panier n° <b>{{ $commande->panier->id }}</b></div>
+        <div class="row">Mode de paiement : <b>{{ $modeLabel }}</b></div>
+        <div class="row">Etat paiement : <b>{{ $statutLabel }}</b></div>
+        <div class="row">Date : <b>{{ \Carbon\Carbon::parse($commande->created_at)->format('d/m/Y H:i') }}</b></div>
+        <div class="line"></div>
+
+        <table>
+            <thead>
                 <tr>
-                    <td>{{ $produit->nom }}</td>
-                    <td class="text-center">{{ $produit->pivot->quantite }}</td>
-                    <td class="text-right">{{ number_format(($produit->pivot->prix ?? $produit->prix_vente) ?? 0, 2, ',', ' ') }} $</td>
-                    <td class="text-right">{{ number_format($totalProduit, 2, ',', ' ') }} $</td>
+                    <th class="left">Produit</th>
+                    <th class="mid">Qte</th>
+                    <th class="right">Prix</th>
+                    <th class="right">Total</th>
                 </tr>
-            @endforeach
-        </tbody>
-        <tfoot>
-            <tr class="total-row">
-                    <td colspan="3"><strong>TOTAL TTC SANS REMISE</strong></td>
-                <td class="text-right"><strong>{{ number_format($montantTotal, 2, ',', ' ') }} $</strong></td>
-            </tr>
-                @php
-                    $remise = (float) ($commande->panier->total_remise ?? $commande->panier->remise ?? 0);
-                    $netAPayer = max(0, $montantTotal - $remise);
-                    $montantPaye = (float) $commande->paiements->sum('montant');
-                    $montantRestant = max(0, $netAPayer - $montantPaye);
-                @endphp
-                <tr>
-                    <td colspan="3"><strong>REMISE</strong></td>
-                    <td class="text-right"><strong>{{ number_format($remise, 2, ',', ' ') }} $</strong></td>
-                </tr>
-                <tr>
-                    <td colspan="3"><strong>NET À PAYER</strong></td>
-                    <td class="text-right"><strong>{{ number_format($netAPayer, 2, ',', ' ') }} $</strong></td>
-                </tr>
-        </tfoot>
-    </table>
-
-    @if($commande->paiements->isNotEmpty())
-        <!-- Historique des paiements -->
-        <div class="paiements-section">
-            <h3 style="color: #1F2937; margin-bottom: 15px;">HISTORIQUE DES PAIEMENTS</h3>
-            <table class="table">
-                <thead>
+            </thead>
+            <tbody>
+                @foreach($commande->panier->produits as $produit)
+                    @php
+                        $qte = (float) $produit->pivot->quantite;
+                        $prix = (float) ($produit->pivot->prix ?? $produit->prix_vente ?? 0);
+                        $ligne = $qte * $prix;
+                    @endphp
                     <tr>
-                        <th>Date</th>
-                        <th class="text-right">Montant</th>
-                        <th class="text-center">Mode</th>
-                        <th>Notes</th>
+                        <td class="left">{{ $produit->nom }}</td>
+                        <td class="mid">{{ number_format($qte, 0, ',', ' ') }}</td>
+                        <td class="right">{{ number_format($prix, 2, ',', ' ') }} {{ $devise }}</td>
+                        <td class="right">{{ number_format($ligne, 2, ',', ' ') }} {{ $devise }}</td>
                     </tr>
-                </thead>
-                <tbody>
-                    @foreach($commande->paiements as $paiement)
-                        <tr>
-                            <td>{{ \Carbon\Carbon::parse($paiement->date_paiement)->format('d/m/Y H:i') }}</td>
-                            <td class="text-right">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($paiement->montant, true, 2) }}</td>
-                            <td class="text-center">{{ ucfirst($paiement->mode) }}</td>
-                            <td>{{ $paiement->notes ?: '-' }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-                <tfoot>
-                    <tr style="background-color: #DBEAFE;">
-                        <td colspan="3"><strong>TOTAL PAYÉ</strong></td>
-                        <td class="text-right"><strong>{{ number_format($montantPaye, 2, ',', ' ') }} $</strong></td>
-                    </tr>
-                    @if($montantRestant > 0)
-                        <tr style="background-color: #FEF3C7;">
-                            <td colspan="3"><strong>MONTANT RESTANT DÛ</strong></td>
-                            <td class="text-right"><strong style="color: #D97706;">{{ number_format($montantRestant, 2, ',', ' ') }} $</strong></td>
-                        </tr>
-                    @else
-                        <tr style="background-color: #D1FAE5;">
-                            <td colspan="4" class="text-center"><strong style="color: #059669;">✓ CRÉANCE ENTIÈREMENT SOLDÉE</strong></td>
-                        </tr>
-                    @endif
-                </tfoot>
-            </table>
-        </div>
-    @else
-        <!-- Résumé financier sans paiements -->
-        <div style="background-color: #FEF3C7; padding: 15px; border-radius: 8px; text-align: center; margin-top: 20px;">
-            <strong style="color: #D97706;">MONTANT PAYÉ : 0,00 $ | RESTANT DÛ : {{ number_format($netAPayer, 2, ',', ' ') }} $</strong>
-        </div>
-    @endif
+                @endforeach
+            </tbody>
+        </table>
 
-    <!-- Footer -->
-    <div class="footer">
-        <p>Facture générée le {{ now()->format('d/m/Y à H:i') }}</p>
-        <p>{{ $commande->panier->pointDeVente->entreprise->nom ?? 'Ayanna' }} - Gestion des créances</p>
+        <div class="line"></div>
+        <div class="total">Sous-total : {{ number_format($montantTotal, 2, ',', ' ') }} {{ $devise }}</div>
+        <div class="total">Remise : {{ number_format($remise, 2, ',', ' ') }} {{ $devise }}</div>
+        <div class="total-main">Net a payer : {{ number_format($netAPayer, 2, ',', ' ') }} {{ $devise }}</div>
+        <div class="total">Montant paye : {{ number_format($montantPaye, 2, ',', ' ') }} {{ $devise }}</div>
+        <div class="total">Reste du : {{ number_format($montantRestant, 2, ',', ' ') }} {{ $devise }}</div>
+
+        <div class="center row" style="margin-top:12px;">Merci pour votre visite !</div>
+        <div class="center small" style="margin-top:10px;">Genere par Ayanna | {{ now()->format('d/m/Y H:i:s') }}</div>
     </div>
 
-    <!-- Boutons d'action (non imprimables) -->
-    <div class="no-print">
-        <button onclick="window.print()" class="btn">Imprimer</button>
-        <a href="{{ route('creances.liste') }}" class="btn btn-secondary">Retour à la liste</a>
-        <a href="{{ route('creances.historique', $commande->id) }}" class="btn btn-secondary">Voir l'historique</a>
-    </div>
+    @unless($autoPrint ?? false)
+        <div class="no-print">
+            <button onclick="window.print()" class="btn">Imprimer</button>
+        </div>
+    @endunless
+
     @if($autoPrint ?? false)
         <script>
             window.addEventListener('load', function () {
-                setTimeout(function () { window.print(); }, 300);
+                setTimeout(function () {
+                    window.print();
+                }, 150);
+            });
+            window.addEventListener('afterprint', function () {
+                window.close();
             });
         </script>
     @endif
