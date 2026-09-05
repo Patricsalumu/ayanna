@@ -7,7 +7,6 @@ use App\Http\Controllers\CategorieController;
 use App\Http\Controllers\SalleController;
 use App\Http\Controllers\ProduitController;
 use App\Http\Controllers\TableRestoController;
-use App\Models\Module;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\VenteController;
 use App\Http\Controllers\RestaurantController;
@@ -193,11 +192,9 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-//Route du dashboard
-
+// Route dashboard supprimée: redirection vers l'entreprise principale
 Route::get('/dashboard', function () {
-    $modules = Module::all();
-    return view('dashboard', compact('modules'));
+    return redirect()->route('entreprises.show', 1);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {

@@ -27,13 +27,13 @@ class RestaurantController extends Controller
         $pointDeVente = $query->orderBy('nom')->first();
 
         if (!$pointDeVente) {
-            return redirect()->route('dashboard');
+            return redirect()->route('entreprises.show', 1);
         }
 
         $salle = $pointDeVente->salles()->first();
 
         if (!$salle) {
-            return redirect()->route('dashboard');
+            return redirect()->route('entreprises.show', 1);
         }
 
         if ($this->permissionService->isWaitress($user) || $this->permissionService->isCashier($user)) {
@@ -44,6 +44,6 @@ class RestaurantController extends Controller
             ]);
         }
 
-        return redirect()->route('dashboard');
+        return redirect()->route('entreprises.show', 1);
     }
 }

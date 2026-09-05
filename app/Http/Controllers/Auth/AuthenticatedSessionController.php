@@ -77,13 +77,13 @@ class AuthenticatedSessionController extends Controller
         $pointDeVente = $query->orderBy('nom')->first();
 
         if (!$pointDeVente) {
-            return route('dashboard', absolute: false);
+            return route('entreprises.show', 1, false);
         }
 
         $salle = $pointDeVente->salles()->first();
 
         if (!$salle) {
-            return route('dashboard', absolute: false);
+            return route('entreprises.show', 1, false);
         }
 
         return route('salle.plan.vente', [

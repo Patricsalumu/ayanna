@@ -20,7 +20,7 @@ class EntreprisesController extends Controller
         // Optionnel : vérification de l'autorisation
         // $this->authorize('delete', $entreprise);
         $entreprise->delete();
-        return redirect()->route('dashboard')->with('success', 'Entreprise supprimée avec succès.');
+        return redirect()->route('entreprises.show', 1)->with('success', 'Entreprise supprimée avec succès.');
     }
 
     public function store(Request $request)
@@ -48,8 +48,8 @@ class EntreprisesController extends Controller
         $user->entreprise_id = $entreprise->id;
         $user->save();
 
-        // Rediriger directement vers le dashboard après création
-        return redirect()->route('dashboard')->with('success', 'Entreprise créée avec succès !');
+        // Rediriger vers la page entreprise
+        return redirect()->route('entreprises.show', 1)->with('success', 'Entreprise créée avec succès !');
     }
 
     public function edit()
@@ -93,7 +93,7 @@ class EntreprisesController extends Controller
         }
         $entreprise->save();
 
-        return redirect()->route('dashboard')->with('success', 'Entreprise mise à jour.');
+        return redirect()->route('entreprises.show', 1)->with('success', 'Entreprise mise à jour.');
     }
 
     /**
