@@ -35,7 +35,7 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = Auth::user();
-        if ($user && in_array(strtolower((string) $user->role), ['serveuse', 'caissier', 'administrateur', 'admin', 'super_admin'], true)) {
+        if ($user && in_array(strtolower((string) $user->role), ['serveuse', 'caissier', 'caissier1', 'caissier2', 'comptoiriste', 'administrateur', 'admin', 'super_admin'], true)) {
             if (strtolower((string) $user->role) === 'serveuse') {
                 return redirect()->intended($this->getServeusePlanVenteRoute());
             }
@@ -66,7 +66,15 @@ class AuthenticatedSessionController extends Controller
 
     protected function getServeusePlanVenteRoute(): string
     {
-        $pointDeVente = PointDeVente::query()->first();
+        $user = Auth::user();
+        $query = PointDeVente::query()->where('entreprise_id', $user?->entreprise_id);
+        $assignedIds = $user?->pointsDeVente()->pluck('points_de_vente.id') ?? collect();
+
+        if ($assignedIds->isNotEmpty()) {
+            $query->whereIn('id', $assignedIds);
+        }
+
+        $pointDeVente = $query->orderBy('nom')->first();
 
         if (!$pointDeVente) {
             return route('dashboard', absolute: false);

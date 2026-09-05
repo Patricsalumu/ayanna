@@ -37,6 +37,8 @@
                         <option value="super_admin">Super Admin</option>
                         <option value="admin">Admin</option>
                         <option value="caissier">Caissier</option>
+                        <option value="caissier1">Caissier 1</option>
+                        <option value="caissier2">Caissier 2</option>
                         <option value="cuisinière">Cuisinière</option>
                         <option value="serveuse">Serveuse</option>
                         <option value="Administrateur">Administrateur</option>
@@ -47,6 +49,19 @@
                     <label for="code_pin" class="block text-gray-700 font-medium mb-1">Code PIN (4 chiffres)</label>
                     <input type="text" name="code_pin" maxlength="4" inputmode="numeric" pattern="\d{4}" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400" value="{{ old('code_pin') }}">
                     @error('code_pin')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror
+                </div>
+                <div>
+                    <label for="point_de_vente_ids" class="block text-gray-700 font-medium mb-1">Points de vente visibles</label>
+                    <select name="point_de_vente_ids[]" multiple class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 min-h-[140px]">
+                        @foreach($pointsDeVente as $pointDeVente)
+                            <option value="{{ $pointDeVente->id }}" @selected(in_array($pointDeVente->id, old('point_de_vente_ids', [])))>
+                                {{ $pointDeVente->nom }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Maintenez Ctrl (ou Cmd) pour sélectionner plusieurs points de vente.</p>
+                    @error('point_de_vente_ids')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror
+                    @error('point_de_vente_ids.*')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror
                 </div>
                 <div class="flex justify-end gap-3">
                     <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded shadow">Créer</button>

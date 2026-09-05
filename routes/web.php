@@ -16,7 +16,7 @@ use App\Http\Controllers\RestaurantController;
 Route::middleware(['auth', 'serveuse.session.timeout'])->group(function () 
 {
         // Routes clients
-        Route::prefix('entreprises/{entreprise}')->group(function () {
+        Route::prefix('entreprises/{entreprise}')->middleware(['role.access:admin'])->group(function () {
         Route::get('clients', [ClientController::class, 'show'])->name('clients.show');
         Route::get('clients/create', [ClientController::class, 'create'])->name('clients.create');
         Route::post('clients', [ClientController::class, 'store'])->name('clients.store');
@@ -72,30 +72,32 @@ Route::middleware(['auth', 'serveuse.session.timeout'])->group(function ()
 
     Route::get('/restaurant', [RestaurantController::class, 'home'])->name('restaurant.staff.home');
 
-    //Route pour les categories
-    Route::get('entreprises/{entreprise}/categories', [CategorieController::class, 'show'])->name('categories.show');
-    Route::get('entreprises/{entreprise}/categories/create', [CategorieController::class, 'create'])->name('categories.create');
-    Route::post('entreprises/{entreprise}/categories', [CategorieController::class, 'store'])->name('categories.store');
-    Route::get('entreprises/{entreprise}/categories/{categorie}/edit', [CategorieController::class, 'edit'])->name('categories.edit');
-    Route::put('entreprises/{entreprise}/categories/{categorie}', [CategorieController::class, 'update'])->name('categories.update');
-    Route::delete('entreprises/{entreprise}/categories/{categorie}', [CategorieController::class, 'destroy'])->name('categories.destroy');
+    Route::middleware(['role.access:admin'])->group(function () {
+        //Route pour les categories
+        Route::get('entreprises/{entreprise}/categories', [CategorieController::class, 'show'])->name('categories.show');
+        Route::get('entreprises/{entreprise}/categories/create', [CategorieController::class, 'create'])->name('categories.create');
+        Route::post('entreprises/{entreprise}/categories', [CategorieController::class, 'store'])->name('categories.store');
+        Route::get('entreprises/{entreprise}/categories/{categorie}/edit', [CategorieController::class, 'edit'])->name('categories.edit');
+        Route::put('entreprises/{entreprise}/categories/{categorie}', [CategorieController::class, 'update'])->name('categories.update');
+        Route::delete('entreprises/{entreprise}/categories/{categorie}', [CategorieController::class, 'destroy'])->name('categories.destroy');
 
-    //Route pour les salles
-    Route::get('entreprises/{entreprise}/salles', [SalleController::class, 'show'])->name('salles.show');
-    Route::get('entreprises/{entreprise}/salles/create', [SalleController::class, 'create'])->name('salles.create');
-    Route::get('/entreprises/{entreprise}/salles/{salle}/plan', [SalleController::class, 'plan'])->name('salle.plan');
-    Route::post('entreprises/{entreprise}/salles', [SalleController::class, 'store'])->name('salles.store');
-    Route::get('entreprises/{entreprise}/salles/{salle}/edit', [SalleController::class, 'edit'])->name('salles.edit');
-    Route::put('entreprises/{entreprise}/salles/{salle}', [SalleController::class, 'update'])->name('salles.update');
-    Route::delete('entreprises/{entreprise}/salles/{salle}', [SalleController::class, 'destroy'])->name('salles.destroy');
+        //Route pour les salles
+        Route::get('entreprises/{entreprise}/salles', [SalleController::class, 'show'])->name('salles.show');
+        Route::get('entreprises/{entreprise}/salles/create', [SalleController::class, 'create'])->name('salles.create');
+        Route::get('/entreprises/{entreprise}/salles/{salle}/plan', [SalleController::class, 'plan'])->name('salle.plan');
+        Route::post('entreprises/{entreprise}/salles', [SalleController::class, 'store'])->name('salles.store');
+        Route::get('entreprises/{entreprise}/salles/{salle}/edit', [SalleController::class, 'edit'])->name('salles.edit');
+        Route::put('entreprises/{entreprise}/salles/{salle}', [SalleController::class, 'update'])->name('salles.update');
+        Route::delete('entreprises/{entreprise}/salles/{salle}', [SalleController::class, 'destroy'])->name('salles.destroy');
 
-    //Routes pour les tables
-    Route::get('/salles/{salle}/tables', [TableRestoController::class, 'getTablesBySalle'])->name('tables.getBySalle');
-    Route::get('/salles/{salle}/tables/create', [TableRestoController::class, 'create'])->name('tables.create');
-    Route::put('/tables/{table}', [TableRestoController::class, 'update'])->name('tables.update');
-    Route::delete('/tables/{table}', [TableRestoController::class, 'destroy'])->name('tables.destroy');
-    Route::get('/salles/{salle}/tables/{table}/edit', [TableRestoController::class, 'edit'])->name('tables.edit');
-    Route::post('/tables', [TableRestoController::class, 'store'])->name('tables.store');
+        //Routes pour les tables
+        Route::get('/salles/{salle}/tables', [TableRestoController::class, 'getTablesBySalle'])->name('tables.getBySalle');
+        Route::get('/salles/{salle}/tables/create', [TableRestoController::class, 'create'])->name('tables.create');
+        Route::put('/tables/{table}', [TableRestoController::class, 'update'])->name('tables.update');
+        Route::delete('/tables/{table}', [TableRestoController::class, 'destroy'])->name('tables.destroy');
+        Route::get('/salles/{salle}/tables/{table}/edit', [TableRestoController::class, 'edit'])->name('tables.edit');
+        Route::post('/tables', [TableRestoController::class, 'store'])->name('tables.store');
+    });
 
     // Catalogue produits pour la vente (PDV)
     Route::get('/vente/catalogue/{pointDeVente}', [VenteController::class, 'catalogue'])->name('vente.catalogue');
@@ -104,17 +106,19 @@ Route::middleware(['auth', 'serveuse.session.timeout'])->group(function ()
     Route::get('/vente/panier/{pointDeVente}', [VenteController::class, 'afficherPanier'])->name('vente.panier');
     
     
-    //Route Ajax
-    Route::get('/entreprises/{entreprise}/produits/search', [ProduitController::class, 'searchAjax'])->name('produits.searchAjax');
+    Route::middleware(['role.access:admin'])->group(function () {
+        //Route Ajax
+        Route::get('/entreprises/{entreprise}/produits/search', [ProduitController::class, 'searchAjax'])->name('produits.searchAjax');
 
-    //Routes produits
-    Route::get('/entreprises/{entreprise}/produits/create', [ProduitController::class, 'create'])->name('produits.create');
-    Route::post('/entreprises/{entreprise}/produits', [ProduitController::class, 'store'])->name('produits.store');
-    Route::get('/entreprises/{entreprise}/produits', [ProduitController::class, 'all'])->name('produits.entreprise');
-    Route::get('/entreprises/{entreprise}/produits/{produit}/edit', [ProduitController::class, 'edit'])->name('produits.edit');
-    Route::put('/entreprises/{entreprise}/produits/{produit}', [ProduitController::class, 'update'])->name('produits.update');
-    Route::post('/entreprises/{entreprise}/produits/{produit}/duplicate', [ProduitController::class, 'duplicate'])->name('produits.duplicate');
-    Route::delete('/entreprises/{entreprise}/produits/{produit}', [ProduitController::class, 'destroy'])->name('produits.destroy');
+        //Routes produits
+        Route::get('/entreprises/{entreprise}/produits/create', [ProduitController::class, 'create'])->name('produits.create');
+        Route::post('/entreprises/{entreprise}/produits', [ProduitController::class, 'store'])->name('produits.store');
+        Route::get('/entreprises/{entreprise}/produits', [ProduitController::class, 'all'])->name('produits.entreprise');
+        Route::get('/entreprises/{entreprise}/produits/{produit}/edit', [ProduitController::class, 'edit'])->name('produits.edit');
+        Route::put('/entreprises/{entreprise}/produits/{produit}', [ProduitController::class, 'update'])->name('produits.update');
+        Route::post('/entreprises/{entreprise}/produits/{produit}/duplicate', [ProduitController::class, 'duplicate'])->name('produits.duplicate');
+        Route::delete('/entreprises/{entreprise}/produits/{produit}', [ProduitController::class, 'destroy'])->name('produits.destroy');
+    });
 
     //Routes créances
     Route::post('/creances/{commande}/confirmer', [App\Http\Controllers\VenteController::class, 'confirmerCreance'])->name('creances.confirmer');
@@ -125,7 +129,7 @@ Route::middleware(['auth', 'serveuse.session.timeout'])->group(function ()
     Route::get('/creances', [App\Http\Controllers\VenteController::class, 'creances'])->name('creances.liste');
 
     // Routes comptabilité
-        Route::prefix('comptabilite')->name('comptabilite.')->group(function () {
+        Route::prefix('comptabilite')->name('comptabilite.')->middleware(['role.access:admin'])->group(function () {
         Route::get('/journal', [\App\Http\Controllers\ComptabiliteController::class, 'journal'])->name('journal');
         Route::patch('/journal/{journal}/valider', [\App\Http\Controllers\ComptabiliteController::class, 'validerJournal'])->name('journal.valider');
         Route::patch('/journal/{journal}/annuler', [\App\Http\Controllers\ComptabiliteController::class, 'annulerJournal'])->name('journal.annuler');
@@ -147,7 +151,7 @@ Route::middleware(['auth', 'serveuse.session.timeout'])->group(function ()
 });
 
 // Comptes & Entrées-Sorties
-    Route::middleware(['auth'])->group(function () {
+    Route::middleware(['auth', 'role.access:admin'])->group(function () {
     Route::get('/comptes', [\App\Http\Controllers\CompteController::class, 'index'])->name('comptes.index');
     Route::get('/classes-comptables', [\App\Http\Controllers\ClasseComptableController::class, 'index'])->name('classes-comptables.index');
     Route::get('/classes-comptables/{classeComptable}', [\App\Http\Controllers\ClasseComptableController::class, 'show'])->name('classes-comptables.show');
@@ -163,25 +167,27 @@ Route::middleware(['auth', 'serveuse.session.timeout'])->group(function ()
 });
 
 // Mouvements (entrées/sorties) d'un point de vente
-Route::get('/points-de-vente/{pointDeVente}/mouvements', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'index'])->name('mouvements.pdv');
-Route::post('/points-de-vente/{pointDeVente}/mouvements', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'store'])->name('mouvements.pdv.store');
-Route::patch('/points-de-vente/{pointDeVente}/mouvements/{mouvement}/annuler', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'annuler'])->name('mouvements.pdv.annuler');
-Route::get('/points-de-vente/{pointDeVente}/mouvements/export-pdf', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'exportPdf'])->name('mouvements.pdv.export_pdf');
+Route::middleware(['auth', 'role.access:admin'])->group(function () {
+    Route::get('/points-de-vente/{pointDeVente}/mouvements', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'index'])->name('mouvements.pdv');
+    Route::post('/points-de-vente/{pointDeVente}/mouvements', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'store'])->name('mouvements.pdv.store');
+    Route::patch('/points-de-vente/{pointDeVente}/mouvements/{mouvement}/annuler', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'annuler'])->name('mouvements.pdv.annuler');
+    Route::get('/points-de-vente/{pointDeVente}/mouvements/export-pdf', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'exportPdf'])->name('mouvements.pdv.export_pdf');
+});
 
 
 // Stock journalier
 Route::middleware(['auth'])->group(function () {
-    Route::get('/stock-journalier/{pointDeVente?}', [\App\Http\Controllers\StockJournalierController::class, 'index'])->name('stock_journalier.index');
+    Route::get('/stock-journalier/{pointDeVente?}', [\App\Http\Controllers\StockJournalierController::class, 'index'])->middleware(['role.access:admin,cashier,cashier1'])->name('stock_journalier.index');
     Route::post('/stock-journalier', [\App\Http\Controllers\StockJournalierController::class, 'store'])->name('stock_journalier.store');
-    Route::get('/stock-journalier/{pointDeVente}/export-pdf', [App\Http\Controllers\StockJournalierController::class, 'exportPdf'])->name('stock_journalier.export_pdf');
-    Route::get('/stock-journalier/{pointDeVente}/export-80mm', [App\Http\Controllers\StockJournalierController::class, 'exportPdf80mm'])->name('stock_journalier.export_80mm');
-    Route::get('/stock-journalier/{pointDeVente}/export-opening-pdf', [App\Http\Controllers\StockJournalierController::class, 'exportOpeningPdf'])->name('stock_journalier.export_opening_pdf');
+    Route::get('/stock-journalier/{pointDeVente}/export-pdf', [App\Http\Controllers\StockJournalierController::class, 'exportPdf'])->middleware(['role.access:admin,cashier,cashier1'])->name('stock_journalier.export_pdf');
+    Route::get('/stock-journalier/{pointDeVente}/export-80mm', [App\Http\Controllers\StockJournalierController::class, 'exportPdf80mm'])->middleware(['role.access:admin,cashier,cashier1'])->name('stock_journalier.export_80mm');
+    Route::get('/stock-journalier/{pointDeVente}/export-opening-pdf', [App\Http\Controllers\StockJournalierController::class, 'exportOpeningPdf'])->middleware(['role.access:admin,cashier,cashier1'])->name('stock_journalier.export_opening_pdf');
     Route::post('/stock-journalier/qtajoute', [App\Http\Controllers\StockJournalierController::class, 'storeqtajoute'])->name('stock_journalier.storeqtajoute');
     Route::post('/stock-journalier/qtinitial', [App\Http\Controllers\StockJournalierController::class, 'storeqtinitial'])->name('stock_journalier.storeqtinitial');
-    Route::get('/stock-journalier/ouverture/{pointDeVente}', [App\Http\Controllers\StockJournalierController::class, 'ficheOuvertureStock'])->name('stock_journalier.ouverture');
-    Route::post('/stock-journalier/valider-ouverture', [App\Http\Controllers\StockJournalierController::class, 'validerOuvertureStock'])->name('stock_journalier.valider_ouverture');
+    Route::get('/stock-journalier/ouverture/{pointDeVente}', [App\Http\Controllers\StockJournalierController::class, 'ficheOuvertureStock'])->middleware(['role.access:admin,cashier,cashier1,cashier2'])->name('stock_journalier.ouverture');
+    Route::post('/stock-journalier/valider-ouverture', [App\Http\Controllers\StockJournalierController::class, 'validerOuvertureStock'])->middleware(['role.access:admin,cashier,cashier1,cashier2'])->name('stock_journalier.valider_ouverture');
     // Fermer une session de stock journalier (stock)
-    Route::post('/stock-journalier/{pointDeVente}/fermer-session', [App\Http\Controllers\StockJournalierController::class, 'fermerSession'])->name('stock_journalier.fermer_session');
+    Route::post('/stock-journalier/{pointDeVente}/fermer-session', [App\Http\Controllers\StockJournalierController::class, 'fermerSession'])->middleware(['role.access:admin,cashier,cashier1,cashier2'])->name('stock_journalier.fermer_session');
 });
 Route::get('/', function () {
     return redirect()->route('login');
@@ -215,11 +221,13 @@ Route::post('/panier/modifier-produit/{produit_id}', [\App\Http\Controllers\Pani
 Route::post('/panier/supprimer-produit/{produit_id}', [\App\Http\Controllers\PanierController::class, 'supprimerProduit'])->name('panier.supprimerProduit');
 
 // Liste des paniers du jour (comptoir)
-Route::get('/paniers/jour', [\App\Http\Controllers\PanierController::class, 'paniersDuJour'])->name('paniers.jour');
-Route::get('/paniers/jour/export-pdf', [\App\Http\Controllers\PanierController::class, 'exportPaniersDuJourPdf'])->name('paniers.jour.export-pdf');
+Route::middleware(['auth', 'role.access:admin,cashier,cashier1'])->group(function () {
+    Route::get('/paniers/jour', [\App\Http\Controllers\PanierController::class, 'paniersDuJour'])->name('paniers.jour');
+    Route::get('/paniers/jour/export-pdf', [\App\Http\Controllers\PanierController::class, 'exportPaniersDuJourPdf'])->name('paniers.jour.export-pdf');
+});
 
 // Annuler un panier
-Route::patch('/paniers/{panier}/annuler', [\App\Http\Controllers\PanierController::class, 'annuler'])->name('paniers.annuler');
+Route::patch('/paniers/{panier}/annuler', [\App\Http\Controllers\PanierController::class, 'annuler'])->middleware(['auth', 'role.access:admin'])->name('paniers.annuler');
 
 // Enregistrer un snapshot d'impression de panier
 Route::post('/panier/impression/{panier}', [\App\Http\Controllers\PanierController::class, 'enregistrerImpression'])->name('panier.impression');

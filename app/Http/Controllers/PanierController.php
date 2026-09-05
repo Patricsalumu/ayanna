@@ -295,6 +295,10 @@ class PanierController extends Controller
     public function setServeuse(Request $request)
     {
         try {
+            if (!$this->permissionService->canEditServeuseAssignment(Auth::user())) {
+                return response()->json(['success' => false, 'error' => 'Vous n\'êtes pas autorisé à modifier la serveuse.'], 403);
+            }
+
             Log::info('[setServeuse] Requête reçue', $request->all());
             $table_id = $request->input('table_id');
             $serveuse_id = $request->input('serveuse_id');
@@ -654,7 +658,7 @@ class PanierController extends Controller
     {
         $role = strtolower((string) (Auth::user()?->role ?? ''));
 
-        return in_array($role, ['comptoiriste', 'serveuse', 'caissier', 'cashier'], true);
+        return in_array($role, ['comptoiriste', 'serveuse', 'caissier', 'cashier', 'caissier1', 'caissier_1', 'cashier1', 'cashier_1', 'comptoiriste1', 'comptoiriste_1'], true);
     }
 
     /**
@@ -662,8 +666,10 @@ class PanierController extends Controller
      */
     public function annuler($id)
     {
-        // Empêcher certaines catégories d'utilisateurs d'annuler un panier
-        if (in_array(Auth::user()?->role, ['comptoiriste', 'serveuse'], true)) {
+        // Réservé aux administrateurs
+        $roleNorm = strtolower(trim((string) (Auth::user()?->role ?? '')));
+        $isAdmin = in_array($roleNorm, ['administrateur', 'admin', 'super_admin'], true);
+        if (!$isAdmin) {
             return redirect()->back()->with('message', 'Vous n\'êtes pas autorisé à annuler un panier.');
         }
 

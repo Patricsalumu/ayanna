@@ -8,11 +8,24 @@
         showDeleteModal: false,
         loading: false,
         errors: {},
-        form: { name: '', email: '', role: '', password: '', password_confirmation: '' },
-        editForm: { id: null, name: '', email: '', role: '' },
+        form: { name: '', email: '', role: '', password: '', password_confirmation: '', code_pin: '', point_de_vente_ids: [] },
+        editForm: { id: null, name: '', email: '', role: '', password: '', password_confirmation: '', code_pin: '', point_de_vente_ids: [] },
         deleteId: null,
-        openAdd() { this.form = { name: '', email: '', role: '', password: '', password_confirmation: '' }; this.errors = {}; this.showAddModal = true; },
-        openEdit(user) { this.editForm = { id: user.id, name: user.name, email: user.email, role: user.role }; this.errors = {}; this.showEditModal = true; },
+        openAdd() { this.form = { name: '', email: '', role: '', password: '', password_confirmation: '', code_pin: '', point_de_vente_ids: [] }; this.errors = {}; this.showAddModal = true; },
+        openEdit(user) {
+            this.editForm = {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                password: '',
+                password_confirmation: '',
+                code_pin: user.code_pin ?? '',
+                point_de_vente_ids: user.point_de_vente_ids ?? []
+            };
+            this.errors = {};
+            this.showEditModal = true;
+        },
         openDelete(id) { this.deleteId = id; this.showDeleteModal = true; },
         submitUser() {
             this.loading = true;
@@ -143,6 +156,8 @@
                         <option value="super_admin">Super Admin</option>
                         <option value="admin">Admin</option>
                         <option value="caissier">Caissier</option>
+                        <option value="caissier1">Caissier 1</option>
+                        <option value="caissier2">Caissier 2</option>
                         <option value="cuisinière">Cuisinière</option>
                         <option value="serveuse">Serveuse</option>
                     </select>
@@ -160,6 +175,23 @@
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700">Code PIN (4 chiffres)</label>
                     <input type="text" x-model="form.code_pin" maxlength="4" inputmode="numeric" pattern="\d{4}" class="mt-1 block w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Points de vente visibles</label>
+                    <div class="mt-2 max-h-36 overflow-y-auto rounded border border-gray-300 p-2 space-y-1">
+                        @foreach($pointsDeVente as $pointDeVente)
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" value="{{ $pointDeVente->id }}" x-model="form.point_de_vente_ids" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span>{{ $pointDeVente->nom }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <template x-if="errors.point_de_vente_ids">
+                        <div class="text-red-600 text-xs mt-1" x-text="errors.point_de_vente_ids[0]"></div>
+                    </template>
+                    <template x-if="errors['point_de_vente_ids.0']">
+                        <div class="text-red-600 text-xs mt-1" x-text="errors['point_de_vente_ids.0'][0]"></div>
+                    </template>
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700">Confirmer le mot de passe</label>
@@ -204,11 +236,48 @@
                         <option value="super_admin">Super Admin</option>
                         <option value="admin">Admin</option>
                         <option value="caissier">Caissier</option>
+                        <option value="caissier1">Caissier 1</option>
+                        <option value="caissier2">Caissier 2</option>
                         <option value="cuisinière">Cuisinière</option>
                         <option value="serveuse">Serveuse</option>
                     </select>
                     <template x-if="errors.role">
                         <div class="text-red-600 text-xs mt-1" x-text="errors.role[0]"></div>
+                    </template>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Nouveau mot de passe (optionnel)</label>
+                    <input type="password" x-model="editForm.password" class="mt-1 block w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                    <template x-if="errors.password">
+                        <div class="text-red-600 text-xs mt-1" x-text="errors.password[0]"></div>
+                    </template>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Confirmer le nouveau mot de passe</label>
+                    <input type="password" x-model="editForm.password_confirmation" class="mt-1 block w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Code PIN (4 chiffres)</label>
+                    <input type="text" x-model="editForm.code_pin" maxlength="4" inputmode="numeric" pattern="\d{4}" class="mt-1 block w-full rounded border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                    <template x-if="errors.code_pin">
+                        <div class="text-red-600 text-xs mt-1" x-text="errors.code_pin[0]"></div>
+                    </template>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Points de vente visibles</label>
+                    <div class="mt-2 max-h-36 overflow-y-auto rounded border border-gray-300 p-2 space-y-1">
+                        @foreach($pointsDeVente as $pointDeVente)
+                            <label class="flex items-center gap-2 text-sm text-gray-700">
+                                <input type="checkbox" value="{{ $pointDeVente->id }}" x-model="editForm.point_de_vente_ids" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span>{{ $pointDeVente->nom }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <template x-if="errors.point_de_vente_ids">
+                        <div class="text-red-600 text-xs mt-1" x-text="errors.point_de_vente_ids[0]"></div>
+                    </template>
+                    <template x-if="errors['point_de_vente_ids.0']">
+                        <div class="text-red-600 text-xs mt-1" x-text="errors['point_de_vente_ids.0'][0]"></div>
                     </template>
                 </div>
                 <div class="flex justify-end gap-2">
@@ -250,7 +319,7 @@
                         <span class="block w-1 h-1 bg-gray-700 rounded-full"></span>
                     </button>
                     <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-40 bg-white border rounded shadow-lg z-10">
-                        <a href="#" @click.prevent="openEdit({id: {{ $user->id }}, name: '{{ addslashes($user->name) }}', email: '{{ addslashes($user->email) }}', role: '{{ $user->role }}'})" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        <a href="#" @click.prevent="openEdit({id: {{ $user->id }}, name: '{{ addslashes($user->name) }}', email: '{{ addslashes($user->email) }}', role: '{{ $user->role }}', code_pin: '{{ $user->code_pin }}', point_de_vente_ids: @json($user->pointsDeVente->pluck('id')->map(fn($id) => (string) $id)->values()->all())})" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z" /></svg>
                             Modifier
                         </a>
@@ -292,7 +361,7 @@
                             <td class="p-3">{{ $user->email }}</td>
                             <td class="p-3">{{ $user->role }}</td>
                             <td class="p-3 flex gap-2">
-                                <a href="#" @click.prevent="openEdit({id: {{ $user->id }}, name: '{{ addslashes($user->name) }}', email: '{{ addslashes($user->email) }}', role: '{{ $user->role }}'})" class="inline-flex items-center gap-1 bg-indigo-600 text-white px-3 py-1 rounded-md text-sm hover:bg-indigo-700">
+                                <a href="#" @click.prevent="openEdit({id: {{ $user->id }}, name: '{{ addslashes($user->name) }}', email: '{{ addslashes($user->email) }}', role: '{{ $user->role }}', code_pin: '{{ $user->code_pin }}', point_de_vente_ids: @json($user->pointsDeVente->pluck('id')->map(fn($id) => (string) $id)->values()->all())})" class="inline-flex items-center gap-1 bg-indigo-600 text-white px-3 py-1 rounded-md text-sm hover:bg-indigo-700">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z" /></svg>
                                     Modifier
                                 </a>

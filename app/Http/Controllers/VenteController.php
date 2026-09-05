@@ -25,6 +25,11 @@ class VenteController extends Controller
         try {
             $user = Auth::user();
             $pointDeVente = PointDeVente::findOrFail($pointDeVenteId);
+
+            if (!$this->permissionService->canAccessPointDeVente($user, (int) $pointDeVente->id)) {
+                abort(403, 'Vous n\'êtes pas autorisé à accéder à ce point de vente.');
+            }
+
             $categories = $pointDeVente->categories;
 
             if ($this->permissionService->isWaitress($user) && $request->get('table_id')) {
@@ -329,7 +334,13 @@ class VenteController extends Controller
     // Affiche la page de vente pour un point de vente donné
     public function continuer($id)
     {
+        $user = Auth::user();
         $pointDeVente = PointDeVente::findOrFail($id);
+
+        if (!$this->permissionService->canAccessPointDeVente($user, (int) $pointDeVente->id)) {
+            abort(403, 'Vous n\'êtes pas autorisé à accéder à ce point de vente.');
+        }
+
         // On récupère la première salle associée au point de vente
         $salle = $pointDeVente->salles()->with('tables')->first();
         $entreprise = $pointDeVente->entreprise;
@@ -742,14 +753,16 @@ class VenteController extends Controller
             $this->majQuantiteVendueStock($panier);
             Log::info('[VALIDATION PAIEMENT] Stock journalier mis à jour');
 
-            // 6. Créer un nouveau panier vide pour la même table (statut en_cours)
-            $nouveauPanier = Panier::create([
-                'table_id' => $panier->table_id,
-                'status' => 'en_cours',
-                'point_de_vente_id' => $panier->point_de_vente_id,
-                'opened_by' => Auth::id(),
-            ]);
-            Log::info('[VALIDATION PAIEMENT] Nouveau panier créé', ['nouveau_panier_id' => $nouveauPanier->id]);
+            $table = $panier->tableResto;
+            $salleId = $table?->salle_id;
+            $redirectUrl = null;
+            if ($salleId && $panier->point_de_vente_id) {
+                $redirectUrl = route('salle.plan.vente', [
+                    'entreprise' => $panier->pointDeVente?->entreprise_id,
+                    'salle' => $salleId,
+                    'point_de_vente_id' => $panier->point_de_vente_id,
+                ]);
+            }
 
             DB::commit();
             Log::info('[VALIDATION PAIEMENT] Transaction validée avec succès', ['commande_id' => $commande->id]);
@@ -757,7 +770,8 @@ class VenteController extends Controller
             return response()->json([
                 'success' => true, 
                 'commande_id' => $commande->id,
-                'nouveau_panier_id' => $nouveauPanier->id,
+                'redirect_url' => $redirectUrl,
+                'table_liberated' => true,
                 'message' => 'Commande validée avec succès'
             ]);
 

@@ -93,7 +93,7 @@
       </template>
     </div>
 
-    @if(!app(\App\Services\PermissionService::class)->isCashier(auth()->user()))
+    @if(app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user()))
       <template x-if="panier.length">
         <div class="grid grid-cols-2 gap-2">
           <button
@@ -137,7 +137,7 @@
           style="height:40px;"
           x-model="paiement.serveuse_id"
           @change="setServeuse(paiement.serveuse_id)"
-          disabled
+          :disabled="!window.CAN_EDIT_SERVEUSE"
         >
           <option value="">Serveuse</option>
           @foreach($serveuses as $s)
@@ -172,12 +172,12 @@
         @endif
       </div>
       <div class="flex flex-row flex-wrap gap-2 mb-2 justify-between items-center">
-        @if(!app(\App\Services\PermissionService::class)->isCashier(auth()->user()))
+        @if(app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user()))
           <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[140px] rounded-xl bg-gray-800 text-white 
           font-bold shadow hover:bg-gray-900 transition text-center px-4 py-0.5" @click="printAddition('proforma')">
           Préfacture</button>
         @endif
-        @if(!app(\App\Services\PermissionService::class)->isCashier(auth()->user()))
+        @if(app(\App\Services\PermissionService::class)->isAdmin(auth()->user()))
           <form method="POST" action="{{ (isset($panier) && !empty($panier->id)) ? route('paniers.annuler', $panier->id) : '#' }}" onsubmit="return confirm('Annuler ce panier ?');" class="flex-none sm:flex-1 w-full sm:w-auto min-w-[140px]">
             @csrf
             @method('PATCH')
@@ -372,6 +372,46 @@
   </div>
 </div>
 
+<div x-show="showAdminCodeModal" x-transition style="display:none;" class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-60">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5" @click.away="closeAdminCodeModal()">
+    <div class="text-center mb-4">
+      <h3 class="text-xl font-extrabold text-gray-800">Autorisation administrateur</h3>
+      <p class="text-sm text-gray-600 mt-1">
+        Saisissez le code Super Admin/Admin pour
+        <span class="font-semibold" x-text="adminCodeActionLabel || 'continuer'"></span>
+      </p>
+    </div>
+
+    <div class="mb-3">
+      <div class="h-12 rounded-xl border border-gray-300 bg-gray-50 flex items-center justify-center text-2xl tracking-[0.6rem] font-bold text-gray-700 select-none" x-text="adminCodeInput.length ? '•'.repeat(adminCodeInput.length) : '••••'"></div>
+    </div>
+
+    <template x-if="adminCodeError">
+      <div class="mb-3 text-center text-sm text-red-600 font-medium" x-text="adminCodeError"></div>
+    </template>
+
+    <div class="grid grid-cols-3 gap-2 mb-3">
+      <button type="button" @click="typeAdminCodeDigit(1)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">1</button>
+      <button type="button" @click="typeAdminCodeDigit(2)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">2</button>
+      <button type="button" @click="typeAdminCodeDigit(3)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">3</button>
+      <button type="button" @click="typeAdminCodeDigit(4)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">4</button>
+      <button type="button" @click="typeAdminCodeDigit(5)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">5</button>
+      <button type="button" @click="typeAdminCodeDigit(6)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">6</button>
+      <button type="button" @click="typeAdminCodeDigit(7)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">7</button>
+      <button type="button" @click="typeAdminCodeDigit(8)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">8</button>
+      <button type="button" @click="typeAdminCodeDigit(9)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">9</button>
+      <button type="button" @click="clearAdminCode()" class="h-12 rounded-xl bg-orange-100 hover:bg-orange-200 text-sm font-bold text-orange-700">Effacer</button>
+      <button type="button" @click="typeAdminCodeDigit(0)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">0</button>
+      <button type="button" @click="backspaceAdminCode()" class="h-12 rounded-xl bg-blue-100 hover:bg-blue-200 text-sm font-bold text-blue-700">⌫</button>
+    </div>
+
+    <div class="flex gap-2">
+      <button type="button" @click="closeAdminCodeModal()" class="flex-1 h-11 rounded-xl bg-gray-200 hover:bg-gray-300 font-semibold text-gray-700">Annuler</button>
+      <button type="button" @click="submitAdminCode()" :disabled="adminCodeLoading" class="flex-1 h-11 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold">Valider</button>
+    </div>
+  </div>
+</div>
+
 <!-- Ticket d'addition imprimable (généré dynamiquement) -->
 <div id="ticket-addition" style="display:none;"></div>
 @vite(['resources/js/app.js'])
@@ -393,6 +433,7 @@ window.PANIER_ID = @json($panier->id ?? ($panier['id'] ?? null));
 window.USER_ROLE = @json(auth()->user()->role ?? null);
 window.CAN_ADD_PRODUCTS = @json(app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user()));
 window.CAN_APPLY_DISCOUNT = @json(app(\App\Services\PermissionService::class)->canApplyDiscount(auth()->user()));
+window.CAN_EDIT_SERVEUSE = @json(app(\App\Services\PermissionService::class)->canEditServeuseAssignment(auth()->user()));
 window.ENTREPRISE = @json($pointDeVente->entreprise);
 window.CLIENTS = @json($clientsArray ?? []);
 window.SERVEUSES = @json($serveusesArray ?? []);

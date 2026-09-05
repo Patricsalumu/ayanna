@@ -51,6 +51,12 @@ class PointDeVente extends Model
     {
         return $this->hasMany(\App\Models\Commande::class, 'point_de_vente_id');
     }
+
+    public function users()
+    {
+        return $this->belongsToMany(\App\Models\User::class, 'point_de_vente_user', 'point_de_vente_id', 'user_id')
+            ->withTimestamps();
+    }
     /**
      * Retourne tous les produits liés à ce point de vente via les catégories associées.
      */

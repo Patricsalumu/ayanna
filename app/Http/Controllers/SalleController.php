@@ -136,6 +136,10 @@ class SalleController extends Controller
         $pointDeVenteId = request('point_de_vente_id');
         $pointDeVente = \App\Models\PointDeVente::find($pointDeVenteId);
 
+        if ($pointDeVente && !$this->permissionService->canAccessPointDeVente($user, (int) $pointDeVente->id)) {
+            abort(403, 'Vous n\'êtes pas autorisé à accéder à ce point de vente.');
+        }
+
         if ($pointDeVente && $pointDeVente->etat !== 'ouvert') {
             return redirect()->route('pointsDeVente.show', [
                 'entreprise' => $entreprise->id,

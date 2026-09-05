@@ -60,16 +60,24 @@
                 <!-- Menu navigation déroulant -->
                 <div x-show="showNavMenu" @click.away="showNavMenu = false" x-transition
                   class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl z-50 flex flex-col p-2 border border-gray-100">
-                  @php $isServeuse = in_array(Auth::user()?->role, ['Serveuse', 'serveuse'], true); @endphp
+                                    @php
+                                            $isServeuse = in_array(Auth::user()?->role, ['Serveuse', 'serveuse'], true);
+                                            $roleNorm = strtolower(trim((string) (Auth::user()?->role ?? '')));
+                                            $isCaissierType2 = in_array($roleNorm, ['caissier2', 'caissier_2', 'cashier2', 'cashier_2', 'comptoiriste2', 'comptoiriste_2'], true);
+                                    @endphp
                   @if(!$isServeuse)
+                                    @if(!$isCaissierType2)
                   <a href="{{ route('paniers.jour') }}"  class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4 block" title="Paniers du jour">Factures</a>
                   <a href="{{ (isset($pointDeVente) && is_object($pointDeVente) && method_exists($pointDeVente, 'getAttribute')) ? route('stock_journalier.index', ['pointDeVente' => $pointDeVente->id]) : '#' }}" class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4 block" title="Fiche Produit">Stock Produit</a>
+                                    @endif
+                        @if(!$isCaissierType2)
                   <a href="{{ route('bon-commande.index', isset($pointDeVente) && is_object($pointDeVente) ? ['point_de_vente_id' => $pointDeVente->id] : []) }}" class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4 block" title="Bons">Bons commandes</a>
                   <a href="{{ (isset($pointDeVente) && is_object($pointDeVente) && method_exists($pointDeVente, 'getAttribute')) ? route('rapport.jour', ['pointDeVenteId' => $pointDeVente->id]) : '#' }}"
                      class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4"
                      title="Rapport du jour">
                      Rapport
                   </a>
+                        @endif
                   <a href="{{route('creances.liste') }}"
                      class="w-full mb-1 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-base shadow transition text-left px-4"
                      title="Créances">

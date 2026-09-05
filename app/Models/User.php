@@ -85,6 +85,12 @@ class User extends Authenticatable
         return $this->hasMany(\App\Models\TableResto::class, 'serveuse_id');
     }
 
+    public function pointsDeVente()
+    {
+        return $this->belongsToMany(\App\Models\PointDeVente::class, 'point_de_vente_user', 'user_id', 'point_de_vente_id')
+            ->withTimestamps();
+    }
+
     public function isRole(string $role): bool
     {
         return strtolower((string) $this->role) === strtolower($role);

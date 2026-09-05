@@ -17,7 +17,14 @@ class RestaurantController extends Controller
     public function home(Request $request)
     {
         $user = Auth::user();
-        $pointDeVente = PointDeVente::query()->first();
+        $query = PointDeVente::query()->where('entreprise_id', $user?->entreprise_id);
+        $assignedIds = $user?->pointsDeVente()->pluck('points_de_vente.id') ?? collect();
+
+        if (!$this->permissionService->isSuperAdmin($user) && $assignedIds->isNotEmpty()) {
+            $query->whereIn('id', $assignedIds);
+        }
+
+        $pointDeVente = $query->orderBy('nom')->first();
 
         if (!$pointDeVente) {
             return redirect()->route('dashboard');

@@ -37,6 +37,12 @@ export function posApp() {
     selectedIndex: null,
     showOptions: false,
     afterPrintModalOpen: false,
+    showAdminCodeModal: false,
+    adminCodeInput: '',
+    adminCodeError: '',
+    adminCodeActionLabel: '',
+    adminCodeResolver: null,
+    adminCodeLoading: false,
     currentCat: (() => {
       if (window.INITIAL_CATEGORY !== undefined && window.INITIAL_CATEGORY !== null && window.INITIAL_CATEGORY !== '') {
         return Number(window.INITIAL_CATEGORY);
@@ -51,7 +57,7 @@ export function posApp() {
     userRole: window.USER_ROLE || '',
     canAddProducts: window.CAN_ADD_PRODUCTS !== false,
     canApplyDiscount: window.CAN_APPLY_DISCOUNT === true,
-    quantityRestrictedRoles: ['comptoiriste', 'serveuse'],
+    quantityRestrictedRoles: ['comptoiriste', 'serveuse', 'caissier1', 'caissier_1', 'cashier1', 'cashier_1', 'comptoiriste1', 'comptoiriste_1'],
     client_id: window.CLIENT_ID || '',
     serveuse_id: window.SERVEUSE_ID || '',
     mode_paiement_id: '',
@@ -223,15 +229,58 @@ export function posApp() {
     isKeyDisabled(btn) {
       return (this.mode === 'paiement' && btn.disabledEnPaiement) || (this.mode !== 'paiement' && !this.canAddProducts);
     },
-    async demanderAutorisationAdmin(actionLabel) {
-      if (!this.isQuantityRestricted()) {
-        return null;
+    openAdminCodeModal(actionLabel) {
+      this.adminCodeInput = '';
+      this.adminCodeError = '';
+      this.adminCodeActionLabel = actionLabel || 'cette action';
+      this.adminCodeLoading = false;
+      this.showAdminCodeModal = true;
+
+      return new Promise((resolve) => {
+        this.adminCodeResolver = resolve;
+      });
+    },
+    closeAdminCodeModal() {
+      this.showAdminCodeModal = false;
+      this.adminCodeInput = '';
+      this.adminCodeError = '';
+      this.adminCodeActionLabel = '';
+      this.adminCodeLoading = false;
+
+      if (this.adminCodeResolver) {
+        const resolver = this.adminCodeResolver;
+        this.adminCodeResolver = null;
+        resolver(null);
+      }
+    },
+    typeAdminCodeDigit(digit) {
+      if (this.adminCodeLoading) return;
+      if (!/^\d$/.test(String(digit))) return;
+      if (this.adminCodeInput.length >= 4) return;
+      this.adminCodeInput += String(digit);
+      this.adminCodeError = '';
+    },
+    backspaceAdminCode() {
+      if (this.adminCodeLoading) return;
+      this.adminCodeInput = this.adminCodeInput.slice(0, -1);
+      this.adminCodeError = '';
+    },
+    clearAdminCode() {
+      if (this.adminCodeLoading) return;
+      this.adminCodeInput = '';
+      this.adminCodeError = '';
+    },
+    async submitAdminCode() {
+      if (this.adminCodeLoading) return;
+
+      const code = String(this.adminCodeInput || '');
+      if (!/^\d{4}$/.test(code)) {
+        this.adminCodeError = 'Saisissez un code à 4 chiffres.';
+        return;
       }
 
-      const password = window.prompt(`Mot de passe administrateur requis pour ${actionLabel}.`);
-      if (password === null || password === '') {
-        return null;
-      }
+      this.adminCodeLoading = true;
+      this.adminCodeError = '';
 
       try {
         const response = await fetch('/panier/valider-admin', {
@@ -240,19 +289,39 @@ export function posApp() {
             'X-CSRF-TOKEN': window.CSRF_TOKEN,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ password_admin: password })
+          body: JSON.stringify({ password_admin: code })
         });
         const data = await response.json();
+
         if (!data.success) {
-          alert(data.error || 'Mot de passe administrateur invalide.');
-          return null;
+          this.adminCodeError = data.error || 'Code administrateur invalide.';
+          this.adminCodeLoading = false;
+          return;
         }
-        return password;
+
+        this.showAdminCodeModal = false;
+        this.adminCodeInput = '';
+        this.adminCodeError = '';
+        this.adminCodeActionLabel = '';
+        this.adminCodeLoading = false;
+
+        if (this.adminCodeResolver) {
+          const resolver = this.adminCodeResolver;
+          this.adminCodeResolver = null;
+          resolver(code);
+        }
       } catch (error) {
         console.error('Erreur validation admin:', error);
-        alert('Erreur de connexion avec le serveur.');
+        this.adminCodeError = 'Erreur de connexion avec le serveur.';
+        this.adminCodeLoading = false;
+      }
+    },
+    async demanderAutorisationAdmin(actionLabel) {
+      if (!this.isQuantityRestricted()) {
         return null;
       }
+
+      return await this.openAdminCodeModal(actionLabel);
     },
     async syncPanierToServer() {
       if (!window.TABLE_COURANTE || !window.POINT_DE_VENTE_ID) {
@@ -582,19 +651,10 @@ export function posApp() {
         }))
         .then(res => res.json())
         .then(data => {
-          if(data.notification) {
-            alert(data.notification);
-          }
           if(data.success && data.redirect_url) {
             window.location.href = data.redirect_url;
-          } else if(data.success && data.nouveau_panier_id) {
-            alert('Paiement validé ! Nouveau panier prêt.');
-            window.location.reload();
           } else if(data.success) {
-            alert('Paiement validé !');
-            this.mode = 'commande';
-            this.paiement.montantRecu = 0;
-            this.paiement.monnaie = 0;
+            window.location.href = '/restaurant';
           } else {
             alert(data.error || 'Erreur lors du paiement');
           }
@@ -608,6 +668,14 @@ export function posApp() {
       }
       try {
         await this.syncPanierToServer();
+
+        // Important: imprimer d'abord, puis valider/libérer la table ensuite.
+        await this.printAddition('paiement', {
+          showAfterPrintModal: false,
+          waitForPrint: true,
+          skipSync: true,
+        });
+
         const response = await fetch('/vente/valider', {
           method: 'POST',
           headers: {
@@ -627,15 +695,11 @@ export function posApp() {
           })
         });
         const data = await response.json();
-        if(data.notification) {
-          alert(data.notification);
-        }
         if(data.success) {
-          this.printAddition('paiement');
           if(data.redirect_url) {
-            setTimeout(() => { window.location.href = data.redirect_url; }, 1000);
+            window.location.href = data.redirect_url;
           } else {
-            setTimeout(() => { window.location.reload(); }, 1000);
+            window.location.href = '/restaurant';
           }
         } else {
           alert(data.error || 'Erreur lors du paiement');
@@ -644,19 +708,24 @@ export function posApp() {
         alert('Erreur de connexion avec le serveur');
       }
     },
-    async printAddition(type = 'proforma') {
+    async printAddition(type = 'proforma', options = {}) {
+      const showAfterPrintModal = options.showAfterPrintModal !== false;
+      const waitForPrint = options.waitForPrint === true;
+      const skipSync = options.skipSync === true;
       const tableId = window.TABLE_COURANTE;
       const pointDeVenteId = window.POINT_DE_VENTE_ID;
       const panierId = window.PANIER_ID || null;
       let panier = Array.isArray(this.panier) ? this.panier.filter(item => Number(item.qte || 0) > 0) : [];
 
-      try {
-        const payloadExists = panier.length > 0;
-        if (payloadExists) {
-          await this.syncPanierToServer();
+      if (!skipSync) {
+        try {
+          const payloadExists = panier.length > 0;
+          if (payloadExists) {
+            await this.syncPanierToServer();
+          }
+        } catch (error) {
+          console.warn('Synchronisation panier avant impression impossible:', error);
         }
-      } catch (error) {
-        console.warn('Synchronisation panier avant impression impossible:', error);
       }
 
       const query = new URLSearchParams();
@@ -785,10 +854,31 @@ export function posApp() {
         }
       }, 300);
 
+      if (waitForPrint) {
+        await new Promise((resolve) => {
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            resolve();
+          };
+
+          try {
+            printWindow.onafterprint = finish;
+          } catch (e) {
+            // Fallback géré par timeout ci-dessous.
+          }
+
+          setTimeout(finish, 4000);
+        });
+      }
+
       setTimeout(() => {
         try { iframe.remove(); } catch (e) {}
-        this.openAfterPrintModal();
-      }, 1000);
+        if (showAfterPrintModal) {
+          this.openAfterPrintModal();
+        }
+      }, waitForPrint ? 0 : 1000);
 
       if (panier.length && activePanierId) {
         fetch(`/panier/impression/${activePanierId}`, {

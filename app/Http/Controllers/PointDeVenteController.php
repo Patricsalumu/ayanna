@@ -4,9 +4,14 @@ namespace App\Http\Controllers;
 use App\Models\Entreprise;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Services\PermissionService;
 
 class PointDeVenteController extends Controller
 {
+    public function __construct(protected PermissionService $permissionService)
+    {
+    }
+
     public function show(Entreprise $entreprise)
     {
         $user = Auth::user();
@@ -31,11 +36,20 @@ class PointDeVenteController extends Controller
                     ->with('error', 'Ce module n\'est pas activé pour cette entreprise.');
             }
         }
+        $pointsDeVenteQuery = $entreprise->pointsDeVente();
         if ($module) {
-            $pointsDeVente = $entreprise->pointsDeVente()->where('module_id', $module->id)->get();
-        } else {
-            $pointsDeVente = $entreprise->pointsDeVente;
+            $pointsDeVenteQuery->where('module_id', $module->id);
         }
+
+        if (!$this->permissionService->isSuperAdmin($user)) {
+            $assignedIds = $user->pointsDeVente()->pluck('points_de_vente.id');
+            if ($assignedIds->isNotEmpty()) {
+                $pointsDeVenteQuery->whereIn('id', $assignedIds);
+            }
+        }
+
+        $pointsDeVente = $pointsDeVenteQuery->get();
+
         return view('points_de_vente.show', compact('pointsDeVente','entreprise','module'));
     }
 
