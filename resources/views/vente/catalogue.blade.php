@@ -355,59 +355,59 @@
       </div>
     </template>
   </div>
-</div>
 
-<div x-show="afterPrintModalOpen" x-transition style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 text-center">
-    <div class="text-2xl font-bold text-gray-800 mb-3">Impression terminée</div>
-    <p class="text-gray-600 mb-6">Que souhaitez-vous faire maintenant ?</p>
-    <div class="flex flex-col sm:flex-row gap-3 justify-center">
-      <button type="button" @click="continueCatalogueAfterPrint()" class="px-5 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">
-        Continuer sur le catalogue
-      </button>
-      <button type="button" @click="logoutServeuse()" class="px-5 py-3 rounded-xl bg-gray-800 text-white font-semibold hover:bg-gray-700 transition">
-        Déconnexion
-      </button>
+  <div x-show="afterPrintModalOpen" x-transition style="display:none;" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 text-center">
+      <div class="text-2xl font-bold text-gray-800 mb-3">Impression terminée</div>
+      <p class="text-gray-600 mb-6">Que souhaitez-vous faire maintenant ?</p>
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <button type="button" @click="continueCatalogueAfterPrint()" class="px-5 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">
+          Continuer sur le catalogue
+        </button>
+        <button type="button" @click="logoutServeuse()" class="px-5 py-3 rounded-xl bg-gray-800 text-white font-semibold hover:bg-gray-700 transition">
+          Déconnexion
+        </button>
+      </div>
     </div>
   </div>
-</div>
 
-<div x-show="showAdminCodeModal" x-transition style="display:none;" class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-60">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5" @click.away="closeAdminCodeModal()">
-    <div class="text-center mb-4">
-      <h3 class="text-xl font-extrabold text-gray-800">Autorisation administrateur</h3>
-      <p class="text-sm text-gray-600 mt-1">
-        Saisissez le code Super Admin/Admin pour
-        <span class="font-semibold" x-text="adminCodeActionLabel || 'continuer'"></span>
-      </p>
-    </div>
+  <div x-show="showAdminCodeModal" x-transition style="display:none;" class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-60">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5" @click.away="closeAdminCodeModal()">
+      <div class="text-center mb-4">
+        <h3 class="text-xl font-extrabold text-gray-800">Autorisation administrateur</h3>
+        <p class="text-sm text-gray-600 mt-1">
+          Saisissez le code Super Admin/Admin pour
+          <span class="font-semibold" x-text="adminCodeActionLabel || 'continuer'"></span>
+        </p>
+      </div>
 
-    <div class="mb-3">
-      <div class="h-12 rounded-xl border border-gray-300 bg-gray-50 flex items-center justify-center text-2xl tracking-[0.6rem] font-bold text-gray-700 select-none" x-text="adminCodeInput.length ? '•'.repeat(adminCodeInput.length) : '••••'"></div>
-    </div>
+      <div class="mb-3">
+        <div class="h-12 rounded-xl border border-gray-300 bg-gray-50 flex items-center justify-center text-2xl tracking-[0.6rem] font-bold text-gray-700 select-none" x-text="adminCodeInput.length ? '•'.repeat(adminCodeInput.length) : '••••'"></div>
+      </div>
 
-    <template x-if="adminCodeError">
-      <div class="mb-3 text-center text-sm text-red-600 font-medium" x-text="adminCodeError"></div>
-    </template>
+      <template x-if="adminCodeError">
+        <div class="mb-3 text-center text-sm text-red-600 font-medium" x-text="adminCodeError"></div>
+      </template>
 
-    <div class="grid grid-cols-3 gap-2 mb-3">
-      <button type="button" @click="typeAdminCodeDigit(1)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">1</button>
-      <button type="button" @click="typeAdminCodeDigit(2)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">2</button>
-      <button type="button" @click="typeAdminCodeDigit(3)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">3</button>
-      <button type="button" @click="typeAdminCodeDigit(4)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">4</button>
-      <button type="button" @click="typeAdminCodeDigit(5)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">5</button>
-      <button type="button" @click="typeAdminCodeDigit(6)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">6</button>
-      <button type="button" @click="typeAdminCodeDigit(7)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">7</button>
-      <button type="button" @click="typeAdminCodeDigit(8)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">8</button>
-      <button type="button" @click="typeAdminCodeDigit(9)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">9</button>
-      <button type="button" @click="clearAdminCode()" class="h-12 rounded-xl bg-orange-100 hover:bg-orange-200 text-sm font-bold text-orange-700">Effacer</button>
-      <button type="button" @click="typeAdminCodeDigit(0)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">0</button>
-      <button type="button" @click="backspaceAdminCode()" class="h-12 rounded-xl bg-blue-100 hover:bg-blue-200 text-sm font-bold text-blue-700">⌫</button>
-    </div>
+      <div class="grid grid-cols-3 gap-2 mb-3">
+        <button type="button" @click="typeAdminCodeDigit(1)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">1</button>
+        <button type="button" @click="typeAdminCodeDigit(2)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">2</button>
+        <button type="button" @click="typeAdminCodeDigit(3)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">3</button>
+        <button type="button" @click="typeAdminCodeDigit(4)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">4</button>
+        <button type="button" @click="typeAdminCodeDigit(5)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">5</button>
+        <button type="button" @click="typeAdminCodeDigit(6)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">6</button>
+        <button type="button" @click="typeAdminCodeDigit(7)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">7</button>
+        <button type="button" @click="typeAdminCodeDigit(8)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">8</button>
+        <button type="button" @click="typeAdminCodeDigit(9)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">9</button>
+        <button type="button" @click="clearAdminCode()" class="h-12 rounded-xl bg-orange-100 hover:bg-orange-200 text-sm font-bold text-orange-700">Effacer</button>
+        <button type="button" @click="typeAdminCodeDigit(0)" class="h-12 rounded-xl bg-gray-100 hover:bg-gray-200 text-lg font-bold">0</button>
+        <button type="button" @click="backspaceAdminCode()" class="h-12 rounded-xl bg-blue-100 hover:bg-blue-200 text-sm font-bold text-blue-700">⌫</button>
+      </div>
 
-    <div class="flex gap-2">
-      <button type="button" @click="closeAdminCodeModal()" class="flex-1 h-11 rounded-xl bg-gray-200 hover:bg-gray-300 font-semibold text-gray-700">Annuler</button>
-      <button type="button" @click="submitAdminCode()" :disabled="adminCodeLoading" class="flex-1 h-11 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold">Valider</button>
+      <div class="flex gap-2">
+        <button type="button" @click="closeAdminCodeModal()" class="flex-1 h-11 rounded-xl bg-gray-200 hover:bg-gray-300 font-semibold text-gray-700">Annuler</button>
+        <button type="button" @click="submitAdminCode()" :disabled="adminCodeLoading" class="flex-1 h-11 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold">Valider</button>
+      </div>
     </div>
   </div>
 </div>
