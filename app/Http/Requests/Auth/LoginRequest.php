@@ -49,12 +49,34 @@ class LoginRequest extends FormRequest
         $password = (string) $this->input('password');
         $serveuseLogin = $this->boolean('serveuse_login');
 
+        if ($serveuseLogin && !$this->isValidPin($password)) {
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'password' => 'Code PIN invalide. Saisissez 4 chiffres.',
+            ]);
+        }
+
+        if ($serveuseLogin && $this->isValidPin($password)) {
+            $owner = User::query()
+                ->where('code_pin', $password)
+                ->first();
+
+            if ($owner && strtolower((string) $owner->role) !== 'serveuse') {
+                RateLimiter::hit($this->throttleKey());
+
+                throw ValidationException::withMessages([
+                    'password' => 'Ce code appartient à un compte admin/caissier. Utilisez la connexion dédiée.',
+                ]);
+            }
+        }
+
         $requiresLoginIdentifier = !($serveuseLogin && $this->isValidPin($password));
         if ($requiresLoginIdentifier && ($login === null || $login === '')) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'username' => trans('auth.failed'),
+                $this->errorField() => trans('auth.failed'),
             ]);
         }
 
@@ -94,8 +116,14 @@ class LoginRequest extends FormRequest
         } else {
             RateLimiter::hit($this->throttleKey());
 
+            if ($serveuseLogin) {
+                throw ValidationException::withMessages([
+                    'password' => 'Code incorrect. Veuillez réessayer.',
+                ]);
+            }
+
             throw ValidationException::withMessages([
-                'username' => trans('auth.failed'),
+                $this->errorField() => trans('auth.failed'),
             ]);
         }
 
@@ -118,11 +146,16 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'username' => trans('auth.throttle', [
+            $this->errorField() => trans('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),
         ]);
+    }
+
+    protected function errorField(): string
+    {
+        return $this->boolean('serveuse_login') ? 'password' : 'username';
     }
 
     /**

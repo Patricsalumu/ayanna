@@ -8,14 +8,7 @@ const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
 const normalizeRole = (role) => String(role ?? '').trim().toLowerCase();
 
 const getSessionExpiredRedirectUrl = () => {
-  const pathname = window.location.pathname.toLowerCase();
-  const role = normalizeRole(window.USER_ROLE);
-
-  if (pathname.endsWith('/serveuse-login') || role === 'serveuse') {
-    return '/serveuse-login';
-  }
-
-  return '/login';
+  return '/serveuse-login';
 };
 
 const isLoginPage = () => {
