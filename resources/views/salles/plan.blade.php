@@ -11,28 +11,7 @@
             <span>Retour aux salles</span>
         </a>
     </div>
-    <div class="container mx-auto" x-data="{
-    assignModalOpen: false,
-    selectedTable: null,
-    selectedServeuse: '',
-    openAssign(table) {
-        this.selectedTable = table;
-        this.selectedServeuse = table.serveuse_id || '';
-        this.assignModalOpen = true;
-    },
-    saveAssign() {
-        if (!this.selectedTable) return;
-        fetch(`/tables/${this.selectedTable.id}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json',
-            },
-            body: JSON.stringify({ serveuse_id: this.selectedServeuse || null })
-        }).then(() => window.location.reload());
-    }
-}">
+    <div class="container mx-auto">
     <h1 class="text-2xl font-bold mb-4">
     <!-- Barre d'outils globale et onglets zones -->
     <div class="flex justify-between items-center mb-2">
@@ -54,24 +33,22 @@
         </div>
     </div>
 
-    <div x-show="assignModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div id="assignModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40">
         <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
             <h3 class="text-lg font-semibold mb-4">Affecter une serveuse</h3>
-            <template x-if="selectedTable">
-                <div>
-                    <p class="mb-2">Table <span class="font-bold" x-text="selectedTable.numero"></span></p>
-                    <select x-model="selectedServeuse" class="w-full border rounded px-3 py-2">
-                        <option value="">Aucune serveuse</option>
-                        @foreach($entreprise->users()->where('role', 'serveuse')->get() as $serveuse)
-                            <option value="{{ $serveuse->id }}">{{ $serveuse->name }}</option>
-                        @endforeach
-                    </select>
-                    <div class="mt-4 flex justify-end gap-2">
-                        <button type="button" @click="assignModalOpen = false" class="px-4 py-2 rounded bg-gray-200">Annuler</button>
-                        <button type="button" @click="saveAssign()" class="px-4 py-2 rounded bg-blue-600 text-white">Enregistrer</button>
-                    </div>
+            <div>
+                <p class="mb-2">Table <span id="assignTableNumero" class="font-bold">-</span></p>
+                <select id="assignServeuseSelect" class="w-full border rounded px-3 py-2">
+                    <option value="">Aucune serveuse</option>
+                    @foreach($entreprise->users()->where('role', 'serveuse')->get() as $serveuse)
+                        <option value="{{ $serveuse->id }}">{{ $serveuse->name }}</option>
+                    @endforeach
+                </select>
+                <div class="mt-4 flex justify-end gap-2">
+                    <button type="button" id="closeAssignModalBtn" class="px-4 py-2 rounded bg-gray-200">Annuler</button>
+                    <button type="button" id="saveAssignBtn" class="px-4 py-2 rounded bg-blue-600 text-white">Appliquer au brouillon</button>
                 </div>
-            </template>
+            </div>
         </div>
     </div>
 
@@ -85,13 +62,13 @@
                     data-forme="{{ $table->forme }}"
                     data-numero="{{ $table->numero }}"
                     data-serveuse-id="{{ $table->serveuse_id ?? '' }}"
+                          data-serveuse-name="{{ $table->serveuse?->name ?? '' }}"
                     tabindex="0"
-                    @click="openAssign({ id: {{ $table->id }}, numero: {{ $table->numero }}, serveuse_id: '{{ $table->serveuse_id ?? '' }}' })"
                  style="
                     top: {{ $table->position_y }}px;
                     left: {{ $table->position_x }}px;
-                    width: {{ $table->width ?? 70 }}px;
-                    height: {{ $table->height ?? 70 }}px;
+                          width: {{ $table->width ?? 80 }}px;
+                          height: {{ $table->height ?? 80 }}px;
                     @if ($table->forme === 'cercle') border-radius: 50%; @endif
                     background: {{ $table->is_busy ? '#4ade80' : '#f3f4f6' }};
                     border-color: #22c55e;
@@ -106,6 +83,8 @@
         <!-- Menu contextuel d'actions pour la table sélectionnée -->
         <div id="tableActionsMenu" class="hidden absolute z-50 bg-white border border-gray-300 rounded shadow-lg p-2 flex gap-2 items-center">
             <input id="editNumeroInput" type="number" class="border rounded px-2 py-1 w-16 text-sm" style="width:60px;" />
+            <span id="currentServeuseLabel" class="px-2 py-1 rounded bg-emerald-50 text-emerald-800 text-xs font-semibold max-w-[170px] truncate" title="Serveuse affectée">Serveuse: -</span>
+            <button id="btn-assign" class="bg-emerald-500 text-white rounded px-2 py-1 text-xs border border-emerald-600" title="Affecter">Serveuse</button>
             <button id="btn-shape-rect" class="bg-gray-200 rounded px-2 py-1 text-xs border border-gray-400" title="Carré">&#9632;</button>
             <button id="btn-shape-cercle" class="bg-gray-200 rounded-full px-2 py-1 text-xs border border-gray-400" title="Cercle">&#9679;</button>
             <button id="btn-duplicate" class="bg-blue-500 text-white rounded px-2 py-1 text-xs border border-blue-600" title="Dupliquer"><svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16h8M8 12h8m-7 8h6a2 2 0 002-2V6a2 2 0 00-2-2H9a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></button>
@@ -131,9 +110,18 @@
                     <option value="cercle">Cercle</option>
                 </select>
             </div>
+            <div>
+                <label class="block text-sm font-semibold mb-1">Serveuse</label>
+                <select name="serveuse_id" class="border border-gray-300 rounded px-3 py-2 w-full">
+                    <option value="">Aucune serveuse</option>
+                    @foreach($entreprise->users()->where('role', 'serveuse')->get() as $serveuse)
+                        <option value="{{ $serveuse->id }}">{{ $serveuse->name }}</option>
+                    @endforeach
+                </select>
+            </div>
             <div class="flex justify-end gap-2 mt-2">
                 <button type="button" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300" onclick="window.dispatchEvent(new CustomEvent('close-modal', {detail: 'add-table-modal'}))">Annuler</button>
-                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Ajouter</button>
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Ajouter au brouillon</button>
             </div>
         </form>
     </x-modal>
@@ -188,442 +176,542 @@
     .table-item[style*='background: #4ade80'] {
         border-color: #22c55e !important;
     }
-    // Gestion des boutons de forme
-    document.querySelectorAll('.btn-shape').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const shape = this.dataset.shape;
-            const tableDiv = this.closest('.table-item');
-            if (shape === 'cercle') {
-                tableDiv.style.borderRadius = '50%';
-            } else {
-                tableDiv.style.borderRadius = '0';
-            }
-            // Envoi AJAX pour sauvegarder la forme
-            const id = tableDiv.dataset.id;
-            fetch(`/tables/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    _token: '{{ csrf_token() }}',
-                    forme: shape
-                })
-            });
-            // Met à jour l'attribut data-forme
-            tableDiv.dataset.forme = shape;
-        });
-    });
 </style>
 
+@php
+    $serveuseNameMap = $entreprise->users()
+        ->where('role', 'serveuse')
+        ->get()
+        ->mapWithKeys(fn($serveuse) => [(string) $serveuse->id => $serveuse->name])
+        ->all();
+@endphp
 <script>
+    const serveuseNameById = @json($serveuseNameMap);
 
-    // Sélection de table et menu contextuel
-    let selectedTable = null;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+        || document.querySelector('input[name="_token"]')?.value
+        || '{{ csrf_token() }}';
+
+    const plan = document.getElementById('plan');
     const menu = document.getElementById('tableActionsMenu');
     const numeroInput = document.getElementById('editNumeroInput');
-    let menuTableId = null;
+    const currentServeuseLabel = document.getElementById('currentServeuseLabel');
+    const savePlanBtn = document.getElementById('savePlanBtn');
+    const addTableBtn = document.getElementById('addTableBtn');
+    const addTableForm = document.getElementById('addTableForm');
+    const openAddSalleModalBtn = document.getElementById('openAddSalleModal');
+    const addSalleForm = document.getElementById('addSalleForm');
+
+    const assignModal = document.getElementById('assignModal');
+    const assignTableNumero = document.getElementById('assignTableNumero');
+    const assignServeuseSelect = document.getElementById('assignServeuseSelect');
+    const closeAssignModalBtn = document.getElementById('closeAssignModalBtn');
+    const saveAssignBtn = document.getElementById('saveAssignBtn');
+
+    let selectedTable = null;
+    let currentTable = null;
+    let offsetX = 0;
+    let offsetY = 0;
+    let hasUnsavedChanges = false;
+    const deletedTableIds = new Set();
+
+    function toNumber(value, fallback = 0) {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : fallback;
+    }
+
+    function isPersistedTable(el) {
+        return /^\d+$/.test(String(el?.dataset?.id || ''));
+    }
+
+    function markDirty() {
+        hasUnsavedChanges = true;
+        savePlanBtn.textContent = 'Enregistrer *';
+        savePlanBtn.classList.remove('bg-purple-700');
+        savePlanBtn.classList.add('bg-amber-600');
+    }
+
+    function markSaved() {
+        hasUnsavedChanges = false;
+        savePlanBtn.textContent = 'Enregistrer';
+        savePlanBtn.classList.remove('bg-amber-600');
+        savePlanBtn.classList.add('bg-purple-700');
+    }
+
+    function showSavedFeedback() {
+        savePlanBtn.textContent = '✔ Enregistré';
+        savePlanBtn.classList.remove('bg-amber-600', 'bg-purple-700');
+        savePlanBtn.classList.add('bg-green-600');
+        setTimeout(() => {
+            savePlanBtn.classList.remove('bg-green-600');
+            savePlanBtn.classList.add('bg-purple-700');
+            savePlanBtn.textContent = 'Enregistrer';
+        }, 1400);
+    }
+
+    function tableNumeroExists(numero, exceptId = null) {
+        const normalized = String(numero || '').trim();
+        if (!normalized) return false;
+
+        return Array.from(plan.querySelectorAll('.table-item')).some((el) => {
+            if (!el.isConnected) return false;
+            if (exceptId && String(el.dataset.id) === String(exceptId)) return false;
+            return String(el.dataset.numero || '').trim() === normalized;
+        });
+    }
+
+    function getNextNumero() {
+        let maxNumero = 0;
+        plan.querySelectorAll('.table-item').forEach((el) => {
+            const n = parseInt(el.dataset.numero || '0', 10);
+            if (Number.isFinite(n) && n > maxNumero) {
+                maxNumero = n;
+            }
+        });
+        return maxNumero + 1;
+    }
+
+    function styleTableElement(el) {
+        const forme = String(el.dataset.forme || 'rectangle');
+        el.style.borderRadius = forme === 'cercle' ? '50%' : '10px';
+        el.style.background = '#f3f4f6';
+        el.style.borderColor = '#22c55e';
+    }
+
+    function createTableElement(data) {
+        const el = document.createElement('button');
+        el.type = 'button';
+        el.className = 'table-item absolute cursor-pointer border-4 flex items-center justify-center group shadow-lg';
+        el.dataset.id = String(data.id);
+        el.dataset.forme = String(data.forme || 'rectangle');
+        el.dataset.numero = String(data.numero || '');
+        el.dataset.serveuseId = data.serveuse_id ? String(data.serveuse_id) : '';
+        el.dataset.serveuseName = data.serveuse_name ? String(data.serveuse_name) : '';
+        if (String(data.id).startsWith('new-')) {
+            el.dataset.isNew = '1';
+        }
+
+        el.style.top = `${toNumber(data.position_y, 20)}px`;
+        el.style.left = `${toNumber(data.position_x, 20)}px`;
+        el.style.width = `${toNumber(data.width, 80)}px`;
+        el.style.height = `${toNumber(data.height, 80)}px`;
+        styleTableElement(el);
+
+        el.innerHTML = `<span class="table-num text-center w-full select-none flex items-center justify-center" style="pointer-events:none; font-size:1.3rem; font-weight:bold; color:#222;">${data.numero || ''}</span>`;
+        attachTableHandlers(el);
+        return el;
+    }
+
+    function positionMenuNear(el) {
+        if (menu.classList.contains('hidden')) {
+            menu.classList.remove('hidden');
+            menu.style.visibility = 'hidden';
+        }
+
+        const rect = el.getBoundingClientRect();
+        const planRect = plan.getBoundingClientRect();
+        const gap = 10;
+        const menuWidth = menu.offsetWidth || 260;
+        const menuHeight = menu.offsetHeight || 42;
+
+        const tableLeft = rect.left - planRect.left;
+        const tableRight = rect.right - planRect.left;
+
+        let left = tableRight + gap;
+        if (left + menuWidth > plan.clientWidth) {
+            left = Math.max(0, tableLeft - menuWidth - gap);
+        }
+
+        let top = rect.top - planRect.top;
+        if (top + menuHeight > plan.clientHeight) {
+            top = Math.max(0, plan.clientHeight - menuHeight - 6);
+        }
+
+        menu.style.left = `${left}px`;
+        menu.style.top = `${top}px`;
+        menu.style.visibility = 'visible';
+    }
+
+    function updateServeuseLabel(el) {
+        if (!currentServeuseLabel) return;
+        if (!el) {
+            currentServeuseLabel.textContent = 'Serveuse: -';
+            currentServeuseLabel.title = 'Serveuse non affectée';
+            return;
+        }
+
+        const name = String(el.dataset.serveuseName || '').trim();
+        currentServeuseLabel.textContent = `Serveuse: ${name || '-'}`;
+        currentServeuseLabel.title = name ? `Serveuse: ${name}` : 'Serveuse non affectée';
+    }
+
+    function selectTable(el) {
+        if (!el) return;
+        if (selectedTable) selectedTable.classList.remove('selected');
+        selectedTable = el;
+        selectedTable.classList.add('selected');
+        menu.classList.remove('hidden');
+        positionMenuNear(selectedTable);
+        numeroInput.value = selectedTable.dataset.numero || '';
+        updateServeuseLabel(selectedTable);
+    }
 
     function deselectTable() {
         if (selectedTable) selectedTable.classList.remove('selected');
         selectedTable = null;
         menu.classList.add('hidden');
+        updateServeuseLabel(null);
     }
 
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.table-item') && !e.target.closest('#tableActionsMenu')) {
-            deselectTable();
+    function openAssignModal() {
+        if (!selectedTable) return;
+        assignTableNumero.textContent = selectedTable.dataset.numero || '-';
+        assignServeuseSelect.value = selectedTable.dataset.serveuseId || '';
+        assignModal.classList.remove('hidden');
+        assignModal.classList.add('flex');
+    }
+
+    function closeAssignModal() {
+        assignModal.classList.add('hidden');
+        assignModal.classList.remove('flex');
+    }
+
+    function saveTableNumeroLocal() {
+        if (!selectedTable) return;
+        const raw = String(numeroInput.value || '').trim();
+        const nextNumero = parseInt(raw, 10);
+
+        if (!Number.isFinite(nextNumero) || nextNumero <= 0) {
+            numeroInput.value = selectedTable.dataset.numero || '';
+            return;
         }
-    });
 
-    document.querySelectorAll('.table-item').forEach(el => {
-        el.addEventListener('mousedown', mouseDownHandler);
-        el.addEventListener('click', function(e) {
-            e.stopPropagation();
-            deselectTable();
-            selectedTable = this;
-            selectedTable.classList.add('selected');
-            // Positionner le menu à côté de la table
-            const rect = selectedTable.getBoundingClientRect();
-            const planRect = document.getElementById('plan').getBoundingClientRect();
-            menu.style.left = (rect.right - planRect.left + 10) + 'px';
-            menu.style.top = (rect.top - planRect.top) + 'px';
-            menu.classList.remove('hidden');
-            // Préremplir le numéro
-            numeroInput.value = selectedTable.dataset.numero;
-            menuTableId = selectedTable.dataset.id;
-        });
-    });
-
-    // Ouvre la modale d'ajout de salle
-    document.getElementById('openAddSalleModal').addEventListener('click', function() {
-        window.dispatchEvent(new CustomEvent('open-modal', {detail: 'add-salle-modal'}));
-    });
-
-    // Ouvre la modale d'ajout de table
-    document.getElementById('addTableBtn').addEventListener('click', function() {
-        // Réinitialise le formulaire à chaque ouverture
-        const form = document.getElementById('addTableForm');
-        form.reset();
-        // Réactive le bouton si besoin
-        form.querySelector('button[type="submit"]').disabled = false;
-        window.dispatchEvent(new CustomEvent('open-modal', {detail: 'add-table-modal'}));
-    });
-
-
-    // Soumission AJAX du formulaire d'ajout de salle (corrigé)
-    (function() {
-        const form = document.getElementById('addSalleForm');
-        const submitBtn = form.querySelector('button[type="submit"]');
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            if (submitBtn.disabled) return;
-            submitBtn.disabled = true;
-            const data = new FormData(form);
-            fetch(form.action, {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
-                },
-                body: data
-            })
-            .then(res => res.json())
-            .then(salle => {
-                if (!salle.id) throw new Error('Erreur');
-                window.dispatchEvent(new CustomEvent('close-modal', {detail: 'add-salle-modal'}));
-                // Recharge la page pour afficher la nouvelle salle (ou redirige)
-                window.location.href = `/entreprises/{{ $entreprise->id }}/salles/${salle.id}/plan`;
-            })
-            .catch(() => alert('Erreur lors de la création de la salle.'))
-            .finally(() => {
-                submitBtn.disabled = false;
-            });
-        });
-    })();
-
-    // Gestion unique de la soumission du formulaire d'ajout de table
-    (function() {
-        const form = document.getElementById('addTableForm');
-        const submitBtn = form.querySelector('button[type="submit"]');
-        // On retire tout handler existant (si jamais)
-        form.addEventListener('submit', handleAddTableSubmit);
-        function handleAddTableSubmit(e) {
-            e.preventDefault();
-            if (submitBtn.disabled) return;
-            submitBtn.disabled = true;
-            const data = new FormData(form);
-            fetch(form.action, {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
-                },
-                body: data
-            })
-            .then(res => res.json())
-            .then(table => {
-                // Ajoute la table sur le plan
-                const plan = document.getElementById('plan');
-                const div = document.createElement('div');
-                div.className = 'table-item absolute cursor-move border-4 flex items-center justify-center group shadow-lg';
-                div.dataset.id = table.id;
-                div.dataset.forme = table.forme;
-                div.tabIndex = 0;
-                div.setAttribute('contenteditable', 'false');
-                div.style.top = (table.position_y ?? 20) + 'px';
-                div.style.left = (table.position_x ?? 20) + 'px';
-                div.style.width = (table.width ?? 70) + 'px';
-                div.style.height = (table.height ?? 70) + 'px';
-                if (table.forme === 'cercle') div.style.borderRadius = '50%';
-                div.style.background = '#f3f4f6';
-                div.style.borderColor = '#22c55e';
-                div.innerHTML = `<span class="table-num text-center w-full select-none flex items-center justify-center" style="pointer-events:none; font-size:1.3rem; font-weight:bold; color:#222;">${table.numero}</span>`;
-                div.addEventListener('mousedown', mouseDownHandler);
-                // Ajout du handler d'édition (click)
-                div.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    deselectTable();
-                    selectedTable = div;
-                    selectedTable.classList.add('selected');
-                    const rect = selectedTable.getBoundingClientRect();
-                    const planRect = document.getElementById('plan').getBoundingClientRect();
-                    menu.style.left = (rect.right - planRect.left + 10) + 'px';
-                    menu.style.top = (rect.top - planRect.top) + 'px';
-                    menu.classList.remove('hidden');
-                    numeroInput.value = selectedTable.dataset.numero;
-                    menuTableId = selectedTable.dataset.id;
-                });
-                plan.appendChild(div);
-                form.reset();
-                window.dispatchEvent(new CustomEvent('close-modal', {detail: 'add-table-modal'}));
-            })
-            .catch(() => alert('Erreur lors de l’ajout de la table.'))
-            .finally(() => {
-                submitBtn.disabled = false;
-            });
+        if (tableNumeroExists(nextNumero, selectedTable.dataset.id)) {
+            alert('Ce numéro de table existe déjà dans cette salle.');
+            numeroInput.value = selectedTable.dataset.numero || '';
+            return;
         }
-    })();
 
-    // Changement de forme
-    document.getElementById('btn-shape-rect').addEventListener('click', function() {
-        if (!menuTableId) return;
-        fetch(`/tables/${menuTableId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                _token: '{{ csrf_token() }}',
-                forme: 'rectangle'
-            })
-        }).then(() => {
-            if (selectedTable) {
-                selectedTable.style.borderRadius = '10px';
-                selectedTable.dataset.forme = 'rectangle';
-            }
-        });
-    });
-    document.getElementById('btn-shape-cercle').addEventListener('click', function() {
-        if (!menuTableId) return;
-        fetch(`/tables/${menuTableId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                _token: '{{ csrf_token() }}',
-                forme: 'cercle'
-            })
-        }).then(() => {
-            if (selectedTable) {
-                selectedTable.style.borderRadius = '50%';
-                selectedTable.dataset.forme = 'cercle';
-            }
-        });
-    });
-
-    // Suppression
-    document.getElementById('btn-delete').addEventListener('click', function() {
-        if (!menuTableId) return;
-        if (!confirm('Supprimer cette table ?')) return;
-        fetch(`/tables/${menuTableId}`, {
-            method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value }
-        }).then(() => {
-            if (selectedTable) selectedTable.remove();
-            deselectTable();
-        });
-    });
-
-    // Duplication
-    document.getElementById('btn-duplicate').addEventListener('click', function() {
-        if (!menuTableId) return;
-        // Récupérer width/height réels (pour duplication fidèle)
-        let width = selectedTable.style.width ? parseInt(selectedTable.style.width) : 70;
-        let height = selectedTable.style.height ? parseInt(selectedTable.style.height) : 70;
-        // Calculer le nouveau numéro (numéro + 1)
-        let numero = parseInt(selectedTable.dataset.numero);
-        if (isNaN(numero)) numero = 1;
-        let nouveauNumero = numero + 1;
-        fetch(`/tables`, {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
-            },
-            body: new URLSearchParams({
-                salle_id: '{{ $salle->id }}',
-                numero: nouveauNumero,
-                forme: selectedTable.dataset.forme,
-                position_x: (parseInt(selectedTable.style.left) + 30),
-                position_y: (parseInt(selectedTable.style.top) + 30),
-                width: width,
-                height: height
-            })
-        })
-        .then(res => res.json())
-        .then(table => {
-            // Ajoute la table dupliquée sur le plan
-            const plan = document.getElementById('plan');
-            const div = document.createElement('div');
-            div.className = 'table-item absolute cursor-pointer border-4 flex items-center justify-center group shadow-lg';
-            div.dataset.id = table.id;
-            div.dataset.forme = table.forme;
-            div.dataset.numero = table.numero;
-            div.tabIndex = 0;
-            div.style.top = (table.position_y ?? 20) + 'px';
-            div.style.left = (table.position_x ?? 20) + 'px';
-            div.style.width = (table.width ?? 70) + 'px';
-            div.style.height = (table.height ?? 70) + 'px';
-            if (table.forme === 'cercle') div.style.borderRadius = '50%';
-            div.style.background = '#f3f4f6';
-            div.style.borderColor = '#22c55e';
-            div.innerHTML = `<span class="table-num text-center w-full select-none flex items-center justify-center" style="pointer-events:none; font-size:1.3rem; font-weight:bold; color:#222;">${table.numero}</span>`;
-            div.addEventListener('mousedown', mouseDownHandler);
-            div.addEventListener('click', function(e) {
-                e.stopPropagation();
-                deselectTable();
-                selectedTable = div;
-                selectedTable.classList.add('selected');
-                const rect = selectedTable.getBoundingClientRect();
-                const planRect = document.getElementById('plan').getBoundingClientRect();
-                menu.style.left = (rect.right - planRect.left + 10) + 'px';
-                menu.style.top = (rect.top - planRect.top) + 'px';
-                menu.classList.remove('hidden');
-                numeroInput.value = selectedTable.dataset.numero;
-                menuTableId = selectedTable.dataset.id;
-            });
-            plan.appendChild(div);
-            deselectTable();
-        });
-    });
-
-    let offsetX = 0;
-    let offsetY = 0;
-    let currentTable = null;
+        selectedTable.dataset.numero = String(nextNumero);
+        const numSpan = selectedTable.querySelector('.table-num');
+        if (numSpan) numSpan.textContent = String(nextNumero);
+        markDirty();
+    }
 
     function mouseDownHandler(e) {
-        currentTable = e.target.closest('.table-item');
-        offsetX = e.offsetX;
-        offsetY = e.offsetY;
+        const target = e.currentTarget;
+        currentTable = target.closest('.table-item');
+        if (!currentTable) return;
+
+        const rect = currentTable.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
         document.addEventListener('mousemove', mouseMoveHandler);
         document.addEventListener('mouseup', mouseUpHandler);
     }
 
     function mouseMoveHandler(e) {
         if (!currentTable) return;
-        const plan = document.getElementById('plan');
         const rect = plan.getBoundingClientRect();
-        let left = e.clientX - rect.left - offsetX;
-        let top = e.clientY - rect.top - offsetY;
-        currentTable.style.left = left + 'px';
-        currentTable.style.top = top + 'px';
+        const maxLeft = Math.max(0, rect.width - currentTable.offsetWidth);
+        const maxTop = Math.max(0, rect.height - currentTable.offsetHeight);
+        const left = Math.max(0, Math.min(e.clientX - rect.left - offsetX, maxLeft));
+        const top = Math.max(0, Math.min(e.clientY - rect.top - offsetY, maxTop));
+
+        currentTable.style.left = `${Math.round(left)}px`;
+        currentTable.style.top = `${Math.round(top)}px`;
+        if (selectedTable === currentTable) {
+            positionMenuNear(currentTable);
+        }
     }
 
-    function mouseUpHandler(e) {
+    function mouseUpHandler() {
         document.removeEventListener('mousemove', mouseMoveHandler);
         document.removeEventListener('mouseup', mouseUpHandler);
-        saveTablePosition(e);
+        if (currentTable) {
+            markDirty();
+        }
         currentTable = null;
     }
 
-
-    // Sauvegarde globale du plan (positions de toutes les tables)
-    document.getElementById('savePlanBtn').addEventListener('click', function() {
-        const tables = document.querySelectorAll('.table-item');
-        const updates = [];
-        tables.forEach(table => {
-            const id = table.dataset.id;
-            updates.push(fetch(`/tables/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    _token: '{{ csrf_token() }}',
-                    position_x: parseInt(table.style.left),
-                    position_y: parseInt(table.style.top),
-                    width: parseInt(table.style.width),
-                    height: parseInt(table.style.height),
-                })
-            }));
-        });
-        Promise.all(updates).then(() => {
-            this.textContent = '✔ Enregistré';
-            this.classList.remove('bg-purple-700');
-            this.classList.add('bg-green-600');
-            setTimeout(() => {
-                this.textContent = 'Enregistrer';
-                this.classList.remove('bg-green-600');
-                this.classList.add('bg-purple-700');
-            }, 1500);
-        });
-    });
-
-
-    // Ouvre la modale d'ajout de table (corrigé, ouverture immédiate sans toggle)
-    document.getElementById('addTableBtn').addEventListener('click', function() {
-        const form = document.getElementById('addTableForm');
-        form.reset();
-        form.querySelector('button[type="submit"]').disabled = false;
-        window.dispatchEvent(new CustomEvent('open-modal', {detail: 'add-table-modal'}));
-    });
-
-    // Désactive l'édition inline du numéro (tout passe par le menu)
-    function saveTableNumero(e) {}
-
-    // Ajout dynamique de table (anti double soumission)
-    (function() {
-        const form = document.getElementById('addTableForm');
-        const submitBtn = form.querySelector('button[type="submit"]');
-        let submitting = false;
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            if (submitting || submitBtn.disabled) return;
-            submitting = true;
-            submitBtn.disabled = true;
-            const data = new FormData(form);
-            fetch(form.action, {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
-                },
-                body: data
-            })
-            .then(res => res.json())
-            .then(table => {
-                // Ajoute la table sur le plan
-                const plan = document.getElementById('plan');
-                const div = document.createElement('div');
-                div.className = 'table-item absolute cursor-move border-4 flex items-center justify-center group shadow-lg';
-                div.dataset.id = table.id;
-                div.dataset.forme = table.forme;
-                div.tabIndex = 0;
-                div.setAttribute('contenteditable', 'false');
-                div.style.top = (table.position_y ?? 20) + 'px';
-                div.style.left = (table.position_x ?? 20) + 'px';
-                div.style.width = (table.width ?? 70) + 'px';
-                div.style.height = (table.height ?? 70) + 'px';
-                if (table.forme === 'cercle') div.style.borderRadius = '50%';
-                div.style.background = '#f3f4f6';
-                div.style.borderColor = '#22c55e';
-                div.innerHTML = `<span class="table-num text-center w-full select-none flex items-center justify-center" style="pointer-events:none; font-size:1.3rem; font-weight:bold; color:#222;">${table.numero}</span>`;
-                div.addEventListener('mousedown', mouseDownHandler);
-                plan.appendChild(div);
-                form.reset();
-                window.dispatchEvent(new CustomEvent('close-modal', {detail: 'add-table-modal'}));
-            })
-            .catch(() => alert('Erreur lors de l’ajout de la table.'))
-            .finally(() => {
-                submitting = false;
-                submitBtn.disabled = false;
-            });
-        });
-    })();
-
-    // Edition du numéro de table (valide sur perte de focus ou touche Entrée)
-    numeroInput.addEventListener('blur', saveTableNumero);
-    numeroInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            saveTableNumero();
-            numeroInput.blur(); // Pour fermer le menu si besoin
-        }
-    });
-    function saveTableNumero() {
-        if (!menuTableId) return;
-        const newNumero = numeroInput.value;
-        fetch(`/tables/${menuTableId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                _token: '{{ csrf_token() }}',
-                numero: newNumero
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (selectedTable) {
-                selectedTable.dataset.numero = newNumero;
-                const numSpan = selectedTable.querySelector('.table-num');
-                if(numSpan) numSpan.textContent = newNumero;
-            }
+    function attachTableHandlers(el) {
+        el.addEventListener('mousedown', mouseDownHandler);
+        el.addEventListener('click', function (e) {
+            e.stopPropagation();
+            selectTable(el);
         });
     }
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.table-item') && !e.target.closest('#tableActionsMenu') && !e.target.closest('#assignModal')) {
+            deselectTable();
+        }
+    });
+
+    plan.querySelectorAll('.table-item').forEach((el) => attachTableHandlers(el));
+
+    openAddSalleModalBtn.addEventListener('click', function () {
+        window.dispatchEvent(new CustomEvent('open-modal', { detail: 'add-salle-modal' }));
+    });
+
+    addTableBtn.addEventListener('click', function () {
+        addTableForm.reset();
+        const numeroField = addTableForm.querySelector('input[name="numero"]');
+        numeroField.value = String(getNextNumero());
+        window.dispatchEvent(new CustomEvent('open-modal', { detail: 'add-table-modal' }));
+    });
+
+    addSalleForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const submitBtn = addSalleForm.querySelector('button[type="submit"]');
+        if (submitBtn.disabled) return;
+        submitBtn.disabled = true;
+
+        fetch(addSalleForm.action, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: new FormData(addSalleForm),
+        })
+            .then((res) => res.json())
+            .then((salle) => {
+                if (!salle.id) throw new Error('Réponse invalide');
+                window.dispatchEvent(new CustomEvent('close-modal', { detail: 'add-salle-modal' }));
+                window.location.href = `/entreprises/{{ $entreprise->id }}/salles/${salle.id}/plan`;
+            })
+            .catch(() => alert('Erreur lors de la création de la salle.'))
+            .finally(() => {
+                submitBtn.disabled = false;
+            });
+    });
+
+    addTableForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const data = new FormData(addTableForm);
+        const numero = parseInt(String(data.get('numero') || ''), 10);
+        if (!Number.isFinite(numero) || numero <= 0) {
+            alert('Veuillez saisir un numéro de table valide.');
+            return;
+        }
+        if (tableNumeroExists(numero)) {
+            alert('Ce numéro de table existe déjà dans cette salle.');
+            return;
+        }
+
+        const tmpId = `new-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        const tableData = {
+            id: tmpId,
+            numero,
+            forme: String(data.get('forme') || 'rectangle'),
+            serveuse_id: data.get('serveuse_id') ? Number(data.get('serveuse_id')) : null,
+            serveuse_name: data.get('serveuse_id') ? (serveuseNameById[String(data.get('serveuse_id'))] || '') : '',
+            position_x: 20,
+            position_y: 20,
+            width: 80,
+            height: 80,
+        };
+
+        const newTableEl = createTableElement(tableData);
+        plan.appendChild(newTableEl);
+        selectTable(newTableEl);
+        window.dispatchEvent(new CustomEvent('close-modal', { detail: 'add-table-modal' }));
+        markDirty();
+    });
+
+    document.getElementById('btn-assign').addEventListener('click', function (e) {
+        e.stopPropagation();
+        openAssignModal();
+    });
+
+    closeAssignModalBtn.addEventListener('click', function () {
+        closeAssignModal();
+    });
+
+    assignModal.addEventListener('click', function (e) {
+        if (e.target === assignModal) {
+            closeAssignModal();
+        }
+    });
+
+    saveAssignBtn.addEventListener('click', function () {
+        if (!selectedTable) {
+            closeAssignModal();
+            return;
+        }
+        const serveuseId = assignServeuseSelect.value || '';
+        selectedTable.dataset.serveuseId = serveuseId;
+        selectedTable.dataset.serveuseName = serveuseId ? (serveuseNameById[String(serveuseId)] || '') : '';
+        updateServeuseLabel(selectedTable);
+        markDirty();
+        closeAssignModal();
+    });
+
+    document.getElementById('btn-shape-rect').addEventListener('click', function () {
+        if (!selectedTable) return;
+        selectedTable.dataset.forme = 'rectangle';
+        styleTableElement(selectedTable);
+        markDirty();
+    });
+
+    document.getElementById('btn-shape-cercle').addEventListener('click', function () {
+        if (!selectedTable) return;
+        selectedTable.dataset.forme = 'cercle';
+        styleTableElement(selectedTable);
+        markDirty();
+    });
+
+    document.getElementById('btn-delete').addEventListener('click', function () {
+        if (!selectedTable) return;
+        if (!confirm('Supprimer cette table ?')) return;
+
+        if (isPersistedTable(selectedTable)) {
+            deletedTableIds.add(String(selectedTable.dataset.id));
+        }
+
+        selectedTable.remove();
+        deselectTable();
+        markDirty();
+    });
+
+    document.getElementById('btn-duplicate').addEventListener('click', function () {
+        if (!selectedTable) return;
+
+        const width = toNumber(selectedTable.style.width.replace('px', ''), 80);
+        const height = toNumber(selectedTable.style.height.replace('px', ''), 80);
+        const left = toNumber(selectedTable.style.left.replace('px', ''), 20);
+        const top = toNumber(selectedTable.style.top.replace('px', ''), 20);
+
+        const cloneData = {
+            id: `new-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            numero: getNextNumero(),
+            forme: selectedTable.dataset.forme || 'rectangle',
+            serveuse_id: selectedTable.dataset.serveuseId || null,
+            position_x: left + 24,
+            position_y: top + 24,
+            width,
+            height,
+        };
+
+        const cloneEl = createTableElement(cloneData);
+        plan.appendChild(cloneEl);
+        selectTable(cloneEl);
+        markDirty();
+    });
+
+    numeroInput.addEventListener('blur', saveTableNumeroLocal);
+    numeroInput.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        saveTableNumeroLocal();
+    });
+
+    savePlanBtn.addEventListener('click', async function () {
+        if (!hasUnsavedChanges && deletedTableIds.size === 0) {
+            showSavedFeedback();
+            return;
+        }
+
+        savePlanBtn.disabled = true;
+        savePlanBtn.textContent = 'Enregistrement...';
+
+        const tableElements = Array.from(plan.querySelectorAll('.table-item'));
+        const newTables = tableElements.filter((el) => el.dataset.isNew === '1');
+        const existingTables = tableElements.filter((el) => el.dataset.isNew !== '1' && isPersistedTable(el));
+
+        try {
+            for (const id of deletedTableIds) {
+                await fetch(`/tables/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                });
+            }
+
+            for (const el of newTables) {
+                const payload = new URLSearchParams({
+                    salle_id: '{{ $salle->id }}',
+                    numero: String(toNumber(el.dataset.numero, getNextNumero())),
+                    forme: String(el.dataset.forme || 'rectangle'),
+                    position_x: String(toNumber(el.style.left.replace('px', ''), 20)),
+                    position_y: String(toNumber(el.style.top.replace('px', ''), 20)),
+                    width: String(toNumber(el.style.width.replace('px', ''), 80)),
+                    height: String(toNumber(el.style.height.replace('px', ''), 80)),
+                });
+
+                const serveuseId = String(el.dataset.serveuseId || '').trim();
+                if (serveuseId !== '') {
+                    payload.append('serveuse_id', serveuseId);
+                }
+
+                const response = await fetch('/tables', {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    body: payload,
+                });
+
+                const body = await response.json();
+                const created = body?.table ?? body;
+                if (!response.ok || !created?.id) {
+                    throw new Error('Erreur lors de la création d\'une table');
+                }
+
+                el.dataset.id = String(created.id);
+                el.dataset.isNew = '0';
+                el.dataset.numero = String(created.numero ?? el.dataset.numero);
+                el.dataset.forme = String(created.forme ?? el.dataset.forme);
+                el.dataset.serveuseId = created.serveuse_id ? String(created.serveuse_id) : (el.dataset.serveuseId || '');
+                el.dataset.serveuseName = el.dataset.serveuseId ? (serveuseNameById[String(el.dataset.serveuseId)] || '') : '';
+                const numSpan = el.querySelector('.table-num');
+                if (numSpan) {
+                    numSpan.textContent = String(el.dataset.numero || '');
+                }
+                styleTableElement(el);
+            }
+
+            for (const el of existingTables) {
+                await fetch(`/tables/${el.dataset.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        numero: toNumber(el.dataset.numero, 1),
+                        forme: String(el.dataset.forme || 'rectangle'),
+                        position_x: toNumber(el.style.left.replace('px', ''), 20),
+                        position_y: toNumber(el.style.top.replace('px', ''), 20),
+                        width: toNumber(el.style.width.replace('px', ''), 80),
+                        height: toNumber(el.style.height.replace('px', ''), 80),
+                        serveuse_id: String(el.dataset.serveuseId || '').trim() === '' ? null : Number(el.dataset.serveuseId),
+                    }),
+                });
+            }
+
+            deletedTableIds.clear();
+            markSaved();
+            showSavedFeedback();
+        } catch (error) {
+            alert('Erreur lors de l\'enregistrement du plan.');
+            markDirty();
+        } finally {
+            savePlanBtn.disabled = false;
+        }
+    });
+
+    window.addEventListener('beforeunload', function (e) {
+        if (!hasUnsavedChanges && deletedTableIds.size === 0) return;
+        e.preventDefault();
+        e.returnValue = '';
+    });
 </script>
 @endsection

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\TableResto;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class TableRestoController extends Controller
 {
@@ -13,7 +14,12 @@ class TableRestoController extends Controller
     public function update(Request $request, TableResto $table)
     {
         $rules = [
-            'numero' => 'nullable|integer|min:1',
+            'numero' => [
+                'nullable',
+                'integer',
+                'min:1',
+                Rule::unique('table_restos', 'numero')->where(fn ($query) => $query->where('salle_id', $table->salle_id))->ignore($table->id),
+            ],
             'position_x' => 'nullable|numeric',
             'position_y' => 'nullable|numeric',
             'width' => 'nullable|numeric|min:1',
@@ -36,7 +42,14 @@ class TableRestoController extends Controller
     {
         $validated = $request->validate([
             'salle_id' => 'required|exists:salles,id',
-            'numero' => 'required|integer',
+            'numero' => [
+                'nullable',
+                'integer',
+                'min:1',
+                Rule::unique('table_restos', 'numero')->where(function ($query) use ($request) {
+                    return $query->where('salle_id', $request->input('salle_id'));
+                }),
+            ],
             'forme' => 'required|string',
             'position_x' => 'nullable|integer',
             'position_y' => 'nullable|integer',
@@ -44,6 +57,19 @@ class TableRestoController extends Controller
             'height' => 'nullable|integer',
             'serveuse_id' => 'nullable|exists:users,id',
         ]);
+
+        if (empty($validated['numero'])) {
+            $maxNumero = TableResto::where('salle_id', $validated['salle_id'])->max('numero');
+            $validated['numero'] = ((int) $maxNumero) + 1;
+        }
+
+        if (empty($validated['width'])) {
+            $validated['width'] = 80;
+        }
+
+        if (empty($validated['height'])) {
+            $validated['height'] = 80;
+        }
 
         $table = TableResto::create($validated);
 

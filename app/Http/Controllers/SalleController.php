@@ -107,7 +107,7 @@ class SalleController extends Controller
     
     public function plan(Entreprise $entreprise, Salle $salle)
     {
-        $salle->load('tables'); // Charge les tables liées à cette salle
+        $salle->load('tables.serveuse'); // Charge les tables + serveuse liée
         return view('salles.plan', compact('salle', 'entreprise'));
     }
 
