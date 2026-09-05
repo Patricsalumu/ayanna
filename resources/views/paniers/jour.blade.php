@@ -208,7 +208,11 @@
                     <td class="p-3 text-green-700 font-semibold">{{ optional(auth()->user()?->entreprise)->formatAmount($montantPaye, true, 2) }}</td>
                     <td class="p-3">
                         @if($panier->status === 'en_cours')
-                            @if(!in_array(Auth::user()->role ?? null, ['comptoiriste','serveuse']))
+                            @php
+                                $roleNorm = strtolower(trim((string) (Auth::user()->role ?? '')));
+                                $isAdmin = in_array($roleNorm, ['administrateur', 'admin', 'super_admin'], true);
+                            @endphp
+                            @if($isAdmin)
                                 <form method="POST" action="{{ route('paniers.annuler', $panier->id) }}" class="annuler-form">
                                     @csrf
                                     @method("PATCH")

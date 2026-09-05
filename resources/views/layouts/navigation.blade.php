@@ -12,15 +12,21 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('pointsDeVente.show', [Auth::user()->entreprise_id])" :active="request()->routeIs('salle.*')">
-                        {{ __('Salle') }}
+                    <x-nav-link :href="route('pointsDeVente.show', [Auth::user()->entreprise_id])" :active="request()->routeIs('pointsDeVente.*')">
+                        {{ __('Tableau de bord') }}
                     </x-nav-link>
+                    @php
+                        $roleNorm = strtolower(trim((string) (Auth::user()->role ?? '')));
+                        $isAdmin = in_array($roleNorm, ['administrateur', 'admin', 'super_admin'], true);
+                    @endphp
+                    @if($isAdmin)
                     <x-nav-link :href="route('creances.liste')" :active="request()->routeIs('creances.*')">
                         {{ __('Créances') }}
                     </x-nav-link>
                     <x-nav-link :href="route('comptabilite.journal')" :active="request()->routeIs('comptabilite.*')">
                         {{ __('Comptabilité') }}
                     </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -73,15 +79,17 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link href="#" :active="request()->routeIs('salle.*')">
-                {{ __('Salle') }}
+            <x-responsive-nav-link :href="route('pointsDeVente.show', [Auth::user()->entreprise_id])" :active="request()->routeIs('pointsDeVente.*')">
+                {{ __('Tableau de bord') }}
             </x-responsive-nav-link>
+            @if($isAdmin)
             <x-responsive-nav-link :href="route('creances.liste')" :active="request()->routeIs('creances.*')">
                 {{ __('Créances') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('comptabilite.journal')" :active="request()->routeIs('comptabilite.*')">
                 {{ __('Comptabilité') }}
             </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->
