@@ -239,6 +239,7 @@ Route::get('/vente/{pointDeVente}/ouvrir', [App\Http\Controllers\VenteController
 Route::get('/vente/{pointDeVente}/continuer', [App\Http\Controllers\VenteController::class, 'continuer'])->name('vente.continuer');
 Route::post('/vente/valider', [App\Http\Controllers\VenteController::class, 'valider'])->name('vente.valider');
 Route::post('/vente/panier/sync', [App\Http\Controllers\VenteController::class, 'syncPanier'])->name('vente.panier.sync');
+Route::post('/vente/panier/transferer', [App\Http\Controllers\VenteController::class, 'transfererProduits'])->name('vente.panier.transferer');
 Route::get('/vente/panier/base', [App\Http\Controllers\VenteController::class, 'getPanierEnBase'])->name('vente.panier.base');
 
 // Rapport du jour (point de vente)

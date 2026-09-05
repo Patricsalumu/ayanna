@@ -527,6 +527,319 @@ class VenteController extends Controller
         return response()->json(['success' => true, 'panier' => $items, 'panier_id' => $panier->id]);
     }
 
+    public function transfererProduits(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            if (!$this->permissionService->isWaitress($user)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Seule une serveuse peut effectuer un transfert de table.',
+                ], 403);
+            }
+
+            $validated = $request->validate([
+                'source_table_id' => 'required|integer|exists:table_restos,id',
+                'destination_table_id' => 'required|integer|exists:table_restos,id|different:source_table_id',
+                'mode' => 'required|string|in:all,partial',
+                'items' => 'nullable|array',
+                'items.*.produit_id' => 'required_with:items|integer',
+                'items.*.quantite' => 'required_with:items|integer|min:1',
+            ]);
+
+            $sourceTableId = (int) $validated['source_table_id'];
+            $destinationTableId = (int) $validated['destination_table_id'];
+            $mode = (string) $validated['mode'];
+            $items = is_array($validated['items'] ?? null) ? $validated['items'] : [];
+
+            $sourceTable = \App\Models\TableResto::find($sourceTableId);
+            $destinationTable = \App\Models\TableResto::find($destinationTableId);
+
+            if (!$sourceTable || !$destinationTable) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Table source ou destination introuvable.',
+                ], 422);
+            }
+
+            if ((int) ($sourceTable->salle_id ?? 0) !== (int) ($destinationTable->salle_id ?? 0)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Le transfert est autorisé uniquement entre tables de la même salle.',
+                ], 422);
+            }
+
+            $sourceServeuseId = (int) ($sourceTable->serveuse_id ?? 0);
+            $destinationServeuseId = (int) ($destinationTable->serveuse_id ?? 0);
+            $currentUserId = (int) ($user->id ?? 0);
+
+            if (
+                $sourceServeuseId <= 0
+                || $destinationServeuseId <= 0
+                || $sourceServeuseId !== $destinationServeuseId
+                || $sourceServeuseId !== $currentUserId
+            ) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Le transfert est autorisé uniquement entre vos tables.',
+                ], 403);
+            }
+
+            $result = DB::transaction(function () use ($sourceTableId, $destinationTableId, $mode, $items, $currentUserId, $sourceServeuseId) {
+                $sourcePanier = Panier::where('table_id', $sourceTableId)
+                    ->where('status', 'en_cours')
+                    ->first();
+
+                if (!$sourcePanier) {
+                    throw new \RuntimeException('Aucun panier en cours trouvé pour la table source.');
+                }
+
+                $destinationPanier = Panier::firstOrCreate(
+                    ['table_id' => $destinationTableId, 'status' => 'en_cours'],
+                    [
+                        'point_de_vente_id' => $sourcePanier->point_de_vente_id,
+                        'opened_by' => $currentUserId,
+                        'serveuse_id' => $sourceServeuseId,
+                    ]
+                );
+
+                $lockedPaniers = Panier::whereIn('id', [$sourcePanier->id, $destinationPanier->id])
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('id');
+
+                $sourcePanier = $lockedPaniers->get($sourcePanier->id);
+                $destinationPanier = $lockedPaniers->get($destinationPanier->id);
+
+                if (!$sourcePanier || !$destinationPanier) {
+                    throw new \RuntimeException('Impossible de verrouiller les paniers pour le transfert.');
+                }
+
+                if ((int) $sourcePanier->point_de_vente_id !== (int) $destinationPanier->point_de_vente_id) {
+                    throw new \RuntimeException('Les deux tables doivent appartenir au même point de vente.');
+                }
+
+                if (!$destinationPanier->serveuse_id) {
+                    $destinationPanier->serveuse_id = $sourceServeuseId;
+                    $destinationPanier->save();
+                }
+
+                $sourceDisponibles = DB::table('panier_produit')
+                    ->where('panier_id', $sourcePanier->id)
+                    ->select('produit_id', DB::raw('SUM(quantite) as total_qte'))
+                    ->groupBy('produit_id')
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('produit_id');
+
+                if ($sourceDisponibles->isEmpty()) {
+                    throw new \RuntimeException('Aucun produit en base à transférer depuis la table source.');
+                }
+
+                $transfertParProduit = [];
+                if ($mode === 'all') {
+                    foreach ($sourceDisponibles as $produitId => $row) {
+                        $qte = (int) ($row->total_qte ?? 0);
+                        if ($qte > 0) {
+                            $transfertParProduit[(int) $produitId] = $qte;
+                        }
+                    }
+                } else {
+                    foreach ($items as $item) {
+                        $produitId = (int) ($item['produit_id'] ?? 0);
+                        $quantite = (int) ($item['quantite'] ?? 0);
+
+                        if ($produitId <= 0 || $quantite <= 0) {
+                            continue;
+                        }
+
+                        $transfertParProduit[$produitId] = ($transfertParProduit[$produitId] ?? 0) + $quantite;
+                    }
+
+                    if (empty($transfertParProduit)) {
+                        throw new \RuntimeException('Aucune ligne valide à transférer.');
+                    }
+
+                    foreach ($transfertParProduit as $produitId => $quantiteDemandee) {
+                        $disponible = (int) ($sourceDisponibles->get($produitId)->total_qte ?? 0);
+                        if ($quantiteDemandee > $disponible) {
+                            throw new \RuntimeException("Quantité insuffisante pour le produit #{$produitId}.");
+                        }
+                    }
+                }
+
+                $now = now();
+                $resume = [];
+
+                foreach ($transfertParProduit as $produitId => $quantiteATransferer) {
+                    if ($quantiteATransferer <= 0) {
+                        continue;
+                    }
+
+                    $sourceRows = DB::table('panier_produit')
+                        ->where('panier_id', $sourcePanier->id)
+                        ->where('produit_id', $produitId)
+                        ->orderBy('id')
+                        ->lockForUpdate()
+                        ->get();
+
+                    if ($sourceRows->isEmpty()) {
+                        throw new \RuntimeException("Produit #{$produitId} introuvable dans le panier source.");
+                    }
+
+                    $prixSource = null;
+                    foreach ($sourceRows as $row) {
+                        if ($row->prix !== null) {
+                            $prixSource = (float) $row->prix;
+                            break;
+                        }
+                    }
+                    if ($prixSource === null) {
+                        $prixSource = 0;
+                    }
+
+                    $destinationRows = DB::table('panier_produit')
+                        ->where('panier_id', $destinationPanier->id)
+                        ->where('produit_id', $produitId)
+                        ->orderBy('id')
+                        ->lockForUpdate()
+                        ->get();
+
+                    if ($destinationRows->isEmpty()) {
+                        DB::table('panier_produit')->insert([
+                            'panier_id' => $destinationPanier->id,
+                            'produit_id' => $produitId,
+                            'quantite' => $quantiteATransferer,
+                            'prix' => $prixSource,
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ]);
+                    } else {
+                        $firstDest = $destinationRows->first();
+                        $destinationQuantite = (int) $destinationRows->sum('quantite');
+
+                        DB::table('panier_produit')
+                            ->where('id', $firstDest->id)
+                            ->update([
+                                'quantite' => $destinationQuantite + $quantiteATransferer,
+                                'prix' => $firstDest->prix !== null ? $firstDest->prix : $prixSource,
+                                'updated_at' => $now,
+                            ]);
+
+                        $duplicates = $destinationRows->skip(1)->pluck('id')->all();
+                        if (!empty($duplicates)) {
+                            DB::table('panier_produit')->whereIn('id', $duplicates)->delete();
+                        }
+                    }
+
+                    $remaining = $quantiteATransferer;
+                    foreach ($sourceRows as $row) {
+                        if ($remaining <= 0) {
+                            break;
+                        }
+
+                        $qteLigne = (int) $row->quantite;
+                        $aPrelever = min($qteLigne, $remaining);
+                        $nouvelleQte = $qteLigne - $aPrelever;
+
+                        if ($nouvelleQte <= 0) {
+                            DB::table('panier_produit')->where('id', $row->id)->delete();
+                        } else {
+                            DB::table('panier_produit')->where('id', $row->id)->update([
+                                'quantite' => $nouvelleQte,
+                                'updated_at' => $now,
+                            ]);
+                        }
+
+                        $remaining -= $aPrelever;
+                    }
+
+                    if ($remaining > 0) {
+                        throw new \RuntimeException("Échec de prélèvement sur le produit #{$produitId}.");
+                    }
+
+                    $resume[] = [
+                        'produit_id' => (int) $produitId,
+                        'quantite' => (int) $quantiteATransferer,
+                    ];
+                }
+
+                Panier::whereIn('id', [$sourcePanier->id, $destinationPanier->id])->update([
+                    'last_modified_by' => $currentUserId,
+                    'last_modified_at' => $now,
+                ]);
+
+                return [
+                    'source_panier_id' => $sourcePanier->id,
+                    'destination_panier_id' => $destinationPanier->id,
+                    'source_items' => $this->buildPanierItemsFromDatabase($sourcePanier->id),
+                    'destination_items' => $this->buildPanierItemsFromDatabase($destinationPanier->id),
+                    'resume' => $resume,
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Transfert effectué avec succès.',
+                'source_table_id' => $sourceTableId,
+                'destination_table_id' => $destinationTableId,
+                'source_panier_id' => $result['source_panier_id'],
+                'destination_panier_id' => $result['destination_panier_id'],
+                'source_panier' => $result['source_items'],
+                'destination_panier' => $result['destination_items'],
+                'resume' => $result['resume'],
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Données de transfert invalides.',
+                'details' => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Erreur transfererProduits: '.$e->getMessage(), [
+                'exception' => $e,
+                'payload' => $request->all(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage() ?: 'Erreur serveur lors du transfert.',
+            ], 500);
+        }
+    }
+
+    private function buildPanierItemsFromDatabase(int $panierId): array
+    {
+        return DB::table('panier_produit as pp')
+            ->join('produits as p', 'p.id', '=', 'pp.produit_id')
+            ->where('pp.panier_id', $panierId)
+            ->orderBy('p.nom')
+            ->select([
+                'p.id',
+                'p.nom',
+                'p.image',
+                'p.categorie_id',
+                'pp.quantite as qte',
+                'pp.prix',
+            ])
+            ->get()
+            ->map(function ($row) use ($panierId) {
+                return [
+                    'id' => (int) $row->id,
+                    'nom' => (string) $row->nom,
+                    'prix' => (float) ($row->prix ?? 0),
+                    'qte' => (int) $row->qte,
+                    'image' => $row->image ? asset('storage/'.$row->image) : null,
+                    'cat_id' => (int) $row->categorie_id,
+                    'panier_id' => $panierId,
+                ];
+            })
+            ->filter(fn ($item) => (int) ($item['qte'] ?? 0) > 0)
+            ->values()
+            ->all();
+    }
+
     public function valider(Request $request)
     {
         try {

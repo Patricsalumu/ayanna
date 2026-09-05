@@ -176,6 +176,16 @@
           <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[140px] rounded-xl bg-gray-800 text-white 
           font-bold shadow hover:bg-gray-900 transition text-center px-4 py-0.5" @click="printAddition('proforma')">
           Préfacture</button>
+
+          @if(app(\App\Services\PermissionService::class)->isWaitress(auth()->user()))
+            <button
+              type="button"
+              class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[140px] rounded-xl bg-amber-600 text-white font-bold shadow hover:bg-amber-700 transition text-center px-4 py-0.5"
+              @click="openTransferModal()"
+            >
+              Transférer
+            </button>
+          @endif
         @endif
         @if(app(\App\Services\PermissionService::class)->isAdmin(auth()->user()))
           <form method="POST" action="{{ (isset($panier) && !empty($panier->id)) ? route('paniers.annuler', $panier->id) : '#' }}" onsubmit="return confirm('Annuler ce panier ?');" class="flex-none sm:flex-1 w-full sm:w-auto min-w-[140px]">
@@ -410,6 +420,84 @@
       </div>
     </div>
   </div>
+
+  <div x-show="transferModalOpen" x-transition style="display:none;" class="fixed inset-0 z-[65] flex items-center justify-center bg-black bg-opacity-60">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-5" @click.away="closeTransferModal()">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xl font-extrabold text-gray-800">Transfert de produits</h3>
+        <button type="button" class="text-gray-500 hover:text-gray-800 text-2xl font-bold" @click="closeTransferModal()">&times;</button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Table source</label>
+          <div class="h-11 rounded-xl border border-gray-300 bg-gray-50 px-3 flex items-center text-sm font-semibold text-gray-700" x-text="window.TABLE_COURANTE_LABEL || ('Table ' + window.TABLE_COURANTE)"></div>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Table destination</label>
+          <select class="w-full h-11 rounded-xl border border-gray-300 px-3" x-model="transfer.destination_table_id">
+            <option value="">Choisir une table</option>
+            <template x-for="table in transferDestinationOptions" :key="table.id">
+              <option :value="String(table.id)" x-text="table.label"></option>
+            </template>
+          </select>
+        </div>
+      </div>
+
+      <div class="mb-3 flex flex-wrap gap-2">
+        <button type="button" class="px-4 py-2 rounded-xl font-semibold"
+                :class="transfer.mode === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'"
+                @click="transfer.mode = 'all'">
+          Tout transférer
+        </button>
+        <button type="button" class="px-4 py-2 rounded-xl font-semibold"
+                :class="transfer.mode === 'partial' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'"
+                @click="transfer.mode = 'partial'">
+          Transfert partiel
+        </button>
+      </div>
+
+      <template x-if="transfer.mode === 'partial'">
+        <div class="border rounded-xl max-h-[280px] overflow-y-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 sticky top-0">
+              <tr>
+                <th class="text-left px-3 py-2">Produit</th>
+                <th class="text-center px-3 py-2">Disponible</th>
+                <th class="text-center px-3 py-2">À transférer</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="item in transfer.items" :key="item.id">
+                <tr class="border-t">
+                  <td class="px-3 py-2" x-text="item.nom"></td>
+                  <td class="px-3 py-2 text-center" x-text="item.qte"></td>
+                  <td class="px-3 py-2 text-center">
+                    <input type="number" min="0" :max="item.qte" x-model.number="item.transfer_qte"
+                           class="w-24 text-center rounded border border-gray-300 px-2 py-1" />
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </template>
+
+      <template x-if="transfer.error">
+        <div class="mt-3 text-sm text-red-600 font-medium" x-text="transfer.error"></div>
+      </template>
+
+      <div class="mt-5 flex flex-col sm:flex-row gap-2 justify-end">
+        <button type="button" class="h-11 px-4 rounded-xl bg-gray-200 hover:bg-gray-300 font-semibold text-gray-700" @click="closeTransferModal()">Annuler</button>
+        <button type="button" class="h-11 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white font-semibold"
+                :disabled="transfer.loading"
+                @click="submitTransfer()">
+          <span x-show="!transfer.loading">Confirmer le transfert</span>
+          <span x-show="transfer.loading">Transfert en cours...</span>
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Ticket d'addition imprimable (généré dynamiquement) -->
@@ -438,6 +526,24 @@ window.ENTREPRISE = @json($pointDeVente->entreprise);
 window.CLIENTS = @json($clientsArray ?? []);
 window.SERVEUSES = @json($serveusesArray ?? []);
 window.MODES_PAIEMENT = @json($modesPaiementArray ?? []);
+window.TRANSFER_URL = "{{ route('vente.panier.transferer') }}";
+window.IS_WAITRESS = @json(app(\App\Services\PermissionService::class)->isWaitress(auth()->user()));
+@php
+  $transferTables = $tables->map(function ($table) {
+      $base = !empty($table->numero)
+          ? 'T' . $table->numero
+          : (!empty($table->nom) ? $table->nom : ('Table ' . $table->id));
+      $label = $table->salle?->nom ? ($base . ' - ' . $table->salle->nom) : $base;
+
+      return [
+          'id' => (int) $table->id,
+          'label' => $label,
+          'salle_id' => (int) ($table->salle_id ?? 0),
+          'serveuse_id' => $table->serveuse_id ? (int) $table->serveuse_id : null,
+      ];
+  })->values()->all();
+@endphp
+window.TRANSFER_TABLES = @json($transferTables);
 @php
   $tableLabel = '';
   if ($table = $tables->firstWhere('id', $tableCourante)) {

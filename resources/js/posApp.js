@@ -37,6 +37,7 @@ export function posApp() {
     selectedIndex: null,
     showOptions: false,
     afterPrintModalOpen: false,
+    transferModalOpen: false,
     showAdminCodeModal: false,
     adminCodeInput: '',
     adminCodeError: '',
@@ -66,6 +67,13 @@ export function posApp() {
     renduMonnaie: '',
     mode: 'commande',
     remise: 0,
+    transfer: {
+      mode: 'all',
+      destination_table_id: '',
+      items: [],
+      loading: false,
+      error: '',
+    },
     paiement: {
       montantRecu: 0,
       monnaie: 0,
@@ -214,6 +222,23 @@ export function posApp() {
     get panierAffiche() {
       // Affiche uniquement les produits à qte > 0
       return this.panier.filter(item => item.qte > 0);
+    },
+    get transferDestinationOptions() {
+      const currentTableId = Number(window.TABLE_COURANTE || 0);
+      const currentTable = (window.TRANSFER_TABLES || []).find((table) => Number(table.id) === currentTableId);
+      const currentSalleId = Number(currentTable?.salle_id || 0);
+
+      return (window.TRANSFER_TABLES || []).filter((table) => {
+        if (Number(table.id) === currentTableId) {
+          return false;
+        }
+
+        if (currentSalleId > 0) {
+          return Number(table.salle_id || 0) === currentSalleId;
+        }
+
+        return true;
+      });
     },
     inqte(prod_id) {
       // Affiche le badge uniquement si la quantité > 0
@@ -368,6 +393,114 @@ export function posApp() {
     },
     toggleOptions(){
       this.showOptions = !this.showOptions;
+    },
+    resetTransferState() {
+      this.transfer.mode = 'all';
+      this.transfer.destination_table_id = '';
+      this.transfer.error = '';
+      this.transfer.loading = false;
+      this.transfer.items = this.panierAffiche.map((item) => ({
+        id: Number(item.id),
+        nom: item.nom,
+        qte: Number(item.qte || 0),
+        transfer_qte: Number(item.qte || 0),
+      }));
+    },
+    openTransferModal() {
+      if (!window.IS_WAITRESS) {
+        alert('Transfert réservé aux serveuses.');
+        return;
+      }
+
+      if (!this.panierAffiche.length) {
+        alert('Aucun produit à transférer depuis cette table.');
+        return;
+      }
+
+      if (!this.transferDestinationOptions.length) {
+        alert('Aucune table destination disponible.');
+        return;
+      }
+
+      this.resetTransferState();
+      this.transferModalOpen = true;
+    },
+    closeTransferModal() {
+      this.transferModalOpen = false;
+      this.transfer.error = '';
+      this.transfer.loading = false;
+    },
+    async submitTransfer() {
+      if (!window.TRANSFER_URL) {
+        alert('Configuration de transfert manquante.');
+        return;
+      }
+
+      this.transfer.error = '';
+      const destinationTableId = Number(this.transfer.destination_table_id || 0);
+      if (!destinationTableId) {
+        this.transfer.error = 'Veuillez sélectionner une table de destination.';
+        return;
+      }
+
+      let payloadItems = [];
+      if (this.transfer.mode === 'partial') {
+        payloadItems = (this.transfer.items || [])
+          .map((item) => {
+            const available = Number(item.qte || 0);
+            const asked = Math.max(0, Math.min(available, Number(item.transfer_qte || 0)));
+            return {
+              produit_id: Number(item.id || 0),
+              quantite: asked,
+            };
+          })
+          .filter((item) => item.produit_id > 0 && item.quantite > 0);
+
+        if (!payloadItems.length) {
+          this.transfer.error = 'Sélectionnez au moins un produit avec une quantité valide.';
+          return;
+        }
+      }
+
+      this.transfer.loading = true;
+
+      try {
+        await this.syncPanierToServer();
+
+        const response = await fetch(window.TRANSFER_URL, {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': window.CSRF_TOKEN,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            source_table_id: Number(window.TABLE_COURANTE || 0),
+            destination_table_id: destinationTableId,
+            mode: this.transfer.mode,
+            items: payloadItems,
+          })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Le transfert a échoué.');
+        }
+
+        this.panier = Array.isArray(data.source_panier) ? data.source_panier : [];
+        if (data.source_panier_id) {
+          window.PANIER_ID = data.source_panier_id;
+        }
+        this.selectedIndex = null;
+        this.persistCachedCart();
+        this.closeTransferModal();
+
+        const lignes = Array.isArray(data.resume) ? data.resume.length : 0;
+        alert(`Transfert effectué avec succès (${lignes} ligne(s)).`);
+      } catch (error) {
+        this.transfer.error = error?.message || 'Erreur serveur lors du transfert.';
+      } finally {
+        this.transfer.loading = false;
+      }
     },
     ajouterProduit(prod){
       const idx = this.panier.findIndex(i => i.id === prod.id);
