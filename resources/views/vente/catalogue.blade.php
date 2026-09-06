@@ -300,12 +300,33 @@
         >
           <template x-for="prod in filteredProduits" :key="prod.id">
             <div @click="canAddProducts ? ajouterProduit(prod) : null"
+                 @mouseenter="hoveredProductId = prod.id"
+                 @mouseleave="hoveredProductId = null; infoProductId = null; clearProductPress()"
+                 @touchstart="startProductPress(prod.id)"
+                 @touchend="clearProductPress()"
+                 @touchmove="clearProductPress()"
+                 @mousedown="startProductPress(prod.id)"
+                 @mouseup="clearProductPress()"
                  :class="canAddProducts ? 'cursor-pointer hover:ring-2 hover:ring-blue-500' : 'cursor-not-allowed opacity-60'"
-                 class="relative bg-white p-2 rounded-xl shadow transition h-[102px] min-h-[102px] max-h-[102px] flex flex-col items-center justify-end overflow-hidden">
+                 class="relative bg-white p-2 rounded-xl shadow transition h-[102px] min-h-[102px] max-h-[102px] flex flex-col items-center justify-end overflow-visible">
               
               <!-- Bande colorée en bas selon la catégorie -->
               <div class="absolute bottom-0 left-0 right-0 h-1 z-10"
                    :class="getCategoryColor(prod.categorie_id)"></div>
+
+              <template x-if="(hoveredProductId === prod.id || infoProductId === prod.id)">
+                <div class="absolute left-1/2 top-full -translate-x-1/2 mt-2 z-30 w-52 rounded-lg border border-slate-200 bg-white p-2.5 shadow-lg text-left">
+                  <div class="font-bold text-[11px] text-slate-800 mb-1.5" x-text="prod.nom"></div>
+                  <div class="text-[11px] text-slate-600 mb-0.5">
+                    <span class="font-semibold">Prix :</span>
+                    <span class="text-slate-900" x-text="formatMoney(prod.prix_salle ?? prod.prix ?? 0)"></span>
+                  </div>
+                  <div class="text-[11px] text-slate-600">
+                    <span class="font-semibold">Stock :</span>
+                    <span class="text-slate-900" x-text="Number(prod.stock_qte ?? 0)"></span>
+                  </div>
+                </div>
+              </template>
               
               <div class="relative w-full flex-1 flex flex-col justify-end items-center">
                 <template x-if="prod.image">
@@ -319,8 +340,15 @@
                   </div>
                 </template>
               </div>
-              <div class="mt-1 w-full text-center px-1">
-                <span class="block text-xs font-semibold text-black truncate" x-text="prod.nom"></span>
+              <div class="mt-1 flex w-full items-center justify-center gap-1 px-1">
+                <span class="block min-w-0 flex-1 text-center text-[10px] font-semibold text-black truncate" x-text="prod.nom"></span>
+                <button type="button"
+                        @click.stop="toggleProductInfo(prod.id)"
+                        class="z-20 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-slate-700 text-[8px] font-bold text-white shadow-sm"
+                        aria-label="Informations du produit"
+                        title="Informations du produit">
+                  i
+                </button>
               </div>
               <template x-if="inqte(prod.id)">
                 <div class="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full"

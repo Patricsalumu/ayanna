@@ -35,6 +35,9 @@ export function posApp() {
     })(),
     search: window.INITIAL_SEARCH || '',
     selectedIndex: null,
+    hoveredProductId: null,
+    infoProductId: null,
+    pressTimer: null,
     showOptions: false,
     afterPrintModalOpen: false,
     transferModalOpen: false,
@@ -105,6 +108,22 @@ export function posApp() {
         return '';
       }
       return value.length > maxLength ? `${value.slice(0, maxLength)}…` : value;
+    },
+    toggleProductInfo(productId) {
+      this.infoProductId = this.infoProductId === productId ? null : productId;
+      this.hoveredProductId = this.infoProductId;
+    },
+    startProductPress(productId) {
+      this.clearProductPress();
+      this.pressTimer = setTimeout(() => {
+        this.toggleProductInfo(productId);
+      }, 550);
+    },
+    clearProductPress() {
+      if (this.pressTimer) {
+        clearTimeout(this.pressTimer);
+        this.pressTimer = null;
+      }
     },
     getLocalCacheKey(prefix) {
       return `${prefix}_${window.POINT_DE_VENTE_ID || 'global'}_${window.TABLE_COURANTE || 'no-table'}`;
