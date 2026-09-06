@@ -54,6 +54,10 @@
             return !in_array($mode, ['compte_client', 'compteclient', 'credit'], true);
         });
 
+        $taux = (float) ($entreprise->taux ?? 1);
+        $equivalentAutreDevise = $devise === 'F' ? $netAPayer / max($taux, 0.0001) : $netAPayer * $taux;
+        $symboleAutreDevise = $devise === 'F' ? '$' : 'F';
+
         $montantPayeBrut = (float) $paiementsReels->sum('montant');
         $montantPaye = max(0, min($netAPayer, $montantPayeBrut));
         $montantRestant = max(0, $netAPayer - $montantPaye);
@@ -128,6 +132,9 @@
         <div class="total">Sous-total : {{ number_format($montantTotal, 2, ',', ' ') }} {{ $devise }}</div>
         <div class="total">Remise : {{ number_format($remise, 2, ',', ' ') }} {{ $devise }}</div>
         <div class="total-main">Net a payer : {{ number_format($netAPayer, 2, ',', ' ') }} {{ $devise }}</div>
+        @if(($entreprise->taux ?? null) && (float) $entreprise->taux > 0)
+            <div class="total">Équivalent {{ $symboleAutreDevise }} : {{ number_format($equivalentAutreDevise, 2, ',', ' ') }} {{ $symboleAutreDevise }}</div>
+        @endif
         <div class="total">Montant paye : {{ number_format($montantPaye, 2, ',', ' ') }} {{ $devise }}</div>
         <div class="total">Reste du : {{ number_format($montantRestant, 2, ',', ' ') }} {{ $devise }}</div>
 

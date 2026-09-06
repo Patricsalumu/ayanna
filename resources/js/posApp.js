@@ -971,8 +971,9 @@ export function posApp() {
       html += `<div style='text-align:right;font-size:16px;color:#111;font-weight:bold;'>Sous-total : ${this.formatMoney(baseTotalHt)}</div>`;
       html += `<div style='text-align:right;font-size:16px;color:#111;font-weight:bold;'>Remise : ${this.formatMoney(baseTotalRemise)}</div>`;
       html += `<div style='text-align:right;font-size:20px;font-weight:bold;color:#111;'>Net à payer : ${this.formatMoney(baseTotal)}</div>`;
-      if (this.showFEquivalent(baseTotal)) {
-        html += `<div style='text-align:right;font-size:15px;color:#111;font-weight:bold;'>Équivalent F : ${this.formatFEquivalent(baseTotal)}</div>`;
+      if (this.showEquivalent(baseTotal)) {
+        const equivalentLabel = (window.ENTREPRISE?.devise || '$') === 'F' ? 'Équivalent $' : 'Équivalent F';
+        html += `<div style='text-align:right;font-size:15px;color:#111;font-weight:bold;'>${equivalentLabel} : ${this.formatEquivalent(baseTotal)}</div>`;
       }
       html += `<div style='text-align:center;font-size:15px;margin-top:12px;color:#111;font-weight:bold;'>Merci pour votre visite !</div>`;
       html += `<div style='text-align:center;font-size:13px;margin-top:10px;color:#111;font-weight:bold;'>Généré par Ayanna &copy; | ${dateStr} ${heureStr}</div>`;
@@ -1057,16 +1058,18 @@ export function posApp() {
       const symbol = window.ENTREPRISE?.devise || '$';
       return `${val.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${symbol}`;
     },
-    showFEquivalent(val) {
+    showEquivalent(val) {
       const devise = window.ENTREPRISE?.devise || '$';
       const taux = Number(window.ENTREPRISE?.taux || 0);
-      return devise === '$' && Number.isFinite(taux) && taux > 0 && Number(val) > 0;
+      return ['$', 'F'].includes(devise) && Number.isFinite(taux) && taux > 0 && Number(val) > 0;
     },
-    formatFEquivalent(val) {
+    formatEquivalent(val) {
       if (typeof val !== 'number') val = parseFloat(val) || 0;
+      const devise = window.ENTREPRISE?.devise || '$';
       const taux = Number(window.ENTREPRISE?.taux || 0);
-      const montantF = val * taux;
-      return `${montantF.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} F`;
+      const equivalent = devise === 'F' ? val / taux : val * taux;
+      const symbol = devise === 'F' ? '$' : 'F';
+      return `${equivalent.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${symbol}`;
     },
     async imprimerFactureBon() {
       const panierId = (this.panier && this.panier.length && this.panier[0].panier_id) ? this.panier[0].panier_id : window.PANIER_ID;
@@ -1165,8 +1168,9 @@ export function posApp() {
       html += `<div style='text-align:right;font-size:16px;color:#111;font-weight:bold;'>Sous-total : ${this.formatMoney(totalHt)}</div>`;
       html += `<div style='text-align:right;font-size:16px;color:#111;font-weight:bold;'>Remise : ${this.formatMoney(totalRemise)}</div>`;
       html += `<div style='text-align:right;font-size:20px;font-weight:bold;color:#111;'>Net à payer : ${this.formatMoney(totalFinal)}</div>`;
-      if (this.showFEquivalent(totalFinal)) {
-        html += `<div style='text-align:right;font-size:15px;color:#111;font-weight:bold;'>Équivalent F : ${this.formatFEquivalent(totalFinal)}</div>`;
+      if (this.showEquivalent(totalFinal)) {
+        const equivalentLabel = (window.ENTREPRISE?.devise || '$') === 'F' ? 'Équivalent $' : 'Équivalent F';
+        html += `<div style='text-align:right;font-size:15px;color:#111;font-weight:bold;'>${equivalentLabel} : ${this.formatEquivalent(totalFinal)}</div>`;
       }
       html += `<div style='text-align:center;font-size:15px;margin-top:12px;color:#111;font-weight:bold;'>Merci pour votre visite !</div>`;
       html += `<div style='text-align:center;font-size:13px;margin-top:10px;color:#111;font-weight:bold;'>Généré par Ayanna &copy; | ${dateStr} ${heureStr}</div>`;

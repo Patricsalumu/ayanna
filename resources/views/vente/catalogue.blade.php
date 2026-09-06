@@ -75,10 +75,10 @@
                 <td colspan="3" class="text-right py-1">Net à payer</td>
                 <td class="text-right" x-text="formatMoney(total)"></td>
               </tr>
-              <template x-if="showFEquivalent(total)">
+              <template x-if="showEquivalent(total)">
                 <tr class="border-t text-xs text-gray-600">
-                  <td colspan="3" class="text-right py-1">Équivalent F</td>
-                  <td class="text-right" x-text="formatFEquivalent(total)"></td>
+                  <td colspan="3" class="text-right py-1" x-text="(window.ENTREPRISE && window.ENTREPRISE.devise === 'F') ? 'Équivalent $' : 'Équivalent F'"></td>
+                  <td class="text-right" x-text="formatEquivalent(total)"></td>
                 </tr>
               </template>
             </tbody>

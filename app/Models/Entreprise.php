@@ -78,5 +78,14 @@ class Entreprise extends Model
     {
         return $amount * (float) $this->taux;
     }
+
+    public function convertToOtherCurrency(float $amount): float
+    {
+        if ($this->devise === 'F') {
+            return $amount / max((float) $this->taux, 0.0001);
+        }
+
+        return $amount * (float) $this->taux;
+    }
 }
 
