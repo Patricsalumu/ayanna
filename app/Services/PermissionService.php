@@ -54,7 +54,7 @@ class PermissionService
 
     public function canApplyDiscount(?object $user): bool
     {
-        return $this->isCashier($user) || $this->isWaitress($user);
+        return $this->isAdmin($user) || $this->isSuperAdmin($user);
     }
 
     public function canManageSalesSession(?object $user): bool
