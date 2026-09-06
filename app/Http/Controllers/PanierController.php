@@ -530,6 +530,7 @@ class PanierController extends Controller
 
         $totalCredit = 0.0;
         $totalOffre = 0.0;
+        $totalPaye = 0.0;
         $totalEspeces = 0.0;
         $totalCarte = 0.0;
         $totalMobileMoney = 0.0;
@@ -537,9 +538,11 @@ class PanierController extends Controller
         foreach ($paniersActifs as $panier) {
             $mode = $this->normalizeModePaiement($panier->commande?->mode_paiement ?? $panier->mode_paiement);
             $montantNet = $this->montantPanierAffiche($panier);
+            $montantPaye = (float) ($panier->commande?->paiements?->sum('montant') ?? 0);
 
             if ($this->estModeCreditPaiement($mode)) {
-                $totalCredit += $montantNet;
+                $totalCredit += max(0, $montantNet - $montantPaye);
+                $totalPaye += $montantPaye;
                 continue;
             }
 
@@ -550,18 +553,20 @@ class PanierController extends Controller
 
             if ($this->estModeCartePaiement($mode)) {
                 $totalCarte += $montantNet;
+                $totalPaye += $montantPaye;
                 continue;
             }
 
             if ($this->estModeMobileMoneyPaiement($mode)) {
                 $totalMobileMoney += $montantNet;
+                $totalPaye += $montantPaye;
                 continue;
             }
 
             $totalEspeces += $montantNet;
+            $totalPaye += $montantPaye;
         }
 
-        $totalPaye = $totalEspeces + $totalCarte + $totalMobileMoney;
         $soldeTheorique = max(0, $totalVente - $totalRemise - $totalCredit - $totalOffre);
 
         // Alias conservé pour compatibilité avec les vues existantes.

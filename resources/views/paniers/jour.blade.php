@@ -171,6 +171,7 @@
                     data-montant-vente="{{ $montantTtcSansRemises }}"
                     data-remise="{{ $remise }}"
                     data-net="{{ $netAPayer }}"
+                    data-montant-paye="{{ $montantPaye }}"
                     data-panier='@json($panierDetails)'
                     data-produits="{{ strtolower(collect($panier->produits)->pluck('nom')->implode(',')) }}">
                     <td class="p-3 font-semibold">{{ $panier->commande?->id ? 'Facture #' . $panier->commande->id : 'Panier #' . $panier->id }}</td>
@@ -227,6 +228,17 @@
                             @else
                                 <span class="text-gray-400 text-xs">-</span>
                             @endif
+                        @elseif($panier->commande && $modeLabel === 'Crédit' && $montantPaye < $netAPayer)
+                            <button type="button"
+                                    onclick="event.stopPropagation(); ouvrirPaiementJour(this)"
+                                    data-commande-id="{{ $panier->commande->id }}"
+                                    data-client-nom="{{ $panier->client->nom ?? 'N/A' }}"
+                                    data-montant-total="{{ $netAPayer }}"
+                                    data-montant-restant="{{ max(0, $netAPayer - $montantPaye) }}"
+                                    class="inline-flex items-center rounded-full bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700"
+                                    title="Payer cette facture à crédit">
+                                Payer
+                            </button>
                         @elseif(app(\App\Services\PermissionService::class)->canPrintReceipt(auth()->user()) && $panier->commande && in_array($panier->commande->statut, ['validé', 'payé'], true))
                             <a href="{{ route('creances.imprimer', $panier->commande->id) }}?auto_print=1"
                                target="_blank"
@@ -246,6 +258,36 @@
         @else
         <div class="text-center text-gray-500 text-lg font-semibold mt-6">Aucun panier trouvé</div>
         @endif
+    </div>
+</div>
+
+<div id="paiementJourModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 px-4">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" onclick="event.stopPropagation()">
+        <div class="mb-4 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-gray-900">Payer la facture à crédit</h3>
+            <button type="button" onclick="fermerPaiementJour()" class="text-2xl text-gray-500 hover:text-gray-800" aria-label="Fermer">&times;</button>
+        </div>
+        <p class="mb-4 text-sm text-gray-600">Client : <strong id="paiementJourClient"></strong></p>
+        <div class="mb-4 grid grid-cols-2 gap-3 text-sm">
+            <div class="rounded-lg bg-gray-100 p-3">Total : <strong id="paiementJourTotal"></strong></div>
+            <div class="rounded-lg bg-yellow-100 p-3">Reste : <strong id="paiementJourReste"></strong></div>
+        </div>
+        <form id="paiementJourForm" onsubmit="enregistrerPaiementJour(event)">
+            @csrf
+            <input type="hidden" id="paiementJourCommandeId">
+            <label class="mb-1 block text-sm font-semibold text-gray-700" for="paiementJourMontant">Montant reçu</label>
+            <input id="paiementJourMontant" name="montant" type="number" min="0.01" step="0.01" required class="mb-4 w-full rounded-lg border-gray-300">
+            <label class="mb-1 block text-sm font-semibold text-gray-700" for="paiementJourMode">Mode de paiement</label>
+            <select id="paiementJourMode" name="mode" required class="mb-5 w-full rounded-lg border-gray-300">
+                <option value="espèces">Espèces</option>
+                <option value="mobile_money">Mobile Money</option>
+                <option value="carte">Carte</option>
+            </select>
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="fermerPaiementJour()" class="rounded-lg bg-gray-200 px-4 py-2 font-semibold text-gray-700">Annuler</button>
+                <button id="paiementJourSubmit" type="submit" class="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700">Enregistrer le paiement</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -478,6 +520,7 @@
         let totalRemise = 0;
         let totalOffre = 0;
         let totalCredit = 0;
+        let totalPaye = 0;
         let totalEspeces = 0;
         let totalCarte = 0;
         let totalMobileMoney = 0;
@@ -489,14 +532,16 @@
             const montantVente = Number(row.dataset.montantVente || 0);
             const remise = Number(row.dataset.remise || 0);
             const montantNet = Number(row.dataset.net || 0);
+            const montantPaye = Number(row.dataset.montantPaye || 0);
             const mode = (row.dataset.mode || '').toLowerCase();
 
             visibleCount += 1;
             totalVente += montantVente;
             totalRemise += remise;
+            totalPaye += montantPaye;
 
             if (mode.includes('compte') || mode === 'credit' || mode === 'compteclient' || mode === 'compte_client') {
-                totalCredit += montantNet;
+                totalCredit += Math.max(0, montantNet - montantPaye);
             } else if (mode === 'offre') {
                 totalOffre += montantNet;
             } else if (mode === 'carte' || mode === 'card') {
@@ -508,8 +553,6 @@
             }
         });
 
-        const totalPaye = totalEspeces + totalCarte + totalMobileMoney;
-
         // Mettre à jour l'affichage
         document.getElementById('totalPaniersDisplay').textContent = new Intl.NumberFormat('fr-FR').format(visibleCount);
         document.getElementById('totalVenteDisplay').textContent = formatCurrency(totalVente);
@@ -517,6 +560,68 @@
         document.getElementById('totalOffreDisplay').textContent = formatCurrency(totalOffre);
         document.getElementById('totalPayeDisplay').textContent = formatCurrency(totalPaye);
         document.getElementById('totalCreditDisplay').textContent = formatCurrency(totalCredit);
+    }
+
+    function ouvrirPaiementJour(button) {
+        const modal = document.getElementById('paiementJourModal');
+        const restant = Number(button.dataset.montantRestant || 0);
+
+        document.getElementById('paiementJourCommandeId').value = button.dataset.commandeId;
+        document.getElementById('paiementJourClient').textContent = button.dataset.clientNom || 'N/A';
+        document.getElementById('paiementJourTotal').textContent = formatCurrency(button.dataset.montantTotal);
+        document.getElementById('paiementJourReste').textContent = formatCurrency(restant);
+        document.getElementById('paiementJourMontant').value = restant.toFixed(2);
+        document.getElementById('paiementJourMontant').max = restant.toFixed(2);
+        document.getElementById('paiementJourSubmit').disabled = false;
+        document.getElementById('paiementJourSubmit').textContent = 'Enregistrer le paiement';
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function fermerPaiementJour() {
+        const modal = document.getElementById('paiementJourModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = 'auto';
+    }
+
+    async function enregistrerPaiementJour(event) {
+        event.preventDefault();
+        const submitButton = document.getElementById('paiementJourSubmit');
+        if (submitButton.disabled) return;
+
+        const commandeId = document.getElementById('paiementJourCommandeId').value;
+        const montant = document.getElementById('paiementJourMontant').value;
+        const mode = document.getElementById('paiementJourMode').value;
+        const token = document.querySelector('#paiementJourForm input[name="_token"]').value;
+
+        submitButton.disabled = true;
+        submitButton.textContent = 'Enregistrement...';
+
+        try {
+            const response = await fetch(`/creances/${commandeId}/paiement`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': token,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ montant, mode })
+            });
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Le paiement n’a pas pu être enregistré.');
+            }
+
+            fermerPaiementJour();
+            window.location.reload();
+        } catch (error) {
+            alert(error.message || 'Erreur lors de l’enregistrement du paiement.');
+            submitButton.disabled = false;
+            submitButton.textContent = 'Enregistrer le paiement';
+        }
     }
 
     function hidePanierDetails() {
