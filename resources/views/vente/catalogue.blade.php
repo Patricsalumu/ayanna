@@ -175,9 +175,9 @@
         @if(app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user()))
           <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[140px] rounded-xl bg-gray-800 text-white 
           font-bold shadow hover:bg-gray-900 transition text-center px-4 py-0.5" @click="printAddition('proforma')">
-          Préfacture</button>
+          Facture Finale</button>
 
-          @if(app(\App\Services\PermissionService::class)->isWaitress(auth()->user()))
+          @if(app(\App\Services\PermissionService::class)->canTransferTableProducts(auth()->user()))
             <button
               type="button"
               class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[140px] rounded-xl bg-amber-600 text-white font-bold shadow hover:bg-amber-700 transition text-center px-4 py-0.5"
@@ -528,6 +528,7 @@ window.SERVEUSES = @json($serveusesArray ?? []);
 window.MODES_PAIEMENT = @json($modesPaiementArray ?? []);
 window.TRANSFER_URL = "{{ route('vente.panier.transferer') }}";
 window.IS_WAITRESS = @json(app(\App\Services\PermissionService::class)->isWaitress(auth()->user()));
+window.CAN_TRANSFER_TABLE_PRODUCTS = @json(app(\App\Services\PermissionService::class)->canTransferTableProducts(auth()->user()));
 @php
   $transferTables = $tables->map(function ($table) {
       $base = !empty($table->numero)

@@ -531,10 +531,13 @@ class VenteController extends Controller
     {
         try {
             $user = Auth::user();
-            if (!$this->permissionService->isWaitress($user)) {
+            $isWaitress = $this->permissionService->isWaitress($user);
+            $isCashierType2 = $this->permissionService->isCashierType2($user);
+
+            if (!$this->permissionService->canTransferTableProducts($user)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Seule une serveuse peut effectuer un transfert de table.',
+                    'error' => 'Seules les serveuses, caisse1 et caisse2 peuvent effectuer un transfert de table.',
                 ], 403);
             }
 
@@ -570,22 +573,24 @@ class VenteController extends Controller
             }
 
             $sourceServeuseId = (int) ($sourceTable->serveuse_id ?? 0);
-            $destinationServeuseId = (int) ($destinationTable->serveuse_id ?? 0);
+            $destinationTableServeuseId = (int) ($destinationTable->serveuse_id ?? 0);
             $currentUserId = (int) ($user->id ?? 0);
 
-            if (
+            if ($isWaitress && (
                 $sourceServeuseId <= 0
-                || $destinationServeuseId <= 0
-                || $sourceServeuseId !== $destinationServeuseId
+                || $destinationTableServeuseId <= 0
+                || $sourceServeuseId !== $destinationTableServeuseId
                 || $sourceServeuseId !== $currentUserId
-            ) {
+            )) {
                 return response()->json([
                     'success' => false,
                     'error' => 'Le transfert est autorisé uniquement entre vos tables.',
                 ], 403);
             }
 
-            $result = DB::transaction(function () use ($sourceTableId, $destinationTableId, $mode, $items, $currentUserId, $sourceServeuseId) {
+            $defaultServeuseId = $sourceServeuseId > 0 ? $sourceServeuseId : null;
+
+            $result = DB::transaction(function () use ($sourceTableId, $destinationTableId, $mode, $items, $currentUserId, $defaultServeuseId) {
                 $sourcePanier = Panier::where('table_id', $sourceTableId)
                     ->where('status', 'en_cours')
                     ->first();
@@ -599,7 +604,7 @@ class VenteController extends Controller
                     [
                         'point_de_vente_id' => $sourcePanier->point_de_vente_id,
                         'opened_by' => $currentUserId,
-                        'serveuse_id' => $sourceServeuseId,
+                        'serveuse_id' => $defaultServeuseId,
                     ]
                 );
 
@@ -620,8 +625,8 @@ class VenteController extends Controller
                     throw new \RuntimeException('Les deux tables doivent appartenir au même point de vente.');
                 }
 
-                if (!$destinationPanier->serveuse_id) {
-                    $destinationPanier->serveuse_id = $sourceServeuseId;
+                if (!$destinationPanier->serveuse_id && $defaultServeuseId) {
+                    $destinationPanier->serveuse_id = $defaultServeuseId;
                     $destinationPanier->save();
                 }
 

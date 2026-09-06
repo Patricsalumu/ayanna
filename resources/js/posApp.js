@@ -407,8 +407,8 @@ export function posApp() {
       }));
     },
     openTransferModal() {
-      if (!window.IS_WAITRESS) {
-        alert('Transfert réservé aux serveuses.');
+      if (!window.CAN_TRANSFER_TABLE_PRODUCTS) {
+        alert('Transfert non autorisé pour votre profil.');
         return;
       }
 

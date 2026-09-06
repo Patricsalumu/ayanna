@@ -77,6 +77,11 @@ class PermissionService
         return $this->isSuperAdmin($user) || $this->isAdmin($user) || $this->isCashierType1($user);
     }
 
+    public function canTransferTableProducts(?object $user): bool
+    {
+        return $this->isWaitress($user) || $this->isCashierType1($user) || $this->isCashierType2($user);
+    }
+
     public function canAccessPointDeVente(?object $user, ?int $pointDeVenteId): bool
     {
         if (!$user || !$pointDeVenteId) {
@@ -166,8 +171,8 @@ class PermissionService
         return match ($normalized) {
             'administrateur', 'admin', 'super_admin' => self::ROLE_ADMINISTRATEUR,
             'caissier', 'cashier', 'comptoiriste' => self::ROLE_CAISSIER,
-            'caissier1', 'caissier_1', 'cashier1', 'cashier_1', 'comptoiriste1', 'comptoiriste_1' => self::ROLE_CAISSIER_1,
-            'caissier2', 'caissier_2', 'cashier2', 'cashier_2', 'comptoiriste2', 'comptoiriste_2' => self::ROLE_CAISSIER_2,
+            'caissier1', 'caissier_1', 'caisse1', 'caisse_1', 'cashier1', 'cashier_1', 'comptoiriste1', 'comptoiriste_1' => self::ROLE_CAISSIER_1,
+            'caissier2', 'caissier_2', 'caisse2', 'caisse_2', 'cashier2', 'cashier_2', 'comptoiriste2', 'comptoiriste_2' => self::ROLE_CAISSIER_2,
             'serveuse', 'waitress', 'cuisinière' => self::ROLE_SERVEUSE,
             default => (string) $role,
         };
