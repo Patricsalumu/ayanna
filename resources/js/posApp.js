@@ -1053,6 +1053,18 @@ export function posApp() {
         });
       }
     },
+    async imprimerFactureFinale() {
+      if (this.bonCommandeEnCours || this.bonCommandePrintEnCours) {
+        return;
+      }
+
+      this.bonCommandePrintEnCours = true;
+      try {
+        await this.printAddition('proforma');
+      } finally {
+        this.bonCommandePrintEnCours = false;
+      }
+    },
     formatMoney(val) {
       if (typeof val !== 'number') val = parseFloat(val) || 0;
       const symbol = window.ENTREPRISE?.devise || '$';
@@ -1072,9 +1084,15 @@ export function posApp() {
       return `${equivalent.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${symbol}`;
     },
     async imprimerFactureBon() {
+      if (this.bonCommandeEnCours || this.bonCommandePrintEnCours) {
+        return;
+      }
+
+      this.bonCommandePrintEnCours = true;
       const panierId = (this.panier && this.panier.length && this.panier[0].panier_id) ? this.panier[0].panier_id : window.PANIER_ID;
       if (!panierId) {
         alert('❌ Aucun panier actif pour imprimer la facture du bon.');
+        this.bonCommandePrintEnCours = false;
         return;
       }
 
@@ -1109,6 +1127,8 @@ export function posApp() {
       } catch (err) {
         console.error('Erreur récupération du dernier bon pour facture:', err);
         alert('❌ Impossible d’imprimer la facture du dernier bon pour ce panier.');
+      } finally {
+        this.bonCommandePrintEnCours = false;
       }
     },
     imprimerTicketFactureBon({ bon_id, panier_id, numero_bon, commande_no, produits, table, client, serveuse }) {

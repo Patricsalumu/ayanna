@@ -112,7 +112,8 @@
             :disabled="bonCommandeEnCours || bonCommandePrintEnCours"
             class="min-h-[62px] rounded-2xl bg-blue-600 text-white font-black text-lg shadow hover:bg-blue-700 transition px-4 py-3 leading-tight disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            <span class="block">Facture bon</span>
+            <span x-show="!bonCommandeEnCours && !bonCommandePrintEnCours" class="block">Facture bon</span>
+            <span x-show="bonCommandeEnCours || bonCommandePrintEnCours" class="block">Traitement...</span>
           </button>
         </div>
       </template>
@@ -174,8 +175,12 @@
       <div class="flex flex-row flex-wrap gap-2 mb-2 justify-between items-center">
         @if(app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user()))
           <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[140px] rounded-xl bg-gray-800 text-white 
-          font-bold shadow hover:bg-gray-900 transition text-center px-4 py-0.5" @click="printAddition('proforma')">
-          Facture Finale</button>
+          font-bold shadow hover:bg-gray-900 transition text-center px-4 py-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
+          @click="if (!bonCommandeEnCours && !bonCommandePrintEnCours) imprimerFactureFinale()"
+          :disabled="bonCommandeEnCours || bonCommandePrintEnCours">
+          <span x-show="!bonCommandeEnCours && !bonCommandePrintEnCours">Facture Finale</span>
+          <span x-show="bonCommandeEnCours || bonCommandePrintEnCours">Traitement...</span>
+          </button>
 
           @if(app(\App\Services\PermissionService::class)->canTransferTableProducts(auth()->user()))
             <button
