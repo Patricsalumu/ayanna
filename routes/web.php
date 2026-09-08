@@ -181,6 +181,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/stock-journalier/{pointDeVente}/export-pdf', [App\Http\Controllers\StockJournalierController::class, 'exportPdf'])->middleware(['role.access:admin,cashier,cashier1'])->name('stock_journalier.export_pdf');
     Route::get('/stock-journalier/{pointDeVente}/export-80mm', [App\Http\Controllers\StockJournalierController::class, 'exportPdf80mm'])->middleware(['role.access:admin,cashier,cashier1'])->name('stock_journalier.export_80mm');
     Route::get('/stock-journalier/{pointDeVente}/export-opening-pdf', [App\Http\Controllers\StockJournalierController::class, 'exportOpeningPdf'])->middleware(['role.access:admin,cashier,cashier1'])->name('stock_journalier.export_opening_pdf');
+    Route::get('/stock-journalier/{pointDeVente}/export-opening-80mm', [App\Http\Controllers\StockJournalierController::class, 'exportOpeningPdf80mm'])->middleware(['role.access:admin,cashier,cashier1'])->name('stock_journalier.export_opening_80mm');
     Route::post('/stock-journalier/qtajoute', [App\Http\Controllers\StockJournalierController::class, 'storeqtajoute'])->name('stock_journalier.storeqtajoute');
     Route::post('/stock-journalier/qtinitial', [App\Http\Controllers\StockJournalierController::class, 'storeqtinitial'])->name('stock_journalier.storeqtinitial');
     Route::get('/stock-journalier/ouverture/{pointDeVente}', [App\Http\Controllers\StockJournalierController::class, 'ficheOuvertureStock'])->middleware(['role.access:admin,cashier,cashier1,cashier2'])->name('stock_journalier.ouverture');

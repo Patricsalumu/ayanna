@@ -139,6 +139,17 @@
                             Exporter inventaire d'ouverture
                         </button>
                     </form>
+                    <form method="GET" action="{{ route('stock_journalier.export_opening_80mm', ['pointDeVente' => $pointDeVenteId, 'session' => $session ?? '']) }}" target="_blank" class="w-full" id="exportOpening80Form">
+                        <input type="hidden" name="date" value="{{ $date }}">
+                        <input type="hidden" name="session" value="{{ $session ?? '' }}">
+                        <input type="hidden" name="export_form" value="1">
+                        <button type="submit" class="w-full inline-flex items-center justify-center px-6 py-2 bg-slate-700 text-white font-semibold rounded-lg hover:bg-slate-800 shadow transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16" />
+                            </svg>
+                            Inventaire ouverture 80mm
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -455,6 +466,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         const exportPdfForm = document.getElementById('exportPdfForm');
         const exportOpeningForm = document.getElementById('exportOpeningForm');
+        const exportOpening80Form = document.getElementById('exportOpening80Form');
         const export80Form = document.getElementById('export80Form');
 
         if (exportPdfForm) {
@@ -470,6 +482,11 @@
         if (exportOpeningForm) {
             exportOpeningForm.addEventListener('submit', function(e) {
                 appendSelectedCategoriesToForm(exportOpeningForm);
+            });
+        }
+        if (exportOpening80Form) {
+            exportOpening80Form.addEventListener('submit', function(e) {
+                appendSelectedCategoriesToForm(exportOpening80Form);
             });
         }
 

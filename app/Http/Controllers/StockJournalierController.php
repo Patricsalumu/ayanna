@@ -574,6 +574,39 @@ class StockJournalierController extends Controller
         return Pdf::loadView('stock_journalier.opening_inventaire_pdf', $data)->download($fileName);
     }
 
+    public function exportOpeningPdf80mm(Request $request, $pointDeVenteId)
+    {
+        $session = $request->get('session');
+        if (!$pointDeVenteId) {
+            $pointDeVenteId = $request->get('point_de_vente_id') ?? auth()->user()->point_de_vente_id ?? PointDeVente::first()?->id;
+        }
+
+        if (!$pointDeVenteId) {
+            return redirect()->back()->with('message', 'Aucun point de vente disponible pour l’export inventaire 80 mm.');
+        }
+
+        $selectedCategoryIds = $request->exists('categories')
+            ? array_values(array_filter(array_map('intval', (array) $request->input('categories', []))))
+            : null;
+        $data = $this->getStockJournalierOpeningData($pointDeVenteId, $session, $selectedCategoryIds);
+
+        $fileName = 'inventaire_ouverture_80mm_'.$data['date'];
+        if ($data['session']) {
+            $sessionPart = $data['sessionLabel'] ?? $data['session'];
+            $fileName .= '_session_'.$this->sanitizeFileName($sessionPart);
+        }
+        $fileName .= '.pdf';
+
+        $pdf = Pdf::loadView('stock_journalier.opening_inventaire_80mm', $data)
+            ->setPaper([0, 0, 226.77, 2000], 'portrait');
+        $pdf->getDomPDF()->set_option('isPhpEnabled', true);
+        $pdf->getDomPDF()->set_option('isRemoteEnabled', true);
+        $pdf->getDomPDF()->set_option('defaultFont', 'DejaVu Sans');
+        $pdf->getDomPDF()->set_option('enable_unicode', true);
+
+        return $pdf->download($fileName);
+    }
+
     private function getStockJournalierOpeningData($pointDeVenteId, $session = null, ?array $selectedCategoryIds = null)
     {
         $pointDeVente = PointDeVente::find($pointDeVenteId);
