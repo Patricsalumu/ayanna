@@ -147,6 +147,8 @@ class StockJournalierController extends Controller
             $total = $q_vendue * $prix;
 
             return [
+                'produit_id' => $produit->id,
+                'stock_id' => $stock?->id,
                 'categorie' => $produit->categorie?->nom ?? 'Sans catégorie',
                 'nom' => $produit->nom,
                 'q_init' => $q_init,

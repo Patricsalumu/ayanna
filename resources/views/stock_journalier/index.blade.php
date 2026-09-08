@@ -164,79 +164,63 @@
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                @foreach($produits as $produit)
-                    @php
-                        $stock = $stocks->where('produit_id', $produit->id)->last();
-                        $q_init = $stock->quantite_initiale ?? 0;
-                        $q_ajout = $stock->quantite_ajoutee ?? 0;
-                        $q_vendue = $ventesParProduit[$produit->id] ?? ($stock->quantite_vendue ?? 0);
-                        $q_total = $q_init + $q_ajout;
-                        $q_reste = $q_total - $q_vendue;
-                        $prix = $produit->prix_vente;
-                        $total = $q_vendue * $prix;
-                    @endphp
-                    <tr class="hover:bg-blue-50 transition-colors duration-200 product-row" data-product-name="{{ strtolower($produit->nom) }}">
-                        <td class="px-4 py-4">
-                            <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
-                                {{ $stock->id ?? '-' }}
-                            </span>
+                @foreach($produitsByCategory as $categorie => $produitsCategorie)
+                    <tr class="bg-blue-50 border-y border-blue-200 category-row">
+                        <td colspan="9" class="px-4 py-3 text-left font-bold text-blue-900">
+                            Catégorie : {{ $categorie }}
                         </td>
-                        <td class="px-4 py-4">
-                            <span class="text-gray-900 font-semibold">{{ $produit->nom }}</span>
-                        </td>
-                        <td class="px-4 py-4 text-center">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-medium">
-                                {{ $q_init }}
-                            </span>
-                        </td>
-                        <td class="px-4 py-4 text-center">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-medium">
-                                {{ $q_ajout }}
-                            </span>
-                        </td>
-                        <td class="px-4 py-4 text-center">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-sm font-bold">
-                                {{ $q_total }}
-                            </span>
-                        </td>
-                        <td class="px-4 py-4 text-center">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full bg-orange-100 text-orange-800 text-sm font-medium">
-                                {{ $q_vendue }}
-                            </span>
-                        </td>
-                        <td class="px-4 py-4 text-center">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full {{ $q_reste > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }} text-sm font-medium">
-                                {{ $q_reste }}
-                            </span>
-                        </td>
-                        <td class="px-4 py-4 text-right">
-                            <span class="text-gray-900 font-semibold">{{ optional(auth()->user()?->entreprise)->formatAmount($prix, true, 2) }}</span>
-                        </td>
-                        <td class="px-4 py-4 text-right">
-                            <span class="text-lg font-bold text-gray-900">{{ optional(auth()->user()?->entreprise)->formatAmount($total, true, 2) }}</span>
-                        </td>
-                        <td class="px-4 py-4 text-center">
-                            <form method="POST" action="{{ url('stock-journalier/qtajoute') }}" class="inline-flex items-center gap-2">
-                                @csrf
-                                <input type="hidden" name="produit_id" value="{{ $produit->id }}">
-                                <input type="hidden" name="date" value="{{ $date }}">
-                                <input type="hidden" name="point_de_vente_id" value="{{ $pointDeVenteId }}">
-                                <input type="hidden" name="session" value="{{ $session }}">
-                                <input type="number" 
-                                       name="quantite_ajoutee" 
-                                       value="{{ $q_ajout }}" 
-                                       min="0" 
-                                       class="border border-gray-300 rounded-lg px-2 py-1 w-16 text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                <button type="submit" 
-                                        class="inline-flex items-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow"
-                                        title="Ajouter / Modifier">
-                                    <svg xmlns='http://www.w3.org/2000/svg' class='h-4 w-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-                                        <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 4v16m8-8H4'/>
-                                    </svg>
-                                </button>
-                            </form>
+                        <td class="px-4 py-3 text-right font-bold text-blue-900">
+                            {{ optional(auth()->user()?->entreprise)->formatAmount($categoryTotals[$categorie] ?? 0, true, 2) }}
                         </td>
                     </tr>
+                    @foreach($produitsCategorie as $produit)
+                        <tr class="hover:bg-blue-50 transition-colors duration-200 product-row" data-product-name="{{ strtolower($produit['nom']) }}">
+                            <td class="px-4 py-4">
+                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
+                                    {{ $produit['stock_id'] ?? '-' }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-4">
+                                <span class="text-gray-900 font-semibold">{{ $produit['nom'] }}</span>
+                            </td>
+                            <td class="px-4 py-4 text-center">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-sm font-medium">{{ $produit['q_init'] }}</span>
+                            </td>
+                            <td class="px-4 py-4 text-center">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-medium">{{ $produit['q_ajout'] }}</span>
+                            </td>
+                            <td class="px-4 py-4 text-center">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-sm font-bold">{{ $produit['q_total'] }}</span>
+                            </td>
+                            <td class="px-4 py-4 text-center">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full bg-orange-100 text-orange-800 text-sm font-medium">{{ $produit['q_vendue'] }}</span>
+                            </td>
+                            <td class="px-4 py-4 text-center">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full {{ $produit['q_reste'] > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }} text-sm font-medium">{{ $produit['q_reste'] }}</span>
+                            </td>
+                            <td class="px-4 py-4 text-right">
+                                <span class="text-gray-900 font-semibold">{{ optional(auth()->user()?->entreprise)->formatAmount($produit['prix'], true, 2) }}</span>
+                            </td>
+                            <td class="px-4 py-4 text-right">
+                                <span class="text-lg font-bold text-gray-900">{{ optional(auth()->user()?->entreprise)->formatAmount($produit['total'], true, 2) }}</span>
+                            </td>
+                            <td class="px-4 py-4 text-center">
+                                <form method="POST" action="{{ url('stock-journalier/qtajoute') }}" class="inline-flex items-center gap-2">
+                                    @csrf
+                                    <input type="hidden" name="produit_id" value="{{ $produit['produit_id'] }}">
+                                    <input type="hidden" name="date" value="{{ $date }}">
+                                    <input type="hidden" name="point_de_vente_id" value="{{ $pointDeVenteId }}">
+                                    <input type="hidden" name="session" value="{{ $session }}">
+                                    <input type="number" name="quantite_ajoutee" value="{{ $produit['q_ajout'] }}" min="0" class="border border-gray-300 rounded-lg px-2 py-1 w-16 text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                    <button type="submit" class="inline-flex items-center p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow" title="Ajouter / Modifier">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    @endforeach
                 @endforeach
                 </tbody>
             </table>
@@ -248,6 +232,17 @@
                 <span class="text-xl font-bold text-blue-700">
                     Total vente session : {{ optional(auth()->user()?->entreprise)->formatAmount($totalVente ?? 0, true, 2) }}
                 </span>
+            </div>
+        </div>
+        <div class="px-6 py-5 border-t border-gray-200 bg-white">
+            <h2 class="text-lg font-bold text-gray-800 mb-3">Montants par mode de paiement</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                @foreach(($totauxParModePaiement ?? collect()) as $mode => $montant)
+                    <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                        <div class="text-sm text-gray-600">{{ $mode }}</div>
+                        <div class="text-lg font-bold text-gray-900">{{ optional(auth()->user()?->entreprise)->formatAmount($montant, true, 2) }}</div>
+                    </div>
+                @endforeach
             </div>
         </div>
     </div>
