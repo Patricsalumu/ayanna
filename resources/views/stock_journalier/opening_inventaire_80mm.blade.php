@@ -9,8 +9,8 @@
     .header { text-align: center; margin-bottom: 5px; }
     .small { font-size: 8.5px; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    th, td { padding: 2px 1px; font-size: 8.4px; line-height: 1.15; }
-    th { text-align: left; font-weight: 700; }
+    th, td { padding: 2px 1px; font-size: 8.4px; line-height: 1.15; border: 1px solid #000; }
+    th { text-align: left; font-weight: 700; background: #e5e7eb; }
     .right { text-align: right; }
     .center { text-align: center; }
     .sep { border-top: 1px dashed #000; margin: 4px 0; }
@@ -46,7 +46,7 @@
       <tbody>
       @foreach($produitsByCategory as $categorie => $produits)
         <tr>
-          <td colspan="4" class="category" style="padding-top:4px;">{{ $categorie }}</td>
+          <td colspan="4" class="category">{{ $categorie }}</td>
         </tr>
         @foreach($produits as $produit)
           <tr>
@@ -56,12 +56,18 @@
             <td class="difference right">{{ $produit['difference'] }}</td>
           </tr>
         @endforeach
-        <tr><td colspan="4" class="sep"></td></tr>
       @endforeach
       </tbody>
     </table>
 
-    <div class="total">Écart total : {{ number_format($totalDifference ?? 0, 0, ',', ' ') }}</div>
+    <table style="margin-top:5px;">
+      <tbody>
+        <tr>
+          <td style="font-weight:700;">Écart total</td>
+          <td class="right" style="font-weight:700;">{{ number_format($totalDifference ?? 0, 0, ',', ' ') }}</td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </body>
 </html>
