@@ -149,6 +149,7 @@ class StockJournalierController extends Controller
             return [
                 'produit_id' => $produit->id,
                 'stock_id' => $stock?->id,
+                'categorie_id' => $produit->categorie_id,
                 'categorie' => $produit->categorie?->nom ?? 'Sans catégorie',
                 'nom' => $produit->nom,
                 'q_init' => $q_init,

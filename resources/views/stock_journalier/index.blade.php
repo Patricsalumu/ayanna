@@ -90,7 +90,7 @@
                     <div class="flex flex-wrap gap-3">
                         @foreach(($categories ?? collect()) as $categorie)
                             <label class="inline-flex items-center gap-2 text-sm text-gray-700">
-                                <input type="checkbox" name="categories[]" value="{{ $categorie->id }}" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <input type="checkbox" name="categories[]" value="{{ $categorie->id }}" checked class="category-filter rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                                 <span>{{ $categorie->nom }}</span>
                             </label>
                         @endforeach
@@ -102,7 +102,7 @@
                         <input type="hidden" name="session" value="{{ $session ?? '' }}">
                         <input type="hidden" name="export_form" value="1">
                         <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                            <input type="checkbox" name="only_sold" value="1" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <input type="checkbox" name="only_sold" value="1" class="only-sold-filter rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                             Uniquement produits vendus
                         </label>
                         <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 shadow transition-colors">
@@ -118,7 +118,7 @@
                         <input type="hidden" name="session" value="{{ $session ?? '' }}">
                         <input type="hidden" name="export_form" value="1">
                         <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                            <input type="checkbox" name="only_sold" value="1" class="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500">
+                            <input type="checkbox" name="only_sold" value="1" class="only-sold-filter rounded border-gray-300 text-yellow-600 focus:ring-yellow-500">
                             Uniquement produits vendus
                         </label>
                         <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2 bg-yellow-600 text-white font-semibold rounded-lg hover:bg-yellow-700 shadow transition-colors">
@@ -165,16 +165,16 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                 @foreach($produitsByCategory as $categorie => $produitsCategorie)
-                    <tr class="bg-blue-50 border-y border-blue-200 category-row">
+                    <tr class="bg-blue-50 border-y border-blue-200 category-row" data-category-id="{{ $produitsCategorie->first()['categorie_id'] ?? '' }}">
                         <td colspan="9" class="px-4 py-3 text-left font-bold text-blue-900">
                             Catégorie : {{ $categorie }}
                         </td>
-                        <td class="px-4 py-3 text-right font-bold text-blue-900">
-                            {{ optional(auth()->user()?->entreprise)->formatAmount($categoryTotals[$categorie] ?? 0, true, 2) }}
+                        <td class="px-4 py-3 text-right font-bold text-blue-900 category-total" data-total="{{ $categoryTotals[$categorie] ?? 0 }}">
+                            <span>{{ optional(auth()->user()?->entreprise)->formatAmount($categoryTotals[$categorie] ?? 0, true, 2) }}</span>
                         </td>
                     </tr>
                     @foreach($produitsCategorie as $produit)
-                        <tr class="hover:bg-blue-50 transition-colors duration-200 product-row" data-product-name="{{ strtolower($produit['nom']) }}">
+                        <tr class="hover:bg-blue-50 transition-colors duration-200 product-row" data-product-name="{{ strtolower($produit['nom']) }}" data-category-id="{{ $produit['categorie_id'] ?? '' }}" data-sold="{{ $produit['q_vendue'] > 0 ? '1' : '0' }}" data-total="{{ $produit['total'] }}">
                             <td class="px-4 py-4">
                                 <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
                                     {{ $produit['stock_id'] ?? '-' }}
@@ -229,7 +229,7 @@
         <!-- Total des ventes -->
         <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
             <div class="text-right">
-                <span class="text-xl font-bold text-blue-700">
+                <span id="visibleSalesTotal" class="text-xl font-bold text-blue-700" data-label="Total vente session">
                     Total vente session : {{ optional(auth()->user()?->entreprise)->formatAmount($totalVente ?? 0, true, 2) }}
                 </span>
             </div>
@@ -331,29 +331,67 @@
         }, 150);
     }
     
+    function formatVisibleAmount(amount) {
+        return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(amount) + ' FC';
+    }
+
     function filterProducts() {
         const input = document.getElementById('searchProduct');
         const filter = input.value.toLowerCase();
         const table = document.getElementById('stockTable');
         const rows = table?.querySelectorAll('.product-row') || [];
+        const categoryRows = table?.querySelectorAll('.category-row') || [];
+        const categoryChecks = Array.from(document.querySelectorAll('.category-filter'));
+        const selectedCategories = new Set(categoryChecks.filter(check => check.checked).map(check => check.value));
+        const useCategoryFilter = categoryChecks.length > 0 && selectedCategories.size < categoryChecks.length;
+        const onlySold = Array.from(document.querySelectorAll('.only-sold-filter')).some(check => check.checked);
         let visibleRows = 0;
+        let visibleTotal = 0;
         
         rows.forEach(function(row) {
             const productName = row.getAttribute('data-product-name') || '';
+            const categoryId = row.getAttribute('data-category-id') || '';
+            const isSold = row.getAttribute('data-sold') === '1';
+            const matchesCategory = !useCategoryFilter && categoryChecks.length > 0
+                ? true
+                : selectedCategories.has(categoryId);
+            const matchesSoldFilter = !onlySold || isSold;
+            const matches = productName.includes(filter) && matchesCategory && matchesSoldFilter;
             
-            if (productName.includes(filter)) {
+            if (matches) {
                 row.style.display = '';
                 visibleRows++;
+                visibleTotal += Number(row.getAttribute('data-total') || 0);
             } else {
                 row.style.display = 'none';
             }
         });
+
+        categoryRows.forEach(function(categoryRow) {
+            const categoryId = categoryRow.getAttribute('data-category-id') || '';
+            const categoryProducts = Array.from(rows).filter(row => (row.getAttribute('data-category-id') || '') === categoryId);
+            const visibleCategoryProducts = categoryProducts.filter(row => row.style.display !== 'none');
+            const categoryTotal = visibleCategoryProducts.reduce((sum, row) => sum + Number(row.getAttribute('data-total') || 0), 0);
+            categoryRow.style.display = visibleCategoryProducts.length > 0 ? '' : 'none';
+            const totalElement = categoryRow.querySelector('.category-total');
+            if (totalElement) {
+                const amount = totalElement.querySelector('span');
+                if (amount) {
+                    amount.textContent = formatVisibleAmount(categoryTotal);
+                }
+            }
+        });
+
+        const visibleSalesTotal = document.getElementById('visibleSalesTotal');
+        if (visibleSalesTotal) {
+            visibleSalesTotal.textContent = 'Total vente affichée : ' + formatVisibleAmount(visibleTotal);
+        }
         
         // Afficher un message si aucun résultat
         const tbody = table?.querySelector('tbody');
         let noResultRow = tbody?.querySelector('#no-result-row');
         
-        if (visibleRows === 0 && filter !== '') {
+        if (visibleRows === 0) {
             if (!noResultRow) {
                 noResultRow = document.createElement('tr');
                 noResultRow.id = 'no-result-row';
@@ -434,6 +472,11 @@
                 appendSelectedCategoriesToForm(exportOpeningForm);
             });
         }
+
+        document.querySelectorAll('.category-filter, .only-sold-filter').forEach(function(filter) {
+            filter.addEventListener('change', filterProducts);
+        });
+        filterProducts();
     });
 </script>
 @endsection
