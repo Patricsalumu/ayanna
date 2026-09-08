@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Entreprise;
+use App\Services\ModePaiementService;
 use Illuminate\Http\Request;
 
 class EntreprisesController extends Controller
@@ -42,6 +43,7 @@ class EntreprisesController extends Controller
 
         // Création de l'entreprise
         $entreprise = Entreprise::create($validated);
+        app(ModePaiementService::class)->ensureDefaults($entreprise);
 
         // Lier l'entreprise à l'utilisateur connecté
         $user = auth()->user();

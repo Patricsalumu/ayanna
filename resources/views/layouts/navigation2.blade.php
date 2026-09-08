@@ -68,6 +68,7 @@
                 <a href="{{ route('comptes.index') }}" class="text-gray-600 hover:text-gray-800"> Plan Comptable</a>
                 <a href="{{ route('clients.show', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Clients</a>
                 <a href="{{ route('users.show', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Utilisateurs</a>
+                <a href="{{ route('modes_paiement.edit', Auth::user()->entreprise_id) }}" class="text-gray-600 hover:text-gray-800">Modes de paiement</a>
                 
                 <!-- Menu Comptabilité avec dropdown -->
                 <div class="relative" x-data="{ comptabiliteOpen: false }">

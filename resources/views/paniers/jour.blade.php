@@ -35,8 +35,9 @@
                     <label for="payment_type" class="sr-only">Type de paiement</label>
                     <select name="payment_type" id="payment_type" class="border rounded-full px-4 py-2 focus:outline-none">
                         <option value="all" {{ (isset($selectedPaymentType) && $selectedPaymentType === 'all') ? 'selected' : (!isset($selectedPaymentType) ? 'selected' : '') }}>Tous</option>
-                        <option value="cash" {{ (isset($selectedPaymentType) && $selectedPaymentType === 'cash') ? 'selected' : '' }}>Espèces</option>
-                        <option value="credit" {{ (isset($selectedPaymentType) && $selectedPaymentType === 'credit') ? 'selected' : '' }}>Crédit</option>
+                        @foreach($modesPaiement as $modePaiement)
+                            <option value="{{ $modePaiement->code }}" @selected(($selectedPaymentType ?? 'all') === $modePaiement->code)>{{ $modePaiement->nom }}</option>
+                        @endforeach
                     </select>
                 </div>
             </form>
@@ -55,7 +56,7 @@
             $totalCreditCalc = $totalCredit ?? 0;
         @endphp
 
-        <div class="mb-6 grid grid-cols-1 md:grid-cols-6 gap-4">
+        <div class="mb-6 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <div class="rounded-xl border border-blue-100 bg-blue-50 px-5 py-4">
                 <div class="text-sm font-medium text-blue-700">Total paniers</div>
                 <div id="totalPaniersDisplay" class="mt-1 text-2xl font-bold text-blue-900">{{ number_format($paniers->count(), 0, ',', ' ') }}</div>
@@ -64,22 +65,20 @@
                 <div class="text-sm font-medium text-indigo-700">Total vente</div>
                 <div id="totalVenteDisplay" class="mt-1 text-2xl font-bold text-indigo-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalVenteCalc ?? 0, true, 2) }}</div>
             </div>
-            <div class="rounded-xl border border-rose-100 bg-rose-50 px-5 py-4">
-                <div class="text-sm font-medium text-rose-700">Remises</div>
-                <div id="totalRemiseDisplay" class="mt-1 text-2xl font-bold text-rose-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalRemiseCalc ?? 0, true, 2) }}</div>
-            </div>
-            <div class="rounded-xl border border-fuchsia-100 bg-fuchsia-50 px-5 py-4">
-                <div class="text-sm font-medium text-fuchsia-700">Offres</div>
-                <div id="totalOffreDisplay" class="mt-1 text-2xl font-bold text-fuchsia-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalOffreCalc ?? 0, true, 2) }}</div>
-            </div>
             <div class="rounded-xl border border-green-100 bg-green-50 px-5 py-4">
                 <div class="text-sm font-medium text-green-700">Total payé</div>
                 <div id="totalPayeDisplay" class="mt-1 text-2xl font-bold text-green-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalPayeCalc ?? 0, true, 2) }}</div>
             </div>
-            <div class="rounded-xl border border-yellow-100 bg-yellow-50 px-5 py-4">
-                <div class="text-sm font-medium text-yellow-700">Total crédit</div>
-                <div id="totalCreditDisplay" class="mt-1 text-2xl font-bold text-yellow-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalCreditCalc ?? 0, true, 2) }}</div>
+            <div class="rounded-xl border border-rose-100 bg-rose-50 px-5 py-4">
+                <div class="text-sm font-medium text-rose-700">Remises</div>
+                <div id="totalRemiseDisplay" class="mt-1 text-2xl font-bold text-rose-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totalRemiseCalc ?? 0, true, 2) }}</div>
             </div>
+            @foreach($modesPaiement as $modePaiement)
+                <div class="payment-kpi rounded-xl border border-gray-200 bg-gray-50 px-5 py-4" data-payment-code="{{ $modePaiement->code }}">
+                    <div class="text-sm font-medium text-gray-700">{{ $modePaiement->nom }}</div>
+                    <div id="paymentKpi{{ $modePaiement->id }}" class="mt-1 text-2xl font-bold text-gray-900">{{ optional(auth()->user()?->entreprise)->formatAmount($totauxParModePaiement[$modePaiement->code] ?? 0, true, 2) }}</div>
+                </div>
+            @endforeach
         </div>
         <div class="mb-6 flex justify-center">
             <input
@@ -184,7 +183,14 @@
                         @php
                             $modeRaw = $panier->commande?->mode_paiement ?? $panier->mode_paiement ?? 'compte_client';
                             $modeNorm = strtolower(str_replace(['_', '-', ' ', 'é', 'è', 'ê'], ['', '', '', 'e', 'e', 'e'], $modeRaw));
-                            if (str_contains($modeNorm, 'compte') || in_array($modeNorm, ['credit', 'compteclient', 'compte_client'], true)) {
+                            $modeCode = str_contains($modeNorm, 'compte') || in_array($modeNorm, ['credit', 'compteclient', 'compte_client'], true)
+                                ? 'compte_client'
+                                : strtolower(str_replace([' ', '-', 'é', 'è', 'ê', 'à'], ['_', '_', 'e', 'e', 'e', 'a'], $modeRaw));
+                            $configuredMode = $modesPaiement->first(fn ($configured) => $configured->code === $modeCode);
+                            if ($configuredMode) {
+                                $modeLabel = $configuredMode->nom;
+                                $modeClass = 'bg-blue-100 text-blue-800';
+                            } elseif ($modeCode === 'compte_client') {
                                 $modeLabel = 'Crédit';
                                 $modeClass = 'bg-yellow-100 text-yellow-800';
                             } elseif (in_array($modeNorm, ['mobilemoney', 'mobile_money', 'mobile'], true)) {
@@ -228,7 +234,7 @@
                             @else
                                 <span class="text-gray-400 text-xs">-</span>
                             @endif
-                        @elseif($panier->commande && $modeLabel === 'Crédit' && $montantPaye < $netAPayer)
+                        @elseif($panier->commande && $modeCode === 'compte_client' && $montantPaye < $netAPayer)
                             <button type="button"
                                     onclick="event.stopPropagation(); ouvrirPaiementJour(this)"
                                     data-commande-id="{{ $panier->commande->id }}"
@@ -279,9 +285,11 @@
             <input id="paiementJourMontant" name="montant" type="number" min="0.01" step="0.01" required class="mb-4 w-full rounded-lg border-gray-300">
             <label class="mb-1 block text-sm font-semibold text-gray-700" for="paiementJourMode">Mode de paiement</label>
             <select id="paiementJourMode" name="mode" required class="mb-5 w-full rounded-lg border-gray-300">
-                <option value="espèces">Espèces</option>
-                <option value="mobile_money">Mobile Money</option>
-                <option value="carte">Carte</option>
+                @foreach($modesPaiement as $modePaiement)
+                    @if($modePaiement->code !== 'compte_client' && $modePaiement->code !== 'offre')
+                        <option value="{{ $modePaiement->code }}">{{ $modePaiement->nom }}</option>
+                    @endif
+                @endforeach
             </select>
             <div class="flex justify-end gap-3">
                 <button type="button" onclick="fermerPaiementJour()" class="rounded-lg bg-gray-200 px-4 py-2 font-semibold text-gray-700">Annuler</button>
@@ -461,8 +469,7 @@
                 const modeCellText = tds[6]?.textContent.toLowerCase() || '';
                 let paymentMatch = true;
                 if (paymentFilter && paymentFilter !== 'all') {
-                    if (paymentFilter === 'credit') paymentMatch = modeCellText.includes('crédit') || modeCellText.includes('credit');
-                    else paymentMatch = ! (modeCellText.includes('crédit') || modeCellText.includes('credit'));
+                    paymentMatch = (trs[i].dataset.mode || '').toLowerCase() === paymentFilter;
                 }
 
                 if ((client.includes(filter) || serveuse.includes(filter) || produits.includes(filter) || tableNom.includes(filter) || salle.includes(filter)) && paymentMatch) {
@@ -518,12 +525,8 @@
         let visibleCount = 0;
         let totalVente = 0;
         let totalRemise = 0;
-        let totalOffre = 0;
-        let totalCredit = 0;
         let totalPaye = 0;
-        let totalEspeces = 0;
-        let totalCarte = 0;
-        let totalMobileMoney = 0;
+        const paymentTotals = {};
 
         rows.forEach(row => {
             if (row.style.display === 'none') return;
@@ -538,28 +541,23 @@
             visibleCount += 1;
             totalVente += montantVente;
             totalRemise += remise;
-            totalPaye += montantPaye;
-
-            if (mode.includes('compte') || mode === 'credit' || mode === 'compteclient' || mode === 'compte_client') {
-                totalCredit += Math.max(0, montantNet - montantPaye);
-            } else if (mode === 'offre') {
-                totalOffre += montantNet;
-            } else if (mode === 'carte' || mode === 'card') {
-                totalCarte += montantNet;
-            } else if (mode === 'mobile_money' || mode === 'mobilemoney' || mode === 'mobile') {
-                totalMobileMoney += montantNet;
-            } else {
-                totalEspeces += montantNet;
+            if (mode !== 'compte_client' && mode !== 'credit' && mode !== 'compteclient' && mode !== 'offre') {
+                totalPaye += montantPaye;
             }
+
+            paymentTotals[mode] = (paymentTotals[mode] || 0) + montantNet;
         });
 
         // Mettre à jour l'affichage
         document.getElementById('totalPaniersDisplay').textContent = new Intl.NumberFormat('fr-FR').format(visibleCount);
         document.getElementById('totalVenteDisplay').textContent = formatCurrency(totalVente);
         document.getElementById('totalRemiseDisplay').textContent = formatCurrency(totalRemise);
-        document.getElementById('totalOffreDisplay').textContent = formatCurrency(totalOffre);
         document.getElementById('totalPayeDisplay').textContent = formatCurrency(totalPaye);
-        document.getElementById('totalCreditDisplay').textContent = formatCurrency(totalCredit);
+        document.querySelectorAll('.payment-kpi').forEach(function (card) {
+            const code = card.dataset.paymentCode || '';
+            const value = card.querySelector('[id^="paymentKpi"]');
+            if (value) value.textContent = formatCurrency(paymentTotals[code] || 0);
+        });
     }
 
     function ouvrirPaiementJour(button) {

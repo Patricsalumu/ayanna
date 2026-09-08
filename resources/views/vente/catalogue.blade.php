@@ -368,11 +368,9 @@
       <div class="bg-white rounded-2xl shadow p-4 min-h-0 h-auto relative">
         <button @click="paiement.montantRecu = 0; paiement.monnaie = 0" class="absolute top-2 right-2 text-gray-400 hover:text-red-600 text-2xl font-bold" title="Réinitialiser le montant reçu">&times;</button>
         <div class="mb-4 flex gap-2 justify-center">
-          <button @click="paiement.modePaiement = 'espèces'" :class="paiement.modePaiement === 'espèces' ? 'bg-blue-500 text-white font-bold ring-2 ring-blue-300' : 'bg-gray-100 text-gray-700'" class="px-4 py-2 rounded transition">Espèces</button>
-          <button @click="paiement.modePaiement = 'mobile_money'" :class="paiement.modePaiement === 'mobile_money' ? 'bg-blue-500 text-white font-bold ring-2 ring-blue-300' : 'bg-gray-100 text-gray-700'" class="px-4 py-2 rounded transition">Mobile Money</button>
-          <button @click="paiement.modePaiement = 'carte'" :class="paiement.modePaiement === 'carte' ? 'bg-blue-500 text-white font-bold ring-2 ring-blue-300' : 'bg-gray-100 text-gray-700'" class="px-4 py-2 rounded transition">Carte</button>
-          <button @click="paiement.modePaiement = 'offre'" :class="paiement.modePaiement === 'offre' ? 'bg-blue-500 text-white font-bold ring-2 ring-blue-300' : 'bg-gray-100 text-gray-700'" class="px-4 py-2 rounded transition">Offre</button>
-          <button @click="paiement.modePaiement = 'compte_client'" :class="paiement.modePaiement === 'compte_client' ? 'bg-blue-500 text-white font-bold ring-2 ring-blue-300' : 'bg-gray-100 text-gray-700'" class="px-4 py-2 rounded transition">Compte Client</button>
+          <template x-for="modePaiement in (window.MODES_PAIEMENT || [])" :key="modePaiement.id">
+            <button @click="paiement.modePaiement = modePaiement.code" :class="paiement.modePaiement === modePaiement.code ? 'bg-blue-500 text-white font-bold ring-2 ring-blue-300' : 'bg-gray-100 text-gray-700'" class="px-4 py-2 rounded transition" x-text="modePaiement.nom"></button>
+          </template>
         </div>
         <div class="mb-2 text-center">
           <label class="block text-lg font-semibold mb-2">Montant reçu</label>

@@ -40,6 +40,9 @@ Route::middleware(['auth', 'serveuse.session.timeout'])->group(function ()
     Route::post('/entreprises', [EntreprisesController::class, 'store'])->name('entreprises.store');
     Route::get('/entreprises/edit', [EntreprisesController::class, 'edit'])->name('entreprises.edit');
     Route::post('/entreprises/update', [EntreprisesController::class, 'update'])->name('entreprises.update');
+    Route::get('/entreprises/{entreprise}/modes-paiement', [App\Http\Controllers\ModePaiementController::class, 'edit'])->middleware(['role.access:admin'])->name('modes_paiement.edit');
+    Route::put('/entreprises/{entreprise}/modes-paiement', [App\Http\Controllers\ModePaiementController::class, 'update'])->middleware(['role.access:admin'])->name('modes_paiement.update');
+    Route::post('/entreprises/{entreprise}/modes-paiement', [App\Http\Controllers\ModePaiementController::class, 'store'])->middleware(['role.access:admin'])->name('modes_paiement.store');
     Route::delete('/entreprises/{entreprise}', [EntreprisesController::class, 'destroy'])->name('entreprises.destroy');
     Route::get('/entreprises/{entreprise}/login', [EntreprisesController::class, 'login'])->name('entreprises.login');
     Route::get('/entreprises/{entreprise}', [EntreprisesController::class, 'show'])->name('entreprises.show');

@@ -59,6 +59,11 @@ class Entreprise extends Model
         return $this->hasMany(\App\Models\Client::class);
     }
 
+    public function modesPaiement()
+    {
+        return $this->hasMany(ModePaiement::class)->orderBy('ordre')->orderBy('nom');
+    }
+
     public function formatAmount(float $amount, bool $withSymbol = true, int $decimals = 0): string
     {
         $formatted = number_format($amount, $decimals, ',', ' ');

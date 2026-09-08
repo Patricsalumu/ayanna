@@ -343,7 +343,10 @@ class ComptabiliteService
     {
         $entreprise = $pointDeVente->entreprise;
         
-        switch (strtolower($commande->mode_paiement)) {
+        $modePaiement = strtolower(str_replace([' ', '-', 'é', 'è', 'ê', 'à'], ['_', '_', 'e', 'e', 'e', 'a'], (string) $commande->mode_paiement));
+
+        switch ($modePaiement) {
+            case 'especes':
             case 'espèces':
             case 'cash':
                 $compteDebit = $pointDeVente->compte_caisse_id ? 

@@ -80,7 +80,7 @@ export function posApp() {
     paiement: {
       montantRecu: 0,
       monnaie: 0,
-      modePaiement: 'espèces',
+      modePaiement: (window.MODES_PAIEMENT && window.MODES_PAIEMENT[0]?.code) || 'especes',
       client_id: window.CLIENT_ID || '',
       serveuse_id: window.SERVEUSE_ID || '',
     },
@@ -582,6 +582,9 @@ export function posApp() {
     openPaiement() {
       this.mode = 'paiement';
       this.selectedIndex = null;
+      if (!this.paiement.modePaiement || !(window.MODES_PAIEMENT || []).some(mode => mode.code === this.paiement.modePaiement)) {
+        this.paiement.modePaiement = window.MODES_PAIEMENT?.[0]?.code || 'especes';
+      }
       this.paiement.montantRecu = this.total;
       this.paiement.monnaie = 0;
     },
@@ -944,17 +947,8 @@ export function posApp() {
       html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Serveuse : <b>${serveuse?.name ?? '-'}</b></div>`;
       html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Table : <b>${table}</b> | Panier n° <b>${activePanierId ?? '-'}</b></div>`;
       if(type === 'paiement') {
-        const modePaiementLibelle = this.paiement.modePaiement === 'espèces'
-          ? 'Espèces'
-          : (this.paiement.modePaiement === 'mobile_money'
-            ? 'Mobile Money'
-            : (this.paiement.modePaiement === 'compte_client'
-              ? 'Compte Client'
-              : (this.paiement.modePaiement === 'carte'
-                ? 'Carte'
-                : (this.paiement.modePaiement === 'offre'
-                  ? 'Offre'
-                  : this.paiement.modePaiement))));
+        const modePaiementLibelle = (window.MODES_PAIEMENT || [])
+          .find(mode => mode.code === this.paiement.modePaiement)?.nom || this.paiement.modePaiement;
         html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Mode de paiement : <b>${modePaiementLibelle}</b></div>`;
       }
       html += `<div style='border-top:1px solid #111;margin:8px 0;'></div>`;

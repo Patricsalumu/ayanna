@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\ModePaiementService;
 
 class VenteController extends Controller
 {
@@ -119,9 +120,7 @@ class VenteController extends Controller
             $serveuse_id = $panier?->serveuse_id ?? $table?->serveuse_id ?? '';
 
             // Récupérer les modes de paiement actifs pour l'entreprise
-            $modesPaiement = \App\Models\ModePaiement::where('entreprise_id', $pointDeVente->entreprise_id)
-                ->where('actif', true)
-                ->get();
+            $modesPaiement = app(ModePaiementService::class)->actifs($pointDeVente->entreprise);
 
             // Formater les produits pour JavaScript
             $tableSalleId = $tableCourante ? \App\Models\TableResto::find($tableCourante)?->salle_id : null;
@@ -154,6 +153,7 @@ class VenteController extends Controller
                 return [
                     'id' => $m->id,
                     'nom' => $m->nom,
+                    'code' => $m->code,
                 ];
             })->toArray();
 
@@ -873,6 +873,15 @@ class VenteController extends Controller
                 }
             }
 
+            $pointDeVente = PointDeVente::with('entreprise')->find($data['point_de_vente_id']);
+            $modeAutorise = $pointDeVente?->entreprise?->modesPaiement()
+                ->where('code', $data['mode_paiement'])
+                ->where('actif', true)
+                ->first();
+            if (!$modeAutorise) {
+                return response()->json(['error' => 'Ce moyen de paiement n’est pas actif pour cette entreprise.'], 422);
+            }
+
             // Validation conditionnelle pour le paiement par compte client
             if ($data['mode_paiement'] === 'compte_client') {
                 $requiredForCompteClient = ['client_id', 'serveuse_id'];
@@ -1221,6 +1230,13 @@ class VenteController extends Controller
             
             if (!$entrepriseId) {
                 throw new \Exception('Entreprise non trouvée pour le point de vente de cette commande.');
+            }
+
+            $entreprisePaiement = \App\Models\PointDeVente::find($pointDeVenteId)?->entreprise ?? Auth::user()->entreprise;
+            $modePaiement = app(ModePaiementService::class)->actifs($entreprisePaiement)
+                ->firstWhere('code', $request->mode);
+            if (!$modePaiement || in_array($modePaiement->code, ['compte_client', 'offre'], true)) {
+                throw new \Exception('Ce moyen de paiement n’est pas disponible pour le règlement de cette créance.');
             }
             
             // Calculer le montant total de la commande

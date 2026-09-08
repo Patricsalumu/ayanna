@@ -13,6 +13,7 @@ use App\Models\PointDeVente;
 use App\Models\StockJournalier;
 use App\Models\Historiquepdv;
 use App\Services\PermissionService;
+use App\Services\ModePaiementService;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class PanierController extends Controller
@@ -390,7 +391,7 @@ class PanierController extends Controller
         $selectedSession = $request->get('session', null);
         $selectedSessionFrom = $request->get('session_from', null);
         $selectedSessionTo = $request->get('session_to', null);
-        $selectedPaymentType = $request->get('payment_type', null); // 'all'|'credit'|'cash' (or null)
+        $selectedPaymentType = $request->get('payment_type', null);
         $searchTerm = trim((string) $request->get('search', ''));
 
         $pointDeVenteIds = PointDeVente::where('entreprise_id', $entrepriseId)->pluck('id');
@@ -512,13 +513,16 @@ class PanierController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Si un filtre payment_type est fourni, filtrer la collection en mémoire (valeurs hétérogènes possible)
+        $modesPaiement = app(ModePaiementService::class)->actifs($user->entreprise);
+
+        // Si un filtre payment_type est fourni, filtrer par code configuré.
         if ($selectedPaymentType && $selectedPaymentType !== 'all') {
             $paniers = $paniers->filter(function ($panier) use ($selectedPaymentType) {
-                $isCredit = $this->estModeCreditPaiement($panier->commande?->mode_paiement ?? $panier->mode_paiement);
-                if ($selectedPaymentType === 'credit') return $isCredit;
-                if ($selectedPaymentType === 'cash' || $selectedPaymentType === 'especes' || $selectedPaymentType === 'espace') return !$isCredit;
-                return true;
+                $mode = $this->normalizeModePaiement($panier->commande?->mode_paiement ?? $panier->mode_paiement);
+                if ($this->estModeCreditPaiement($mode)) {
+                    $mode = 'compte_client';
+                }
+                return $mode === $selectedPaymentType;
             })->values();
         }
 
@@ -528,43 +532,32 @@ class PanierController extends Controller
         $totalVente = $paniersActifs->sum(fn($panier) => $this->montantPanierSansRemise($panier));
         $totalRemise = $paniersActifs->sum(fn($panier) => (float) ($panier->total_remise ?? $panier->remise ?? 0));
 
+        $totauxParModePaiement = $modesPaiement->mapWithKeys(fn ($mode) => [$mode->code => 0.0]);
+        $totalPaye = 0.0;
         $totalCredit = 0.0;
         $totalOffre = 0.0;
-        $totalPaye = 0.0;
-        $totalEspeces = 0.0;
-        $totalCarte = 0.0;
-        $totalMobileMoney = 0.0;
 
         foreach ($paniersActifs as $panier) {
             $mode = $this->normalizeModePaiement($panier->commande?->mode_paiement ?? $panier->mode_paiement);
+            if ($this->estModeCreditPaiement($mode)) {
+                $mode = 'compte_client';
+            }
             $montantNet = $this->montantPanierAffiche($panier);
             $montantPaye = (float) ($panier->commande?->paiements?->sum('montant') ?? 0);
 
-            if ($this->estModeCreditPaiement($mode)) {
+            $configuredMode = $modesPaiement->first(fn ($configured) => $configured->code === $mode);
+            if ($configuredMode) {
+                $totauxParModePaiement[$configuredMode->code] += $montantNet;
+            }
+            if ($mode === 'compte_client') {
                 $totalCredit += max(0, $montantNet - $montantPaye);
-                $totalPaye += $montantPaye;
-                continue;
             }
-
-            if ($this->estModeOffrePaiement($mode)) {
+            if ($mode === 'offre') {
                 $totalOffre += $montantNet;
-                continue;
             }
-
-            if ($this->estModeCartePaiement($mode)) {
-                $totalCarte += $montantNet;
+            if (!in_array($mode, ['compte_client', 'offre'], true)) {
                 $totalPaye += $montantPaye;
-                continue;
             }
-
-            if ($this->estModeMobileMoneyPaiement($mode)) {
-                $totalMobileMoney += $montantNet;
-                $totalPaye += $montantPaye;
-                continue;
-            }
-
-            $totalEspeces += $montantNet;
-            $totalPaye += $montantPaye;
         }
 
         $soldeTheorique = max(0, $totalVente - $totalRemise - $totalCredit - $totalOffre);
@@ -587,9 +580,8 @@ class PanierController extends Controller
             'totalOffre',
             'totalCredit',
             'totalPaye',
-            'totalEspeces',
-            'totalCarte',
-            'totalMobileMoney',
+            'modesPaiement',
+            'totauxParModePaiement',
             'soldeTheorique',
             'pointDeVenteId'
         );

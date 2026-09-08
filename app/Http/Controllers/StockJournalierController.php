@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Services\PermissionService;
+use App\Services\ModePaiementService;
 use Barryvdh\DomPDF\Facade\Pdf; // tout en haut
 
 class StockJournalierController extends Controller
@@ -254,26 +255,23 @@ class StockJournalierController extends Controller
                 return $montant;
             });
 
-        $totauxParModePaiement = collect([
-            'Espèces' => 0.0,
-            'Mobile money' => 0.0,
-            'Carte' => 0.0,
-            'Offre' => 0.0,
-            'Compte client' => 0.0,
-        ]);
+        $modesPaiement = app(ModePaiementService::class)->actifs($pointDeVente?->entreprise ?? Entreprise::first());
+        $totauxParModePaiement = $modesPaiement->mapWithKeys(fn ($mode) => [$mode->nom => 0.0]);
 
         foreach ($paniersSession as $panier) {
             $rawMode = strtolower((string) ($panier->commande?->mode_paiement ?? $panier->mode_paiement ?? ''));
             $modeNorm = str_replace([' ', '-', 'é', 'è', 'ê', 'à'], ['_', '_', 'e', 'e', 'e', 'a'], $rawMode);
 
-            $label = match ($modeNorm) {
-                'especes', 'espece', 'cash' => 'Espèces',
-                'mobile_money', 'mobilemoney' => 'Mobile money',
-                'carte', 'card' => 'Carte',
-                'offre' => 'Offre',
-                'compte_client', 'credit', 'compteclient' => 'Compte client',
-                default => null,
+            $modeCode = match ($modeNorm) {
+                'especes', 'espece', 'cash' => 'especes',
+                'mobile_money', 'mobilemoney' => 'mobile_money',
+                'carte', 'card' => 'carte',
+                'offre' => 'offre',
+                'compte_client', 'credit', 'compteclient' => 'compte_client',
+                default => $modeNorm,
             };
+            $configuredMode = $modesPaiement->first(fn ($mode) => $mode->code === $modeCode || strtolower($mode->nom) === strtolower($rawMode));
+            $label = $configuredMode?->nom;
 
             if (!$label) {
                 continue;
