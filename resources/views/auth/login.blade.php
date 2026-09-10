@@ -53,7 +53,7 @@
                     {{ __('Mot de passe oublié ?') }}
                 </a>
             @endif
-            <x-primary-button class="bg-[#d8c1a8] hover:bg-[#c7ae93] text-[#3e2f24] font-bold rounded px-4 py-2">
+            <x-primary-button data-loading-text="Connexion..." class="bg-[#d8c1a8] hover:bg-[#c7ae93] text-[#3e2f24] font-bold rounded px-4 py-2">
                 {{ __('Se Connecter') }}
             </x-primary-button>
         </div>

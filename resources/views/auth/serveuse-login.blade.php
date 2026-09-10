@@ -50,6 +50,10 @@
             <button type="button" data-action="clear" class="h-14 rounded-xl bg-[#e9d8c4] text-sm font-semibold text-[#3e2f24]">Effacer</button>
             <button type="button" data-digit="0" class="digit-btn h-14 rounded-xl bg-[#f7efe7] text-2xl font-bold text-[#3e2f24] shadow-sm hover:bg-[#efe1cf]">0</button>
         </div>
+
+        <button type="submit" data-loading-text="Connexion..." class="w-full rounded-xl bg-[#d8c1a8] px-4 py-3 font-bold text-[#3e2f24] shadow-sm transition hover:bg-[#c7ae93]">
+            Se connecter
+        </button>
     </form>
 
     <div class="mt-4 pt-4 border-t border-[#eadbc9] text-center">
@@ -76,7 +80,7 @@
                     if (value.length >= 4) return;
                     input.value = value + (btn.getAttribute('data-digit') || '');
                     if (input.value.length === 4) {
-                        form.submit();
+                        form.requestSubmit();
                     }
                 });
             });

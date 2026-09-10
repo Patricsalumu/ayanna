@@ -1,5 +1,7 @@
 import './bootstrap';
+import { registerButtonFeedback } from './buttonFeedback';
 import { posApp } from './posApp';
+import { registerPwa } from './pwa';
 
 import Alpine from 'alpinejs';
 
@@ -57,3 +59,5 @@ window.Alpine = Alpine;
 Alpine.data('posApp', posApp);
 
 Alpine.start();
+registerPwa();
+registerButtonFeedback();
