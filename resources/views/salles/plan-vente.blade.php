@@ -69,7 +69,7 @@
                         border-color: #22c55e;
                    ">
 
-                    <span class="table-num text-center w-full select-none flex flex-col items-center justify-center"
+                      <span class="table-num relative z-10 text-center w-full select-none flex flex-col items-center justify-center pt-3"
                           style="pointer-events:none; font-size:1.3rem; font-weight:bold; color:#222;">
                         {{ $table->numero }}
                         @if ($tableOccupee && $table->serveuse_nom)
@@ -80,7 +80,7 @@
                     </span>
 
                     @if(isset($table->montant_total) && $table->montant_total > 0)
-                        <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 shadow">
+                        <span class="absolute -top-2 -right-2 z-20 bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 shadow whitespace-nowrap">
                             {{ $entreprise->formatAmount($table->montant_total, true, 2) }}
                         </span>
                     @endif
