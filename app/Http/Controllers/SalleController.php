@@ -158,7 +158,7 @@ class SalleController extends Controller
         $tableIds = $salle->tables->pluck('id');
         $paniers = \App\Models\Panier::whereIn('table_id', $tableIds)
             ->where('status', 'en_cours')
-            ->with('produits')
+            ->with(['produits', 'serveuse'])
             ->get()
             ->keyBy('table_id');
 
@@ -178,6 +178,7 @@ class SalleController extends Controller
             $table->nb_commandes = $qte;
             $table->montant_total = $montant;
             $table->is_busy = $qte > 0;
+            $table->serveuse_nom = $panier?->serveuse?->name;
         }
 
         return view('salles.plan-vente', [

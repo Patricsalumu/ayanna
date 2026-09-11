@@ -46,9 +46,7 @@
             @foreach ($salle->tables as $table)
 
                 @php
-                    $tableOccupee = \App\Models\Panier::where('table_id', $table->id)
-                        ->where('status', 'en_cours')
-                        ->exists();
+                    $tableOccupee = $table->is_busy ?? false;
                 @endphp
 
                 @php
@@ -71,9 +69,14 @@
                         border-color: #22c55e;
                    ">
 
-                    <span class="table-num text-center w-full select-none flex items-center justify-center"
+                    <span class="table-num text-center w-full select-none flex flex-col items-center justify-center"
                           style="pointer-events:none; font-size:1.3rem; font-weight:bold; color:#222;">
                         {{ $table->numero }}
+                        @if ($tableOccupee && $table->serveuse_nom)
+                            <span style="font-size:0.75rem; font-weight:normal; color:#000;">
+                                {{ $table->serveuse_nom }}
+                            </span>
+                        @endif
                     </span>
 
                     @if(isset($table->montant_total) && $table->montant_total > 0)
@@ -96,9 +99,14 @@
                         background: #e5e7eb;
                         border-color: #9ca3af;
                      ">
-                    <span class="table-num text-center w-full select-none flex items-center justify-center"
+                    <span class="table-num text-center w-full select-none flex flex-col items-center justify-center"
                           style="pointer-events:none; font-size:1.3rem; font-weight:bold; color:#6b7280;">
                         {{ $table->numero }}
+                        @if ($tableOccupee && $table->serveuse_nom)
+                            <span style="font-size:0.75rem; font-weight:normal; color:#000;">
+                                {{ $table->serveuse_nom }}
+                            </span>
+                        @endif
                     </span>
                 </div>
                 @endif

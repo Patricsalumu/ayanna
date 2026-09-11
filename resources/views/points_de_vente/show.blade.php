@@ -138,7 +138,7 @@
                 </div>
 
                 <h2 class="text-lg font-bold text-gray-800">{{ $pdv->nom }}</h2>
-                @if($pdv->etat === 'ferme')
+                <!-- @if($pdv->etat === 'ferme')
                     @php
                         $lastFermeture = $pdv->historiques()->where('etat','ferme')->latest('closed_at')->first();
                         $soldeFermeture = $lastFermeture ? number_format($lastFermeture->solde, 0, ',', ' ') : '0';
@@ -154,7 +154,7 @@
                     <p class="text-gray-600 text-sm">Ouvert le {{ $lastOuverture && $lastOuverture->opened_at ? \Carbon\Carbon::parse($lastOuverture->opened_at)->format('d/m/Y H:i') : '-' }}</p>
                     <p class="text-gray-600 text-sm">Solde en cours : {{ number_format($soldeEnCours, 0, ',', ' ') }} $</p>
                     <a href="{{ route('vente.continuer', $pdv->id) }}" class="mt-3 block text-center bg-purple-600 text-white rounded py-2 hover:bg-purple-700">Continuer la vente</a>
-                @endif
+                @endif -->
             </div>
         @endforeach
     </div>
@@ -272,12 +272,12 @@
                                     </a>
                                 @endif
                                 <div x-data="{ showModal: false }" class="inline">
-                                    <button type="button"
+                                    <!-- <button type="button"
                                             @click="showModal = true"
                                             class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm flex items-center gap-1 shadow">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                                         Supprimer
-                                    </button>
+                                    </button> -->
                                     <!-- MODALE DE CONFIRMATION SUPPRESSION -->
                                     <div x-show="showModal" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
                                         <div class="bg-white rounded-lg shadow-lg w-full max-w-sm p-6 relative text-center animate-fade-in">
