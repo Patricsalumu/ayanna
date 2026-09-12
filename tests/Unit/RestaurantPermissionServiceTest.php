@@ -48,6 +48,19 @@ class RestaurantPermissionServiceTest extends TestCase
         $this->assertTrue($service->canValidatePayment($cashier));
     }
 
+    public function test_cashier_can_apply_discount(): void
+    {
+        $service = new PermissionService();
+
+        $cashier = new \stdClass();
+        $cashier->id = 4;
+        $cashier->role = 'Caissier';
+
+        $this->assertTrue($service->canApplyDiscount($cashier));
+        $this->assertTrue($service->canTransferTableProducts($cashier));
+        $this->assertTrue($service->isCashier($cashier));
+    }
+
     public function test_waitress_is_auto_assigned_to_her_own_orders(): void
     {
         $service = new PermissionService();

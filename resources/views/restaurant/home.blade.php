@@ -19,9 +19,14 @@
                class="rounded border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md">
                 <div class="flex items-center justify-between">
                     <h2 class="text-lg font-semibold">Table {{ $table->numero }}</h2>
-                    <span class="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">{{ $table->serveuse_id ? 'Assignée' : 'Libre' }}</span>
+                    <span class="rounded-full {{ $table->serveuse_id ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700' }} px-3 py-1 text-xs font-semibold">
+                        {{ $table->serveuse_id ? 'Assignée' : 'Libre' }}
+                    </span>
                 </div>
-                <p class="mt-2 text-sm text-gray-600">Salle {{ $table->salle_id }}</p>
+                <div class="mt-3 space-y-1 text-sm text-gray-600">
+                    <p><span class="font-medium text-gray-700">Salle :</span> {{ $table->salle?->nom ?? 'Inconnue' }}</p>
+                    <p><span class="font-medium text-gray-700">Serveuse :</span> {{ $table->serveuse?->name ?? 'Aucune' }}</p>
+                </div>
             </a>
         @endforeach
     </div>

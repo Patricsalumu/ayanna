@@ -181,16 +181,16 @@
           <span x-show="!bonCommandeEnCours && !bonCommandePrintEnCours">Facture Finale</span>
           <span x-show="bonCommandeEnCours || bonCommandePrintEnCours">Traitement...</span>
           </button>
+        @endif
 
-          @if(app(\App\Services\PermissionService::class)->canTransferTableProducts(auth()->user()))
-            <button
-              type="button"
-              class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[140px] rounded-xl bg-amber-600 text-white font-bold shadow hover:bg-amber-700 transition text-center px-4 py-0.5"
-              @click="openTransferModal()"
-            >
-              Transférer
-            </button>
-          @endif
+        @if(app(\App\Services\PermissionService::class)->canTransferTableProducts(auth()->user()))
+          <button
+            type="button"
+            class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[140px] rounded-xl bg-amber-600 text-white font-bold shadow hover:bg-amber-700 transition text-center px-4 py-0.5"
+            @click="openTransferModal()"
+          >
+            Transférer
+          </button>
         @endif
         @if(app(\App\Services\PermissionService::class)->isAdmin(auth()->user()))
           <form method="POST" action="{{ (isset($panier) && !empty($panier->id)) ? route('paniers.annuler', $panier->id) : '#' }}" onsubmit="return confirm('Annuler ce panier ?');" class="flex-none sm:flex-1 w-full sm:w-auto min-w-[140px]">
@@ -565,11 +565,18 @@ window.CAN_TRANSFER_TABLE_PRODUCTS = @json(app(\App\Services\PermissionService::
       $base = !empty($table->numero)
           ? 'T' . $table->numero
           : (!empty($table->nom) ? $table->nom : ('Table ' . $table->id));
-      $label = $table->salle?->nom ? ($base . ' - ' . $table->salle->nom) : $base;
+
+      $labelParts = [$base];
+      if ($table->salle?->nom) {
+          $labelParts[] = $table->salle->nom;
+      }
+      if (!empty($table->serveuse?->name)) {
+          $labelParts[] = $table->serveuse->name;
+      }
 
       return [
           'id' => (int) $table->id,
-          'label' => $label,
+          'label' => implode(' - ', $labelParts),
           'salle_id' => (int) ($table->salle_id ?? 0),
           'serveuse_id' => $table->serveuse_id ? (int) $table->serveuse_id : null,
       ];

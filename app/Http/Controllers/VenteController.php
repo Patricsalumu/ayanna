@@ -537,7 +537,7 @@ class VenteController extends Controller
             if (!$this->permissionService->canTransferTableProducts($user)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Seules les serveuses, caisse1 et caisse2 peuvent effectuer un transfert de table.',
+                    'error' => 'Seules les serveuses et les caissiers peuvent effectuer un transfert de table.',
                 ], 403);
             }
 
@@ -562,13 +562,6 @@ class VenteController extends Controller
                 return response()->json([
                     'success' => false,
                     'error' => 'Table source ou destination introuvable.',
-                ], 422);
-            }
-
-            if ((int) ($sourceTable->salle_id ?? 0) !== (int) ($destinationTable->salle_id ?? 0)) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Le transfert est autorisé uniquement entre tables de la même salle.',
                 ], 422);
             }
 
@@ -704,6 +697,11 @@ class VenteController extends Controller
                         $prixSource = 0;
                     }
 
+                    $produitDestination = \App\Models\Produit::find($produitId);
+                    $prixDestination = $produitDestination
+                        ? (float) ($produitDestination->prixPourSalle((int) ($destinationTable->salle_id ?? 0)) ?? 0)
+                        : $prixSource;
+
                     $destinationRows = DB::table('panier_produit')
                         ->where('panier_id', $destinationPanier->id)
                         ->where('produit_id', $produitId)
@@ -716,7 +714,7 @@ class VenteController extends Controller
                             'panier_id' => $destinationPanier->id,
                             'produit_id' => $produitId,
                             'quantite' => $quantiteATransferer,
-                            'prix' => $prixSource,
+                            'prix' => $prixDestination,
                             'created_at' => $now,
                             'updated_at' => $now,
                         ]);
@@ -728,7 +726,7 @@ class VenteController extends Controller
                             ->where('id', $firstDest->id)
                             ->update([
                                 'quantite' => $destinationQuantite + $quantiteATransferer,
-                                'prix' => $firstDest->prix !== null ? $firstDest->prix : $prixSource,
+                                'prix' => $prixDestination,
                                 'updated_at' => $now,
                             ]);
 

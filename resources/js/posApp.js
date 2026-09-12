@@ -246,13 +246,14 @@ export function posApp() {
       const currentTableId = Number(window.TABLE_COURANTE || 0);
       const currentTable = (window.TRANSFER_TABLES || []).find((table) => Number(table.id) === currentTableId);
       const currentSalleId = Number(currentTable?.salle_id || 0);
+      const isWaitressRole = !!window.IS_WAITRESS;
 
       return (window.TRANSFER_TABLES || []).filter((table) => {
         if (Number(table.id) === currentTableId) {
           return false;
         }
 
-        if (currentSalleId > 0) {
+        if (isWaitressRole && currentSalleId > 0) {
           return Number(table.salle_id || 0) === currentSalleId;
         }
 
@@ -422,7 +423,7 @@ export function posApp() {
         id: Number(item.id),
         nom: item.nom,
         qte: Number(item.qte || 0),
-        transfer_qte: Number(item.qte || 0),
+        transfer_qte: 0,
       }));
     },
     openTransferModal() {
