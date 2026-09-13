@@ -21,7 +21,11 @@ class PermissionService
             return true;
         }
 
-        if ($this->isWaitress($user) || $this->isCashier($user)) {
+        if ($this->isCashier($user)) {
+            return true;
+        }
+
+        if ($this->isWaitress($user)) {
             return (int) ($table->serveuse_id ?? 0) === (int) ($user->id ?? 0);
         }
 
@@ -118,6 +122,16 @@ class PermissionService
         }
 
         return $this->isAdmin($user);
+    }
+
+    public function canModifyTableProducts(?object $user, ?object $table): bool
+    {
+        if (!$this->canAddProductsToTable($user) || !$table) {
+            return false;
+        }
+
+        return $this->isAdmin($user)
+            || (int) ($table->serveuse_id ?? 0) === (int) ($user->id ?? 0);
     }
 
     public function resolveServeuseId(?object $user, ?string $currentServeuseId): ?string

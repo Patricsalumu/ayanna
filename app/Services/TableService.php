@@ -19,7 +19,7 @@ class TableService
             $query->where('salle_id', $salleId);
         }
 
-        if (!$this->permissionService->isAdmin($user)) {
+        if ($this->permissionService->isWaitress($user)) {
             $query->where('serveuse_id', $user->id ?? 0);
         }
 

@@ -95,7 +95,7 @@
       </template>
     </div>
 
-    @if(app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user()))
+    @if($canModifyTableProducts ?? app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user()))
       <template x-if="panier.length">
         <div class="grid {{ $isServeuseInterface ? 'grid-cols-3' : 'grid-cols-2' }} gap-2 min-w-0">
           <button
@@ -189,7 +189,7 @@
       </div>
       @endunless
       <div class="flex flex-row flex-wrap gap-2 mb-2 justify-between items-center">
-        @if(!$isServeuseInterface && app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user()))
+        @if(!$isServeuseInterface && ($canModifyTableProducts ?? app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user())))
           <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[140px] rounded-xl bg-gray-800 text-white 
           font-bold shadow hover:bg-gray-900 transition text-center px-4 py-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
           @click="if (!bonCommandeEnCours && !bonCommandePrintEnCours) imprimerFactureFinale()"
@@ -428,6 +428,11 @@
         <button type="button" @click="continueCatalogueAfterPrint()" class="px-5 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">
           Continuer sur le catalogue
         </button>
+        @if($isServeuseInterface)
+          <button type="button" @click="logoutServeuse()" class="px-5 py-3 rounded-xl bg-gray-800 text-white font-semibold hover:bg-gray-700 transition">
+            Déconnexion
+          </button>
+        @endif
       </div>
     </div>
   </div>
@@ -570,7 +575,7 @@ window.SET_CLIENT_URL = "{{ url('/panier/set-client') }}";
 window.SET_SERVEUSE_URL = "{{ url('/panier/set-serveuse') }}";
 window.PANIER_ID = @json($panier->id ?? ($panier['id'] ?? null));
 window.USER_ROLE = @json(auth()->user()->role ?? null);
-window.CAN_ADD_PRODUCTS = @json(app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user()));
+window.CAN_ADD_PRODUCTS = @json($canModifyTableProducts ?? app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user()));
 window.CAN_APPLY_DISCOUNT = @json(app(\App\Services\PermissionService::class)->canApplyDiscount(auth()->user()));
 window.CAN_EDIT_SERVEUSE = @json(app(\App\Services\PermissionService::class)->canEditServeuseAssignment(auth()->user()));
 window.ENTREPRISE = @json($pointDeVente->entreprise);

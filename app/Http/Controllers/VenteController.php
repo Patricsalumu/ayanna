@@ -35,7 +35,7 @@ class VenteController extends Controller
 
             if (!$this->permissionService->isAdmin($user) && $request->get('table_id')) {
                 $table = \App\Models\TableResto::find($request->get('table_id'));
-                if (!$this->permissionService->canAccessTable($user, $table)) {
+                if ($this->permissionService->isWaitress($user) && !$this->permissionService->canAccessTable($user, $table)) {
                     abort(403, 'Cette table ne vous est pas assignée.');
                 }
             }
@@ -118,6 +118,7 @@ class VenteController extends Controller
 
             $client_id = $panier ? $panier->client_id : '';
             $serveuse_id = $panier?->serveuse_id ?? $table?->serveuse_id ?? '';
+            $canModifyTableProducts = $this->permissionService->canModifyTableProducts($user, $table);
 
             // Récupérer les modes de paiement actifs pour l'entreprise
             $modesPaiement = app(ModePaiementService::class)->actifs($pointDeVente->entreprise);
@@ -182,6 +183,7 @@ class VenteController extends Controller
                 'tableCourante' => $tableCourante,
                 'client_id' => $client_id,
                 'serveuse_id' => $serveuse_id,
+                'canModifyTableProducts' => $canModifyTableProducts,
                 'panier' => $panier ?? null,
                 'modesPaiement' => $modesPaiement,
                 'clientsArray' => $clientsArray,
@@ -259,7 +261,7 @@ class VenteController extends Controller
             }
 
             $table = \App\Models\TableResto::find($tableId);
-            if (!$this->permissionService->isAdmin($user) && !$this->permissionService->canAccessTable($user, $table)) {
+            if (!$this->permissionService->isAdmin($user) && !$this->permissionService->canModifyTableProducts($user, $table)) {
                 return response()->json(['success' => false, 'error' => 'Vous ne pouvez pas ouvrir cette table.'], 403);
             }
 

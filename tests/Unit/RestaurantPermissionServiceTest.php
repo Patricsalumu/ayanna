@@ -44,6 +44,7 @@ class RestaurantPermissionServiceTest extends TestCase
         $table->serveuse_id = 4;
 
         $this->assertTrue($service->canAccessTable($cashier, $table));
+        $this->assertTrue($service->canModifyTableProducts($cashier, $table));
         $this->assertFalse($service->canValidatePayment($waitress));
         $this->assertTrue($service->canValidatePayment($cashier));
     }
@@ -76,6 +77,10 @@ class RestaurantPermissionServiceTest extends TestCase
         $this->assertTrue($service->isSupervisor($supervisor));
         $this->assertTrue($service->isCashier($supervisor));
         $this->assertTrue($service->canAccessTable($supervisor, $table));
+        $this->assertTrue($service->canModifyTableProducts($supervisor, $table));
+        $otherTable = new \stdClass();
+        $otherTable->serveuse_id = 7;
+        $this->assertFalse($service->canModifyTableProducts($supervisor, $otherTable));
         $this->assertFalse($service->canOpenTable($supervisor));
         $this->assertFalse($service->canValidatePayment($supervisor));
         $this->assertTrue($service->canAddProductsToTable($supervisor));

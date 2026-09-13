@@ -108,7 +108,7 @@ class PanierController extends Controller
             $table_id = $request->input('table_id');
             $quantite = max(0, (int) $request->input('quantite', 0));
             $table = \App\Models\TableResto::find($table_id);
-            if (!Auth::user() || (!$this->permissionService->isAdmin(Auth::user()) && !$this->permissionService->canAccessTable(Auth::user(), $table))) {
+            if (!$this->permissionService->canModifyTableProducts(Auth::user(), $table)) {
                 return response()->json(['success' => false, 'error' => 'Vous ne pouvez pas modifier cette table.'], 403);
             }
 
@@ -166,7 +166,7 @@ class PanierController extends Controller
 
         $table_id = $request->input('table_id');
         $table = \App\Models\TableResto::find($table_id);
-        if (!Auth::user() || (!$this->permissionService->isAdmin(Auth::user()) && !$this->permissionService->canAccessTable(Auth::user(), $table))) {
+        if (!$this->permissionService->canModifyTableProducts(Auth::user(), $table)) {
             return response()->json(['success' => false, 'error' => 'Vous ne pouvez pas modifier cette table.'], 403);
         }
 
