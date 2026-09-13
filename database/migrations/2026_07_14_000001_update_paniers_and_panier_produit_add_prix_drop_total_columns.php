@@ -19,10 +19,11 @@ return new class extends Migration
         });
 
         // Populate existing panier_produit rows with current product price when possible.
-        DB::table('panier_produit')
-            ->leftJoin('produits', 'panier_produit.produit_id', '=', 'produits.id')
-            ->whereNull('panier_produit.prix')
-            ->update(['panier_produit.prix' => DB::raw('produits.prix_vente')]);
+        DB::statement(
+            'UPDATE panier_produit
+             SET prix = (SELECT prix_vente FROM produits WHERE produits.id = panier_produit.produit_id)
+             WHERE prix IS NULL'
+        );
 
         Schema::table('paniers', function (Blueprint $table) {
             if (Schema::hasColumn('paniers', 'total')) {

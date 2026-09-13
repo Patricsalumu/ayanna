@@ -3,6 +3,7 @@
 
 <div class="max-w-7xl mx-auto px-6 py-3">
     @php($canPrintReceipt = app(\App\Services\PermissionService::class)->canPrintReceipt(auth()->user()))
+    @php($canValidatePayment = app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user()))
     <!-- Messages de statut -->
     @if(session('success'))
         <div class="mb-3 p-3 bg-green-100 border border-green-300 text-green-700 rounded-lg text-center font-medium">
@@ -203,7 +204,7 @@
                                 <!-- Actions -->
                                 <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
                                     <div class="flex justify-center gap-2">
-                                        @if($commande->mode_paiement === 'compte_client' && $commande->statut !== 'payé')
+                                        @if($canValidatePayment && $commande->mode_paiement === 'compte_client' && $commande->statut !== 'payé')
                                             <!-- Bouton Payer -->
                                             <button onclick="ouvrirModalePaiement(this)"
                                                     data-commande-id="{{ $commande->id }}"

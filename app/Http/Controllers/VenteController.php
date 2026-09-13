@@ -858,8 +858,8 @@ class VenteController extends Controller
             Log::info('[VALIDATION PAIEMENT] Clés disponibles', ['keys' => array_keys($data)]);
 
             $user = Auth::user();
-            if ($this->permissionService->isWaitress($user)) {
-                return response()->json(['success' => false, 'error' => 'Une serveuse ne peut pas valider un paiement.'], 403);
+            if (!$this->permissionService->canValidatePayment($user)) {
+                return response()->json(['success' => false, 'error' => 'Vous n\'êtes pas autorisé à valider un paiement.'], 403);
             }
 
             // Validation des données requises de base
@@ -1170,6 +1170,8 @@ class VenteController extends Controller
 
     public function confirmerCreance($commandeId)
     {
+        abort_unless($this->permissionService->canValidatePayment(Auth::user()), 403);
+
         $commande = \App\Models\Commande::findOrFail($commandeId);
         $commande->statut = 'payé';
         $commande->save();
@@ -1179,6 +1181,13 @@ class VenteController extends Controller
     public function enregistrerPaiement(Request $request, $commandeId)
     {
         try {
+            if (!$this->permissionService->canValidatePayment(Auth::user())) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Vous n\'êtes pas autorisé à enregistrer un paiement.',
+                ], 403);
+            }
+
             Log::info('Début enregistrement paiement', [
                 'commande_id' => $commandeId,
                 'request_data' => $request->all()

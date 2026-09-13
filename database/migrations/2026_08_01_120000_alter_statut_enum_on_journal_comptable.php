@@ -12,7 +12,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement("ALTER TABLE journal_comptable MODIFY COLUMN statut ENUM('brouillon', 'valide', 'cloture', 'annule') NOT NULL DEFAULT 'brouillon'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE journal_comptable MODIFY COLUMN statut ENUM('brouillon', 'valide', 'cloture', 'annule') NOT NULL DEFAULT 'brouillon'");
+        }
     }
 
     /**
@@ -20,6 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE journal_comptable MODIFY COLUMN statut ENUM('brouillon', 'valide', 'cloture') NOT NULL DEFAULT 'valide'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE journal_comptable MODIFY COLUMN statut ENUM('brouillon', 'valide', 'cloture') NOT NULL DEFAULT 'valide'");
+        }
     }
 };

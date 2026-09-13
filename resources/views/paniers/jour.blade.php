@@ -105,6 +105,8 @@
                 <div><span class="font-semibold">Salle :</span> <span id="detailSalle"></span></div>
                 <div><span class="font-semibold">Ouvert à :</span> <span id="detailOuvertA"></span></div>
                 <div><span class="font-semibold">Statut :</span> <span id="detailStatus"></span></div>
+                <div><span class="font-semibold">Validé par :</span> <span id="detailValidePar"></span></div>
+                <div><span class="font-semibold">Annulé par :</span> <span id="detailAnnulePar"></span></div>
             </div>
             <div>
                 <div class="mb-3 text-sm font-semibold text-gray-800">Produits</div>
@@ -139,15 +141,21 @@
                     $remise = (float) ($panier->total_remise ?? $panier->remise ?? 0);
                     $netAPayer = (float) ($panier->total_ttc ?? max(0, $montantBrut - $remise + ($panier->total_tva ?? 0)));
                     $montantPaye = (float) ($panier->commande?->paiements?->sum('montant') ?? 0);
+                    $paiements = $panier->commande?->paiements;
+                    $dernierPaiement = $paiements?->sortByDesc(fn ($paiement) => $paiement->date_paiement ?? $paiement->created_at)->first();
+                    $validateurPaiement = $dernierPaiement?->user?->name;
+                    $annulateur = $panier->status === 'annulé' ? ($panier->annuleBy?->name ?? '') : '';
                     $panierDetails = [
                         'id' => $panier->id,
                         'reference' => $panier->commande?->id ? 'Facture #' . $panier->commande->id : 'Panier #' . $panier->id,
                         'table' => $panier->tableResto->numero ?? $panier->table_id,
                         'serveuse' => $panier->serveuse->name ?? '-',
                         'client' => $panier->client->nom ?? '-',
-                            'salle' => $panier->tableResto->salle->nom ?? $panier->pointDeVente->nom ?? 'N/A',
+                        'salle' => $panier->tableResto->salle->nom ?? $panier->pointDeVente->nom ?? 'N/A',
                         'ouvert_a' => $panier->created_at->format('d/m H:i'),
                         'status' => $panier->status,
+                        'valide_par' => $validateurPaiement ?? '-',
+                        'annule_par' => $annulateur,
                         'remise' => $remise,
                         'net_a_payer' => $netAPayer,
                         'montant_paye' => $montantPaye,
@@ -234,7 +242,7 @@
                             @else
                                 <span class="text-gray-400 text-xs">-</span>
                             @endif
-                        @elseif($panier->commande && $modeCode === 'compte_client' && $montantPaye < $netAPayer)
+                        @elseif(app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user()) && $panier->commande && $modeCode === 'compte_client' && $montantPaye < $netAPayer)
                             <button type="button"
                                     onclick="event.stopPropagation(); ouvrirPaiementJour(this)"
                                     data-commande-id="{{ $panier->commande->id }}"
@@ -497,6 +505,8 @@
         document.getElementById('detailSalle').textContent = panier.salle;
         document.getElementById('detailOuvertA').textContent = panier.ouvert_a;
         document.getElementById('detailStatus').textContent = panier.status;
+        document.getElementById('detailValidePar').textContent = panier.valide_par || '-';
+        document.getElementById('detailAnnulePar').textContent = panier.annule_par || '-';
 
         const produitsContainer = document.getElementById('detailProduits');
         produitsContainer.innerHTML = '';

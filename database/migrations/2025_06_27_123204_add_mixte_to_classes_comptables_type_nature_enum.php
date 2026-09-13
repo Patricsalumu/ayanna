@@ -13,7 +13,9 @@ return new class extends Migration
     public function up(): void
     {
         // Modifier l'enum pour ajouter 'mixte'
-        DB::statement("ALTER TABLE classes_comptables MODIFY COLUMN type_nature ENUM('actif', 'passif', 'charge', 'produit', 'mixte')");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE classes_comptables MODIFY COLUMN type_nature ENUM('actif', 'passif', 'charge', 'produit', 'mixte')");
+        }
     }
 
     /**
@@ -22,6 +24,8 @@ return new class extends Migration
     public function down(): void
     {
         // Retirer 'mixte' de l'enum
-        DB::statement("ALTER TABLE classes_comptables MODIFY COLUMN type_nature ENUM('actif', 'passif', 'charge', 'produit')");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE classes_comptables MODIFY COLUMN type_nature ENUM('actif', 'passif', 'charge', 'produit')");
+        }
     }
 };

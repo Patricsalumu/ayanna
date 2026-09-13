@@ -8,6 +8,7 @@ use App\Models\Client;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Carbon;
 use App\Models\PointDeVente;
 use App\Models\StockJournalier;
@@ -674,6 +675,10 @@ class PanierController extends Controller
         Log::debug('[DEBUG PANIER ANNULER] Avant', ['id' => $id, 'status' => $panier->status]);
         if ($panier->status === 'en_cours') {
             $panier->status = 'annulé';
+            if (Schema::hasColumn('paniers', 'annule_by')) {
+                $panier->annule_by = Auth::id();
+                $panier->annule_at = now();
+            }
             $panier->save();
             Log::debug('[DEBUG PANIER ANNULER] Après', ['id' => $id, 'status' => $panier->status]);
         }

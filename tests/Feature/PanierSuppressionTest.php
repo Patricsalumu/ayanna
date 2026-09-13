@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Categorie;
+use App\Models\Commande;
 use App\Models\Entreprise;
+use App\Models\Paiement;
 use App\Models\Panier;
 use App\Models\PointDeVente;
 use App\Models\Produit;
@@ -49,6 +51,7 @@ class PanierSuppressionTest extends TestCase
 
         $table = TableResto::create([
             'numero' => '2',
+            'forme' => 'rectangle',
             'salle_id' => $salle->id,
             'serveuse_id' => $serveuse->id,
         ]);
@@ -127,6 +130,7 @@ class PanierSuppressionTest extends TestCase
 
         $table = TableResto::create([
             'numero' => '1',
+            'forme' => 'rectangle',
             'salle_id' => $salle->id,
             'serveuse_id' => $serveuse->id,
         ]);
@@ -167,5 +171,101 @@ class PanierSuppressionTest extends TestCase
 
         $panier->refresh();
         $this->assertSame(0, $panier->produits()->first()?->pivot?->quantite ?? 0);
+    }
+
+    public function test_les_details_dune_facture_affichent_le_validateur_et_l_annulateur_si_disponibles(): void
+    {
+        $entreprise = Entreprise::create([
+            'nom' => 'Entreprise test',
+            'module' => 'restaurant',
+            'devise' => 'F',
+            'taux' => 1,
+        ]);
+
+        $cashier = User::create([
+            'name' => 'Alice Cashier',
+            'email' => 'cashier@example.com',
+            'password' => bcrypt('secret123'),
+            'role' => 'Caissier',
+            'entreprise_id' => $entreprise->id,
+        ]);
+
+        $admin = User::create([
+            'name' => 'Bob Admin',
+            'email' => 'admin2@example.com',
+            'password' => bcrypt('secret123'),
+            'role' => 'Administrateur',
+            'entreprise_id' => $entreprise->id,
+        ]);
+
+        $pointDeVente = PointDeVente::create([
+            'nom' => 'PDV 3',
+            'entreprise_id' => $entreprise->id,
+            'etat' => 'ouvert',
+        ]);
+
+        $salle = Salle::create([
+            'nom' => 'Salle 3',
+            'entreprise_id' => $entreprise->id,
+        ]);
+
+        $pointDeVente->salles()->attach($salle->id);
+
+        $table = TableResto::create([
+            'numero' => '3',
+            'forme' => 'rectangle',
+            'salle_id' => $salle->id,
+            'serveuse_id' => $cashier->id,
+        ]);
+
+        $categorie = Categorie::create([
+            'nom' => 'Boissons',
+            'entreprise_id' => $entreprise->id,
+        ]);
+
+        $produit = Produit::create([
+            'categorie_id' => $categorie->id,
+            'nom' => 'Coca',
+            'prix_achat' => 200,
+            'prix_vente' => 500,
+        ]);
+
+        $panier = Panier::create([
+            'table_id' => $table->id,
+            'point_de_vente_id' => $pointDeVente->id,
+            'status' => 'annulé',
+            'serveuse_id' => $cashier->id,
+            'annule_by' => $admin->id,
+            'annule_at' => now(),
+        ]);
+
+        $panier->produits()->attach($produit->id, [
+            'quantite' => 1,
+            'prix' => $produit->prix_vente,
+        ]);
+
+        $commande = Commande::create([
+            'panier_id' => $panier->id,
+            'mode_paiement' => 'especes',
+            'statut' => 'payé',
+            'created_at' => now(),
+        ]);
+
+        Paiement::create([
+            'commande_id' => $commande->id,
+            'montant' => 500,
+            'montant_restant' => 0,
+            'mode' => 'especes',
+            'date_paiement' => now()->toDateString(),
+            'est_solde' => true,
+            'user_id' => $cashier->id,
+            'statut' => 'validé',
+        ]);
+
+        $this->actingAs($cashier)
+            ->get(route('paniers.jour'))
+            ->assertOk()
+            ->assertSee(e($cashier->name))
+            ->assertSee(e($admin->name));
     }
 }

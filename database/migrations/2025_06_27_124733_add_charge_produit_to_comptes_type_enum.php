@@ -13,7 +13,9 @@ return new class extends Migration
     public function up(): void
     {
         // Modifier l'enum pour ajouter 'charge' et 'produit'
-        DB::statement("ALTER TABLE comptes MODIFY COLUMN type ENUM('actif', 'passif', 'charge', 'produit')");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE comptes MODIFY COLUMN type ENUM('actif', 'passif', 'charge', 'produit')");
+        }
     }
 
     /**
@@ -22,6 +24,8 @@ return new class extends Migration
     public function down(): void
     {
         // Retirer 'charge' et 'produit' de l'enum
-        DB::statement("ALTER TABLE comptes MODIFY COLUMN type ENUM('actif', 'passif')");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE comptes MODIFY COLUMN type ENUM('actif', 'passif')");
+        }
     }
 };

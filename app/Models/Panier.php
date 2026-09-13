@@ -18,6 +18,8 @@ class Panier extends Model
         'serveuse_id',
         'opened_by',
         'last_modified_by',
+        'annule_by',
+        'annule_at',
         'produits_json',
         'mode_paiement',
         'status', // Ajouté pour permettre la modification
@@ -70,6 +72,11 @@ class Panier extends Model
     public function lastModifiedBy()
     {
         return $this->belongsTo(User::class, 'last_modified_by');
+    }
+
+    public function annuleBy()
+    {
+        return $this->belongsTo(User::class, 'annule_by');
     }
 
     public function produits()

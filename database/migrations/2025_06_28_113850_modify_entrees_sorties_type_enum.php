@@ -17,7 +17,9 @@ return new class extends Migration
         DB::statement("UPDATE entrees_sorties SET type = 'sortie' WHERE type = 'debit'");
         
         // Ensuite, on modifie l'enum pour accepter les nouvelles valeurs
-        DB::statement("ALTER TABLE entrees_sorties MODIFY COLUMN type ENUM('entree', 'sortie') NOT NULL DEFAULT 'entree'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE entrees_sorties MODIFY COLUMN type ENUM('entree', 'sortie') NOT NULL DEFAULT 'entree'");
+        }
     }
 
     /**
@@ -26,7 +28,9 @@ return new class extends Migration
     public function down(): void
     {
         // Remettre l'ancien enum
-        DB::statement("ALTER TABLE entrees_sorties MODIFY COLUMN type ENUM('credit', 'debit') NOT NULL DEFAULT 'credit'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE entrees_sorties MODIFY COLUMN type ENUM('credit', 'debit') NOT NULL DEFAULT 'credit'");
+        }
         
         // Reconvertir les données
         DB::statement("UPDATE entrees_sorties SET type = 'credit' WHERE type = 'entree'");

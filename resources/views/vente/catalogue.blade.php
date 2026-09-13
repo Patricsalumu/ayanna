@@ -390,8 +390,10 @@
         </div>
         <div class="flex justify-between mt-4 gap-2">
           <button @click="mode = 'commande'" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Retour</button>
-          <button @click="validerPaiement()" class="px-4 py-2 rounded bg-green-600 text-white font-bold shadow hover:bg-green-700 transition">Valider</button>
-          <button @click="validerEtImprimer()" class="px-4 py-2 rounded bg-blue-600 text-white font-bold shadow hover:bg-blue-700 transition">Valider et imprimer</button>
+          @if(app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user()))
+            <button @click="validerPaiement()" class="px-4 py-2 rounded bg-green-600 text-white font-bold shadow hover:bg-green-700 transition">Valider</button>
+            <button @click="validerEtImprimer()" class="px-4 py-2 rounded bg-blue-600 text-white font-bold shadow hover:bg-blue-700 transition">Valider et imprimer</button>
+          @endif
         </div>
       </div>
     </template>
