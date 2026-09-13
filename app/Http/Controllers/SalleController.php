@@ -147,7 +147,7 @@ class SalleController extends Controller
             ])->with('error', 'Ce point de vente est fermé. Ouvrez une session pour accéder au plan de vente.');
         }
 
-        $salle->load('tables');
+        $salle->load('tables.serveuse');
 
         if (!$this->permissionService->isAdmin($user)) {
             $salle->setRelation('tables', $salle->tables->filter(fn ($table) => $this->permissionService->canAccessTable($user, $table))->values());
@@ -178,7 +178,7 @@ class SalleController extends Controller
             $table->nb_commandes = $qte;
             $table->montant_total = $montant;
             $table->is_busy = $qte > 0;
-            $table->serveuse_nom = $panier?->serveuse?->name;
+            $table->serveuse_nom = $panier?->serveuse?->name ?? $table->serveuse?->name;
         }
 
         return view('salles.plan-vente', [

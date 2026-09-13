@@ -14,7 +14,7 @@
     </style>
 
     <div class="text-center mb-6">
-        <h2 class="text-2xl font-bold text-[#3e2f24]">Connexion Serveuse</h2>
+        <h2 class="text-2xl font-bold text-[#3e2f24]">Connexion Serveuse / Superviseur</h2>
         <p class="text-sm text-[#7a6657] mt-2">Saisissez votre code PIN à 4 chiffres</p>
     </div>
 

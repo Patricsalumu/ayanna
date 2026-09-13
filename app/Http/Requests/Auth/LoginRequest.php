@@ -62,7 +62,7 @@ class LoginRequest extends FormRequest
                 ->where('code_pin', $password)
                 ->first();
 
-            if ($owner && strtolower((string) $owner->role) !== 'serveuse') {
+            if ($owner && !in_array(strtolower((string) $owner->role), ['serveuse', 'superviseur'], true)) {
                 RateLimiter::hit($this->throttleKey());
 
                 throw ValidationException::withMessages([
@@ -84,7 +84,7 @@ class LoginRequest extends FormRequest
         if ($serveuseLogin && $this->isValidPin($password)) {
             $user = User::query()
                 ->where('code_pin', $password)
-                ->where('role', 'serveuse')
+                ->whereIn('role', ['serveuse', 'Serveuse', 'superviseur', 'Superviseur'])
                 ->first();
         } else {
             $user = User::query()
@@ -94,7 +94,7 @@ class LoginRequest extends FormRequest
                         ->orWhere('phone', $login);
                 })
                 ->when($serveuseLogin, function ($query): void {
-                    $query->where('role', 'serveuse');
+                    $query->whereIn('role', ['serveuse', 'Serveuse', 'superviseur', 'Superviseur']);
                 })
                 ->first();
         }

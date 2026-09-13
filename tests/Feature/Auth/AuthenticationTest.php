@@ -58,6 +58,21 @@ class AuthenticationTest extends TestCase
         $response->assertRedirect(route('restaurant.staff.home', absolute: false));
     }
 
+    public function test_supervisor_can_authenticate_with_pin_on_serveuse_login_page(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'superviseur',
+            'code_pin' => '5678',
+        ]);
+
+        $this->post('/serveuse-login', [
+            'password' => '5678',
+            'serveuse_login' => true,
+        ]);
+
+        $this->assertAuthenticatedAs($user);
+    }
+
     public function test_users_can_logout(): void
     {
         $user = User::factory()->create();

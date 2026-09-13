@@ -72,7 +72,7 @@
                       <span class="table-num relative z-10 text-center w-full select-none flex flex-col items-center justify-center pt-2"
                           style="pointer-events:none; font-size:1.3rem; font-weight:bold; color:#222;">
                         {{ $table->numero }}
-                        @if ($table->serveuse?->name || $table->serveuse_nom)
+                        @if ($tableOccupee && ($table->serveuse?->name || $table->serveuse_nom))
                             <span style="font-size:0.7rem; font-weight:normal; color:#000;">
                                 {{ $table->serveuse?->name ?? $table->serveuse_nom }}
                             </span>
@@ -102,7 +102,7 @@
                     <span class="table-num text-center w-full select-none flex flex-col items-center justify-center"
                           style="pointer-events:none; font-size:1.3rem; font-weight:bold; color:#6b7280;">
                         {{ $table->numero }}
-                        @if ($table->serveuse?->name || $table->serveuse_nom)
+                        @if ($tableOccupee && ($table->serveuse?->name || $table->serveuse_nom))
                             <span style="font-size:0.7rem; font-weight:normal; color:#000;">
                                 {{ $table->serveuse?->name ?? $table->serveuse_nom }}
                             </span>

@@ -54,7 +54,7 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = Auth::user();
-        if ($user && strtolower((string) $user->role) === 'serveuse') {
+        if ($user && in_array(strtolower((string) $user->role), ['serveuse', 'superviseur'], true)) {
             return redirect()->intended($this->getServeusePlanVenteRoute());
         }
 
@@ -62,7 +62,7 @@ class AuthenticatedSessionController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('serveuse.login')->withErrors(['password' => 'Accès réservé aux serveuses.']);
+        return redirect()->route('serveuse.login')->withErrors(['password' => 'Accès réservé aux serveuses et superviseurs.']);
     }
 
     protected function getServeusePlanVenteRoute(): string
