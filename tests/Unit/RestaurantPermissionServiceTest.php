@@ -61,6 +61,29 @@ class RestaurantPermissionServiceTest extends TestCase
         $this->assertTrue($service->isCashier($cashier));
     }
 
+    public function test_supervisor_is_cashier_like_but_read_only(): void
+    {
+        $service = new PermissionService();
+
+        $supervisor = new \stdClass();
+        $supervisor->id = 9;
+        $supervisor->role = 'Superviseur';
+
+        $table = new \stdClass();
+        $table->id = 12;
+        $table->serveuse_id = 7;
+
+        $this->assertTrue($service->isSupervisor($supervisor));
+        $this->assertTrue($service->isCashier($supervisor));
+        $this->assertTrue($service->canAccessTable($supervisor, $table));
+        $this->assertFalse($service->canOpenTable($supervisor));
+        $this->assertFalse($service->canValidatePayment($supervisor));
+        $this->assertFalse($service->canAddProductsToTable($supervisor));
+        $this->assertTrue($service->canTransferTableProducts($supervisor));
+        $this->assertFalse($service->canApplyDiscount($supervisor));
+        $this->assertFalse($service->canManageSalesSession($supervisor));
+    }
+
     public function test_waitress_is_auto_assigned_to_her_own_orders(): void
     {
         $service = new PermissionService();

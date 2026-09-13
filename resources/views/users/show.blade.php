@@ -160,6 +160,7 @@
                         <option value="caissier2">Caissier 2</option>
                         <option value="cuisinière">Cuisinière</option>
                         <option value="serveuse">Serveuse</option>
+                        <option value="superviseur">Superviseur</option>
                     </select>
                     <template x-if="errors.role">
                         <div class="text-red-600 text-xs mt-1" x-text="errors.role[0]"></div>
@@ -240,6 +241,7 @@
                         <option value="caissier2">Caissier 2</option>
                         <option value="cuisinière">Cuisinière</option>
                         <option value="serveuse">Serveuse</option>
+                        <option value="superviseur">Superviseur</option>
                     </select>
                     <template x-if="errors.role">
                         <div class="text-red-600 text-xs mt-1" x-text="errors.role[0]"></div>

@@ -9,6 +9,7 @@ class PermissionService
     public const ROLE_CAISSIER_1 = 'Caissier1';
     public const ROLE_CAISSIER_2 = 'Caissier2';
     public const ROLE_SERVEUSE = 'Serveuse';
+    public const ROLE_SUPERVISEUR = 'Superviseur';
 
     public function canAccessTable(?object $user, ?object $table): bool
     {
@@ -16,7 +17,7 @@ class PermissionService
             return false;
         }
 
-        if ($this->isCashier($user)) {
+        if ($this->isCashier($user) || $this->isSupervisor($user)) {
             return true;
         }
 
@@ -29,22 +30,22 @@ class PermissionService
 
     public function canOpenTable(?object $user): bool
     {
-        return $this->isAdmin($user) || $this->isCashier($user) || $this->isWaitress($user);
+        return ($this->isAdmin($user) || ($this->isCashier($user) && !$this->isSupervisor($user)) || $this->isWaitress($user));
     }
 
     public function canViewInvoices(?object $user): bool
     {
-        return $this->isAdmin($user) || $this->isCashier($user);
+        return $this->isAdmin($user) || $this->isCashier($user) || $this->isSupervisor($user);
     }
 
     public function canValidatePayment(?object $user): bool
     {
-        return $this->isAdmin($user) || $this->isCashier($user);
+        return $this->isAdmin($user) || $this->isCashier($user) && !$this->isSupervisor($user);
     }
 
     public function canPrintBill(?object $user): bool
     {
-        return $this->isAdmin($user) || $this->isCashier($user) || $this->isWaitress($user);
+        return $this->isAdmin($user) || $this->isCashier($user) || $this->isWaitress($user) || $this->isSupervisor($user);
     }
 
     public function canPrintReceipt(?object $user): bool
@@ -54,22 +55,22 @@ class PermissionService
 
     public function canApplyDiscount(?object $user): bool
     {
-        return $this->isAdmin($user) || $this->isSuperAdmin($user) || $this->isCashier($user);
+        return $this->isAdmin($user) || $this->isSuperAdmin($user) || ($this->isCashier($user) && !$this->isSupervisor($user));
     }
 
     public function canManageSalesSession(?object $user): bool
     {
-        return $this->isAdmin($user) || $this->isCashier($user);
+        return $this->isAdmin($user) || ($this->isCashier($user) && !$this->isSupervisor($user));
     }
 
     public function canEditPayment(?object $user): bool
     {
-        return $this->isAdmin($user) || $this->isCashier($user);
+        return $this->isAdmin($user) || ($this->isCashier($user) && !$this->isSupervisor($user));
     }
 
     public function canManageProductQuantity(?object $user): bool
     {
-        return $this->isAdmin($user) || $this->isCashier($user);
+        return $this->isAdmin($user) || ($this->isCashier($user) && !$this->isSupervisor($user));
     }
 
     public function canEditServeuseAssignment(?object $user): bool
@@ -79,7 +80,7 @@ class PermissionService
 
     public function canTransferTableProducts(?object $user): bool
     {
-        return $this->isWaitress($user) || $this->isCashier($user);
+        return $this->isAdmin($user) || $this->isSupervisor($user) || $this->isWaitress($user) || $this->isCashier($user);
     }
 
     public function canAccessPointDeVente(?object $user, ?int $pointDeVenteId): bool
@@ -108,6 +109,10 @@ class PermissionService
     
     public function canAddProductsToTable(?object $user): bool
     {
+        if ($this->isSupervisor($user)) {
+            return false;
+        }
+
         if ($this->isCashierType1($user)) {
             return true;
         }
@@ -140,6 +145,7 @@ class PermissionService
             self::ROLE_CAISSIER,
             self::ROLE_CAISSIER_1,
             self::ROLE_CAISSIER_2,
+            self::ROLE_SUPERVISEUR,
         ], true);
     }
 
@@ -158,13 +164,18 @@ class PermissionService
         return $this->normalizeRole($user?->role) === self::ROLE_SERVEUSE;
     }
 
+    public function isSupervisor(?object $user): bool
+    {
+        return in_array(strtolower(trim((string) ($user?->role ?? ''))), ['superviseur', 'supervisor'], true);
+    }
+
     protected function normalizeRole(?string $role): string
     {
         $normalized = strtolower(trim((string) $role));
 
         return match ($normalized) {
             'administrateur', 'admin', 'super_admin' => self::ROLE_ADMINISTRATEUR,
-            'caissier', 'cashier', 'comptoiriste' => self::ROLE_CAISSIER,
+            'caissier', 'cashier', 'comptoiriste', 'superviseur', 'supervisor' => self::ROLE_CAISSIER,
             'caissier1', 'caissier_1', 'caisse1', 'caisse_1', 'cashier1', 'cashier_1', 'comptoiriste1', 'comptoiriste_1' => self::ROLE_CAISSIER_1,
             'caissier2', 'caissier_2', 'caisse2', 'caisse_2', 'cashier2', 'cashier_2', 'comptoiriste2', 'comptoiriste_2' => self::ROLE_CAISSIER_2,
             'serveuse', 'waitress', 'cuisinière' => self::ROLE_SERVEUSE,

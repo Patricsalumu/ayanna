@@ -35,8 +35,9 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $user = Auth::user();
-        if ($user && in_array(strtolower((string) $user->role), ['serveuse', 'caissier', 'caissier1', 'caissier2', 'comptoiriste', 'administrateur', 'admin', 'super_admin'], true)) {
-            if (strtolower((string) $user->role) === 'serveuse') {
+        $role = strtolower((string) ($user?->role ?? ''));
+        if ($user && in_array($role, ['serveuse', 'caissier', 'caissier1', 'caissier2', 'comptoiriste', 'administrateur', 'admin', 'super_admin', 'superviseur'], true)) {
+            if ($role === 'serveuse') {
                 return redirect()->intended($this->getServeusePlanVenteRoute());
             }
 

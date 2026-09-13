@@ -52,7 +52,7 @@ class UserController extends Controller
                     }
                 },
             ],
-            'role' => ['required', Rule::in(['super_admin','admin','caissier','caissier1','caissier2','comptoiriste','cuisinière','serveuse','Administrateur','Caissier','Serveuse'])],
+            'role' => ['required', Rule::in(['super_admin','admin','caissier','caissier1','caissier2','comptoiriste','cuisinière','serveuse','superviseur','Administrateur','Caissier','Serveuse','Superviseur'])],
             'code_pin' => ['nullable','regex:/^\d{4}$/'],
             'point_de_vente_ids' => ['nullable', 'array'],
             'point_de_vente_ids.*' => [
@@ -94,7 +94,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => ['required','email',Rule::unique('users')->ignore($user->id)],
             'password' => ['nullable', 'string', 'digits:4', 'confirmed'],
-            'role' => ['required', Rule::in(['super_admin','admin','caissier','caissier1','caissier2','comptoiriste','cuisinière','serveuse','Administrateur','Caissier','Serveuse'])],
+            'role' => ['required', Rule::in(['super_admin','admin','caissier','caissier1','caissier2','comptoiriste','cuisinière','serveuse','superviseur','Administrateur','Caissier','Serveuse','Superviseur'])],
             'code_pin' => ['nullable','regex:/^\d{4}$/'],
             'point_de_vente_ids' => ['nullable', 'array'],
             'point_de_vente_ids.*' => [

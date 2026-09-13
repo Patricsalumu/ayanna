@@ -34,14 +34,13 @@
                     <label for="role" class="block text-gray-700 font-medium mb-1">Rôle</label>
                     <select name="role" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400" required>
                         <option value="">-- Sélectionner --</option>
-                        <option value="super_admin">Super Admin</option>
+                        <!-- <option value="super_admin">Super Admin</option> -->
                         <option value="admin">Admin</option>
                         <option value="caissier">Caissier</option>
                         <option value="caissier1">Caissier 1</option>
                         <option value="caissier2">Caissier 2</option>
-                        <option value="cuisinière">Cuisinière</option>
                         <option value="serveuse">Serveuse</option>
-                        <option value="Administrateur">Administrateur</option>
+                        <option value="superviseur">Superviseur</option>
                     </select>
                     @error('role')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror
                 </div>

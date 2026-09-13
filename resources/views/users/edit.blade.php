@@ -41,6 +41,7 @@
                         <option value="caissier2" @if(in_array($user->role, ['caissier2', 'comptoiriste2', 'cashier2'], true)) selected @endif>Caissier 2</option>
                         <option value="cuisinière" @if($user->role=='cuisinière') selected @endif>Cuisinière</option>
                         <option value="serveuse" @if($user->role=='serveuse') selected @endif>Serveuse</option>
+                        <option value="superviseur" @if(in_array($user->role, ['superviseur', 'Superviseur'], true)) selected @endif>Superviseur</option>
                         <option value="Administrateur" @if($user->role=='Administrateur') selected @endif>Administrateur</option>
                     </select>
                     @error('role')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror

@@ -31,7 +31,7 @@ class EnsureRoleAccess
 
         return match ($value) {
             'admin', 'administrateur', 'super_admin' => 'admin',
-            'cashier', 'caissier', 'comptoiriste' => 'cashier',
+            'cashier', 'caissier', 'comptoiriste', 'superviseur', 'supervisor' => 'cashier',
             'cashier1', 'caissier1', 'comptoiriste1', 'caissier_1', 'cashier_1', 'comptoiriste_1' => 'cashier1',
             'cashier2', 'caissier2', 'comptoiriste2', 'caissier_2', 'cashier_2', 'comptoiriste_2' => 'cashier2',
             'serveuse', 'waitress', 'cuisiniere', 'cuisinière' => 'serveuse',
