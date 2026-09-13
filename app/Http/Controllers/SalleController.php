@@ -149,7 +149,7 @@ class SalleController extends Controller
 
         $salle->load('tables');
 
-        if ($this->permissionService->isWaitress($user)) {
+        if (!$this->permissionService->isAdmin($user)) {
             $salle->setRelation('tables', $salle->tables->filter(fn ($table) => $this->permissionService->canAccessTable($user, $table))->values());
         }
         $sallesLiees = $pointDeVente ? $pointDeVente->salles : collect([$salle]);

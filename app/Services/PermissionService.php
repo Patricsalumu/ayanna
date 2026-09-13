@@ -17,11 +17,11 @@ class PermissionService
             return false;
         }
 
-        if ($this->isCashier($user) || $this->isSupervisor($user)) {
+        if ($this->isAdmin($user)) {
             return true;
         }
 
-        if ($this->isWaitress($user)) {
+        if ($this->isWaitress($user) || $this->isCashier($user)) {
             return (int) ($table->serveuse_id ?? 0) === (int) ($user->id ?? 0);
         }
 
@@ -109,15 +109,11 @@ class PermissionService
     
     public function canAddProductsToTable(?object $user): bool
     {
-        if ($this->isSupervisor($user)) {
-            return false;
-        }
-
-        if ($this->isCashierType1($user)) {
+        if ($this->isWaitress($user) || $this->isCashier($user)) {
             return true;
         }
 
-        return !$this->isCashier($user);
+        return $this->isAdmin($user);
     }
 
     public function resolveServeuseId(?object $user, ?string $currentServeuseId): ?string

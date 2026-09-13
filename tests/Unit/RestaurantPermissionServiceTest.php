@@ -27,7 +27,7 @@ class RestaurantPermissionServiceTest extends TestCase
         $this->assertFalse($service->canAccessTable($waitress, $otherTable));
     }
 
-    public function test_cashier_can_access_all_tables_but_waitress_cannot_validate_payment(): void
+    public function test_cashier_can_access_his_tables_but_waitress_cannot_validate_payment(): void
     {
         $service = new PermissionService();
 
@@ -41,7 +41,7 @@ class RestaurantPermissionServiceTest extends TestCase
 
         $table = new \stdClass();
         $table->id = 21;
-        $table->serveuse_id = 7;
+        $table->serveuse_id = 4;
 
         $this->assertTrue($service->canAccessTable($cashier, $table));
         $this->assertFalse($service->canValidatePayment($waitress));
@@ -71,14 +71,14 @@ class RestaurantPermissionServiceTest extends TestCase
 
         $table = new \stdClass();
         $table->id = 12;
-        $table->serveuse_id = 7;
+        $table->serveuse_id = 9;
 
         $this->assertTrue($service->isSupervisor($supervisor));
         $this->assertTrue($service->isCashier($supervisor));
         $this->assertTrue($service->canAccessTable($supervisor, $table));
         $this->assertFalse($service->canOpenTable($supervisor));
         $this->assertFalse($service->canValidatePayment($supervisor));
-        $this->assertFalse($service->canAddProductsToTable($supervisor));
+        $this->assertTrue($service->canAddProductsToTable($supervisor));
         $this->assertTrue($service->canTransferTableProducts($supervisor));
         $this->assertFalse($service->canApplyDiscount($supervisor));
         $this->assertFalse($service->canManageSalesSession($supervisor));

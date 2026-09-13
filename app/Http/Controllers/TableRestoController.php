@@ -3,16 +3,29 @@
 namespace App\Http\Controllers;
 
 use App\Models\TableResto;
+use App\Services\PermissionService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class TableRestoController extends Controller
 {
+    public function __construct(protected PermissionService $permissionService)
+    {
+    }
+
     /**
      * Met à jour une table du restaurant.
      */
     public function update(Request $request, TableResto $table)
     {
+        abort_unless(
+            $this->permissionService->isAdmin(Auth::user())
+                || $this->permissionService->canAccessTable(Auth::user(), $table),
+            403,
+            'Cette table ne vous est pas affectée.'
+        );
+
         $rules = [
             'numero' => [
                 'nullable',
@@ -40,6 +53,7 @@ class TableRestoController extends Controller
      */
     public function store(Request $request)
     {
+        $user = Auth::user();
         $validated = $request->validate([
             'salle_id' => 'required|exists:salles,id',
             'numero' => [
@@ -71,6 +85,10 @@ class TableRestoController extends Controller
             $validated['height'] = 80;
         }
 
+        if (!$this->permissionService->isAdmin($user)) {
+            $validated['serveuse_id'] = $user->id;
+        }
+
         $table = TableResto::create($validated);
 
         return response()->json(['success' => true, 'table' => $table]);
@@ -81,6 +99,13 @@ class TableRestoController extends Controller
      */
     public function destroy(TableResto $table)
     {
+        abort_unless(
+            $this->permissionService->isAdmin(Auth::user())
+                || $this->permissionService->canAccessTable(Auth::user(), $table),
+            403,
+            'Cette table ne vous est pas affectée.'
+        );
+
         $table->delete();
 
         return response()->json(['success' => true]);
@@ -91,7 +116,11 @@ class TableRestoController extends Controller
      */
     public function getTablesBySalle($salleId)
     {
-        $tables = TableResto::where('salle_id', $salleId)->get();
+        $query = TableResto::where('salle_id', $salleId);
+        if (!$this->permissionService->isAdmin(Auth::user())) {
+            $query->where('serveuse_id', Auth::id());
+        }
+        $tables = $query->get();
 
         return response()->json($tables);
     }

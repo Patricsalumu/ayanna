@@ -1,5 +1,19 @@
 @extends('layouts.appsalle')
 @section('content')
+@php
+    $tableAssignableUsersQuery = $entreprise->users()
+        ->whereIn('role', [
+            'serveuse', 'Serveuse',
+            'caissier', 'Caissier', 'cashier', 'Cashier',
+            'caissier1', 'Caissier1', 'cashier1', 'Cashier1',
+            'caissier2', 'Caissier2', 'cashier2', 'Cashier2',
+            'superviseur', 'Superviseur', 'supervisor', 'Supervisor',
+        ]);
+    if (!app(\App\Services\PermissionService::class)->isAdmin(auth()->user())) {
+        $tableAssignableUsersQuery->whereKey(auth()->id());
+    }
+    $tableAssignableUsers = $tableAssignableUsersQuery->orderBy('name')->get();
+@endphp
 <div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-6">
     <!-- Bouton retour stylisé Ayanna -->
     <div class="mb-6 flex items-center">
@@ -40,8 +54,8 @@
                 <p class="mb-2">Table <span id="assignTableNumero" class="font-bold">-</span></p>
                 <select id="assignServeuseSelect" class="w-full border rounded px-3 py-2">
                     <option value="">Aucune serveuse</option>
-                    @foreach($entreprise->users()->where('role', 'serveuse')->get() as $serveuse)
-                        <option value="{{ $serveuse->id }}">{{ $serveuse->name }}</option>
+                    @foreach($tableAssignableUsers as $tableUser)
+                        <option value="{{ $tableUser->id }}">{{ $tableUser->name }} ({{ $tableUser->role }})</option>
                     @endforeach
                 </select>
                 <div class="mt-4 flex justify-end gap-2">
@@ -114,8 +128,8 @@
                 <label class="block text-sm font-semibold mb-1">Serveuse</label>
                 <select name="serveuse_id" class="border border-gray-300 rounded px-3 py-2 w-full">
                     <option value="">Aucune serveuse</option>
-                    @foreach($entreprise->users()->where('role', 'serveuse')->get() as $serveuse)
-                        <option value="{{ $serveuse->id }}">{{ $serveuse->name }}</option>
+                    @foreach($tableAssignableUsers as $tableUser)
+                        <option value="{{ $tableUser->id }}">{{ $tableUser->name }} ({{ $tableUser->role }})</option>
                     @endforeach
                 </select>
             </div>

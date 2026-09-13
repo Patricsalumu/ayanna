@@ -33,7 +33,7 @@ class VenteController extends Controller
 
             $categories = $pointDeVente->categories;
 
-            if ($this->permissionService->isWaitress($user) && $request->get('table_id')) {
+            if (!$this->permissionService->isAdmin($user) && $request->get('table_id')) {
                 $table = \App\Models\TableResto::find($request->get('table_id'));
                 if (!$this->permissionService->canAccessTable($user, $table)) {
                     abort(403, 'Cette table ne vous est pas assignée.');
@@ -112,7 +112,7 @@ class VenteController extends Controller
             $clients = $pointDeVente->entreprise->clients;
             $serveuses = $pointDeVente->entreprise->users()->whereIn('role', ['Serveuse', 'serveuse'])->get();
             $tables = \App\Models\TableResto::whereIn('salle_id', $pointDeVente->salles->pluck('id'))->get();
-            if ($this->permissionService->isWaitress($user)) {
+            if (!$this->permissionService->isAdmin($user)) {
                 $tables = $tables->filter(fn ($table) => $this->permissionService->canAccessTable($user, $table));
             }
 
@@ -259,7 +259,7 @@ class VenteController extends Controller
             }
 
             $table = \App\Models\TableResto::find($tableId);
-            if ($this->permissionService->isWaitress($user) && !$this->permissionService->canAccessTable($user, $table)) {
+            if (!$this->permissionService->isAdmin($user) && !$this->permissionService->canAccessTable($user, $table)) {
                 return response()->json(['success' => false, 'error' => 'Vous ne pouvez pas ouvrir cette table.'], 403);
             }
 

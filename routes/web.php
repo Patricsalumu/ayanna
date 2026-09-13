@@ -86,13 +86,15 @@ Route::middleware(['auth', 'serveuse.session.timeout'])->group(function ()
         //Route pour les salles
         Route::get('entreprises/{entreprise}/salles', [SalleController::class, 'show'])->name('salles.show');
         Route::get('entreprises/{entreprise}/salles/create', [SalleController::class, 'create'])->name('salles.create');
-        Route::get('/entreprises/{entreprise}/salles/{salle}/plan', [SalleController::class, 'plan'])->name('salle.plan');
         Route::post('entreprises/{entreprise}/salles', [SalleController::class, 'store'])->name('salles.store');
         Route::get('entreprises/{entreprise}/salles/{salle}/edit', [SalleController::class, 'edit'])->name('salles.edit');
         Route::put('entreprises/{entreprise}/salles/{salle}', [SalleController::class, 'update'])->name('salles.update');
         Route::delete('entreprises/{entreprise}/salles/{salle}', [SalleController::class, 'destroy'])->name('salles.destroy');
+    });
 
-        //Routes pour les tables
+    // Plan et gestion des tables : administrateurs, caissiers et superviseurs.
+    Route::middleware(['role.access:admin,cashier,cashier1,cashier2'])->group(function () {
+        Route::get('/entreprises/{entreprise}/salles/{salle}/plan', [SalleController::class, 'plan'])->name('salle.plan');
         Route::get('/salles/{salle}/tables', [TableRestoController::class, 'getTablesBySalle'])->name('tables.getBySalle');
         Route::get('/salles/{salle}/tables/create', [TableRestoController::class, 'create'])->name('tables.create');
         Route::put('/tables/{table}', [TableRestoController::class, 'update'])->name('tables.update');

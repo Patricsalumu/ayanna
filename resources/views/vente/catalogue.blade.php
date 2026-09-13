@@ -168,7 +168,7 @@
             <option selected>Table</option>
           @endif
         </select>
-        @if(!(Auth::user() && (Auth::user()->role === 'Serveuse' || Auth::user()->role === 'serveuse')))
+        @if(app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user()))
           <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-1 px-2 py-0.5 appearance-none" style="height:40px;" @click="openPaiement()">Paiement</button>
         @endif
       </div>
