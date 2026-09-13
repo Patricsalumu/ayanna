@@ -146,6 +146,9 @@ class StockJournalierController extends Controller
             $q_reste = $q_total - $q_vendue;
             $prix = $produit->prix_vente;
             $total = $q_vendue * $prix;
+            $prixAchat = (float) ($produit->prix_achat ?? 0);
+            $cout = $q_vendue * $prixAchat;
+            $marge = $total - $cout;
 
             return [
                 'produit_id' => $produit->id,
@@ -159,7 +162,10 @@ class StockJournalierController extends Controller
                 'q_vendue' => $q_vendue,
                 'q_reste' => $q_reste,
                 'prix' => $prix,
+                'prix_achat' => $prixAchat,
                 'total' => $total,
+                'cout' => $cout,
+                'marge' => $marge,
             ];
         });
 
@@ -173,8 +179,16 @@ class StockJournalierController extends Controller
         $categoryTotals = $produitsByCategory->map(function ($produits) {
             return $produits->sum('total');
         });
+        $categoryCosts = $produitsByCategory->map(function ($produits) {
+            return $produits->sum('cout');
+        });
+        $categoryMargins = $produitsByCategory->map(function ($produits) {
+            return $produits->sum('marge');
+        });
 
         $totalVente = $categoryTotals->sum();
+        $totalCout = $categoryCosts->sum();
+        $totalMarge = $categoryMargins->sum();
 
         $sessionStart = $heureOuverture ?? Carbon::parse($date)->startOfDay();
         $sessionEnd = $heureFermeture ?? Carbon::parse($date)->endOfDay();
@@ -304,6 +318,8 @@ class StockJournalierController extends Controller
             'produits',
             'produitsByCategory',
             'categoryTotals',
+            'categoryCosts',
+            'categoryMargins',
             'date',
             'session',
             'sessionLabel',
@@ -312,6 +328,8 @@ class StockJournalierController extends Controller
             'sessionEnCours',
             'ventesParProduit',
             'totalVente',
+            'totalCout',
+            'totalMarge',
             'totalRemise',
             'totalCreance',
             'totalOffre',
@@ -455,7 +473,15 @@ class StockJournalierController extends Controller
             $data['categoryTotals'] = $data['produitsByCategory']->map(function ($produits) {
                 return $produits->sum('total');
             });
+            $data['categoryCosts'] = $data['produitsByCategory']->map(function ($produits) {
+                return $produits->sum('cout');
+            });
+            $data['categoryMargins'] = $data['produitsByCategory']->map(function ($produits) {
+                return $produits->sum('marge');
+            });
             $data['totalVente'] = $data['categoryTotals']->sum();
+            $data['totalCout'] = $data['categoryCosts']->sum();
+            $data['totalMarge'] = $data['categoryMargins']->sum();
         }
 
         $fileName = 'stock_journalier_'.$data['date'];

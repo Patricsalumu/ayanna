@@ -171,21 +171,30 @@
                         <th class="px-4 py-4 text-center text-sm font-bold text-gray-700">Q. Restante</th>
                         <th class="px-4 py-4 text-right text-sm font-bold text-gray-700">Prix unitaire</th>
                         <th class="px-4 py-4 text-right text-sm font-bold text-gray-700">Total</th>
+                        <th class="px-4 py-4 text-right text-sm font-bold text-gray-700">Coût</th>
+                        <th class="px-4 py-4 text-right text-sm font-bold text-gray-700">Marge</th>
                         <th class="px-4 py-4 text-center text-sm font-bold text-gray-700">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                 @foreach($produitsByCategory as $categorie => $produitsCategorie)
                     <tr class="bg-blue-50 border-y border-blue-200 category-row" data-category-id="{{ $produitsCategorie->first()['categorie_id'] ?? '' }}">
-                        <td colspan="9" class="px-4 py-3 text-left font-bold text-blue-900">
+                        <td colspan="8" class="px-4 py-3 text-left font-bold text-blue-900">
                             Catégorie : {{ $categorie }}
                         </td>
                         <td class="px-4 py-3 text-right font-bold text-blue-900 category-total" data-total="{{ $categoryTotals[$categorie] ?? 0 }}">
                             <span>{{ optional(auth()->user()?->entreprise)->formatAmount($categoryTotals[$categorie] ?? 0, true, 2) }}</span>
                         </td>
+                        <td class="px-4 py-3 text-right font-bold text-blue-900 category-cost">
+                            <span>{{ optional(auth()->user()?->entreprise)->formatAmount($categoryCosts[$categorie] ?? 0, true, 2) }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-right font-bold text-blue-900 category-margin">
+                            <span>{{ optional(auth()->user()?->entreprise)->formatAmount($categoryMargins[$categorie] ?? 0, true, 2) }}</span>
+                        </td>
+                        <td></td>
                     </tr>
                     @foreach($produitsCategorie as $produit)
-                        <tr class="hover:bg-blue-50 transition-colors duration-200 product-row" data-product-name="{{ strtolower($produit['nom']) }}" data-category-id="{{ $produit['categorie_id'] ?? '' }}" data-sold="{{ $produit['q_vendue'] > 0 ? '1' : '0' }}" data-total="{{ $produit['total'] }}">
+                        <tr class="hover:bg-blue-50 transition-colors duration-200 product-row" data-product-name="{{ strtolower($produit['nom']) }}" data-category-id="{{ $produit['categorie_id'] ?? '' }}" data-sold="{{ $produit['q_vendue'] > 0 ? '1' : '0' }}" data-total="{{ $produit['total'] }}" data-cost="{{ $produit['cout'] }}" data-margin="{{ $produit['marge'] }}">
                             <td class="px-4 py-4">
                                 <span class="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
                                     {{ $produit['stock_id'] ?? '-' }}
@@ -215,6 +224,12 @@
                             <td class="px-4 py-4 text-right">
                                 <span class="text-lg font-bold text-gray-900">{{ optional(auth()->user()?->entreprise)->formatAmount($produit['total'], true, 2) }}</span>
                             </td>
+                            <td class="px-4 py-4 text-right">
+                                <span class="text-lg font-bold text-gray-900">{{ optional(auth()->user()?->entreprise)->formatAmount($produit['cout'], true, 2) }}</span>
+                            </td>
+                            <td class="px-4 py-4 text-right">
+                                <span class="text-lg font-bold text-green-700">{{ optional(auth()->user()?->entreprise)->formatAmount($produit['marge'], true, 2) }}</span>
+                            </td>
                             <td class="px-4 py-4 text-center">
                                 <form method="POST" action="{{ url('stock-journalier/qtajoute') }}" class="inline-flex items-center gap-2">
                                     @csrf
@@ -239,9 +254,15 @@
         
         <!-- Total des ventes -->
         <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
-            <div class="text-right">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-right">
                 <span id="visibleSalesTotal" class="text-xl font-bold text-blue-700" data-label="Total vente session">
                     Total vente session : {{ optional(auth()->user()?->entreprise)->formatAmount($totalVente ?? 0, true, 2) }}
+                </span>
+                <span id="visibleCostTotal" class="text-xl font-bold text-gray-800">
+                    Coût final : {{ optional(auth()->user()?->entreprise)->formatAmount($totalCout ?? 0, true, 2) }}
+                </span>
+                <span id="visibleMarginTotal" class="text-xl font-bold text-green-700">
+                    Marge finale : {{ optional(auth()->user()?->entreprise)->formatAmount($totalMarge ?? 0, true, 2) }}
                 </span>
             </div>
         </div>
@@ -358,6 +379,8 @@
         const onlySold = Array.from(document.querySelectorAll('.only-sold-filter')).some(check => check.checked);
         let visibleRows = 0;
         let visibleTotal = 0;
+        let visibleCost = 0;
+        let visibleMargin = 0;
         
         rows.forEach(function(row) {
             const productName = row.getAttribute('data-product-name') || '';
@@ -373,6 +396,8 @@
                 row.style.display = '';
                 visibleRows++;
                 visibleTotal += Number(row.getAttribute('data-total') || 0);
+                visibleCost += Number(row.getAttribute('data-cost') || 0);
+                visibleMargin += Number(row.getAttribute('data-margin') || 0);
             } else {
                 row.style.display = 'none';
             }
@@ -383,6 +408,8 @@
             const categoryProducts = Array.from(rows).filter(row => (row.getAttribute('data-category-id') || '') === categoryId);
             const visibleCategoryProducts = categoryProducts.filter(row => row.style.display !== 'none');
             const categoryTotal = visibleCategoryProducts.reduce((sum, row) => sum + Number(row.getAttribute('data-total') || 0), 0);
+            const categoryCost = visibleCategoryProducts.reduce((sum, row) => sum + Number(row.getAttribute('data-cost') || 0), 0);
+            const categoryMargin = visibleCategoryProducts.reduce((sum, row) => sum + Number(row.getAttribute('data-margin') || 0), 0);
             categoryRow.style.display = visibleCategoryProducts.length > 0 ? '' : 'none';
             const totalElement = categoryRow.querySelector('.category-total');
             if (totalElement) {
@@ -391,11 +418,23 @@
                     amount.textContent = formatVisibleAmount(categoryTotal);
                 }
             }
+            const costElement = categoryRow.querySelector('.category-cost span');
+            if (costElement) costElement.textContent = formatVisibleAmount(categoryCost);
+            const marginElement = categoryRow.querySelector('.category-margin span');
+            if (marginElement) marginElement.textContent = formatVisibleAmount(categoryMargin);
         });
 
         const visibleSalesTotal = document.getElementById('visibleSalesTotal');
         if (visibleSalesTotal) {
             visibleSalesTotal.textContent = 'Total vente affichée : ' + formatVisibleAmount(visibleTotal);
+        }
+        const visibleCostTotal = document.getElementById('visibleCostTotal');
+        if (visibleCostTotal) {
+            visibleCostTotal.textContent = 'Coût final : ' + formatVisibleAmount(visibleCost);
+        }
+        const visibleMarginTotal = document.getElementById('visibleMarginTotal');
+        if (visibleMarginTotal) {
+            visibleMarginTotal.textContent = 'Marge finale : ' + formatVisibleAmount(visibleMargin);
         }
         
         // Afficher un message si aucun résultat
