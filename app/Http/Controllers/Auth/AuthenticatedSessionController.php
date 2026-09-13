@@ -99,15 +99,15 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
-        if ($request->boolean('serveuse_logout')) {
-            return redirect()->route('serveuse.login');
-        }
-
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
+
+        if ($request->boolean('serveuse_logout')) {
+            return redirect()->route('serveuse.login');
+        }
 
         return redirect()->route('login');
     }

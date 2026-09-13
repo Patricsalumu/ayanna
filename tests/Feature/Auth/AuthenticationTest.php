@@ -82,4 +82,18 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
         $response->assertRedirect('/');
     }
+
+    public function test_serveuse_logout_redirects_to_serveuse_login_and_closes_session(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'serveuse',
+        ]);
+
+        $response = $this->actingAs($user)->post('/logout', [
+            'serveuse_logout' => '1',
+        ]);
+
+        $this->assertGuest();
+        $response->assertRedirect(route('serveuse.login'));
+    }
 }

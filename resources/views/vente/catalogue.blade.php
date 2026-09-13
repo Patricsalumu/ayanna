@@ -1,6 +1,12 @@
 @extends('layouts.appvente')
 
 @section('content')
+@php
+  $isServeuseInterface = app(\App\Services\PermissionService::class)->isWaitress(auth()->user());
+  $tableCouranteModel = isset($tableCourante) ? $tables->firstWhere('id', $tableCourante) : null;
+  $tableCouranteLabel = $tableCouranteModel?->numero ? 'T'.$tableCouranteModel->numero : ($tableCouranteModel ? 'Table '.$tableCouranteModel->id : 'Table');
+  $serveuseCouranteName = $panier?->serveuse?->name ?? $tableCouranteModel?->serveuse?->name ?? auth()->user()?->name;
+@endphp
 <div x-data="posApp()" class="flex flex-col md:flex-row gap-4 p-4 min-h-[80vh]">
   <!-- COLONNE GAUCHE : Panier + Options + Pavé numérique -->
   <div class="w-full md:w-1/3 flex flex-col gap-2">
@@ -8,18 +14,14 @@
     <div class="bg-white rounded-2xl shadow p-1 min-h-0 h-auto" style="padding-top:0.25rem;padding-bottom:0.25rem;">
       <div class="flex justify-between items-center mb-2">
         <h2 class="text-xl font-semibold flex items-center gap-2">
-          🛒 Panier
+          🛒
+          @if($isServeuseInterface)
+            Panier - {{ $tableCouranteLabel }} - {{ $serveuseCouranteName ?? 'Serveuse' }}
+          @else
+            Panier
+          @endif
         </h2>
         <div class="flex items-center gap-2">
-          @if(in_array(auth()->user()?->role, ['Serveuse', 'serveuse'], true))
-            <form method="POST" action="{{ route('logout') }}" class="inline-block">
-              @csrf
-              <input type="hidden" name="serveuse_logout" value="1">
-              <button type="submit" class="rounded bg-gray-800 px-3 py-2 text-white text-xs font-semibold hover:bg-gray-700">
-                Déconnexion
-              </button>
-            </form>
-          @endif
           <button @click="toggleOptions" class="text-gray-500 hover:text-gray-700">
             <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M6 10a2 2..."/></svg>
           </button>
@@ -95,32 +97,45 @@
 
     @if(app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user()))
       <template x-if="panier.length">
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid {{ $isServeuseInterface ? 'grid-cols-3' : 'grid-cols-2' }} gap-2 min-w-0">
           <button
             type="button"
             @click="if (!bonCommandeEnCours && !bonCommandePrintEnCours) genererBonCommande()"
             :disabled="bonCommandeEnCours || bonCommandePrintEnCours"
-            class="min-h-[62px] rounded-2xl bg-orange-600 text-white font-black text-lg shadow hover:bg-orange-700 transition px-4 py-3 leading-tight disabled:opacity-70 disabled:cursor-not-allowed"
+            class="{{ $isServeuseInterface ? 'min-h-[48px] rounded-xl text-sm px-2 py-2' : 'min-h-[62px] rounded-2xl text-lg px-4 py-3' }} bg-orange-600 text-white font-black shadow hover:bg-orange-700 transition leading-tight whitespace-nowrap min-w-0 disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            <span x-show="!bonCommandeEnCours && !bonCommandePrintEnCours" class="block">Commander</span>
-            <span x-show="bonCommandeEnCours || bonCommandePrintEnCours" class="block">Traitement...</span>
+            <span x-show="!bonCommandeEnCours && !bonCommandePrintEnCours" class="block whitespace-nowrap">Commander</span>
+            <span x-show="bonCommandeEnCours || bonCommandePrintEnCours" class="block whitespace-nowrap">Traitement...</span>
           </button>
 
           <button
             type="button"
             @click="if (!bonCommandeEnCours && !bonCommandePrintEnCours) imprimerFactureBon()"
             :disabled="bonCommandeEnCours || bonCommandePrintEnCours"
-            class="min-h-[62px] rounded-2xl bg-blue-600 text-white font-black text-lg shadow hover:bg-blue-700 transition px-4 py-3 leading-tight disabled:opacity-70 disabled:cursor-not-allowed"
+            class="{{ $isServeuseInterface ? 'min-h-[48px] rounded-xl bg-gray-100 text-gray-700 text-xs border border-gray-300 shadow-sm hover:bg-gray-200 px-2 py-2' : 'min-h-[62px] rounded-2xl bg-blue-600 text-white font-black text-lg shadow hover:bg-blue-700 px-3 py-2' }} font-bold transition leading-tight whitespace-nowrap min-w-0 disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            <span x-show="!bonCommandeEnCours && !bonCommandePrintEnCours" class="block">Facture bon</span>
-            <span x-show="bonCommandeEnCours || bonCommandePrintEnCours" class="block">Traitement...</span>
+            <span x-show="!bonCommandeEnCours && !bonCommandePrintEnCours" class="block whitespace-nowrap">Facture bon</span>
+            <span x-show="bonCommandeEnCours || bonCommandePrintEnCours" class="block whitespace-nowrap">Traitement...</span>
           </button>
+
+          @if($isServeuseInterface)
+            <button
+              type="button"
+              @click="if (!bonCommandeEnCours && !bonCommandePrintEnCours) imprimerFactureFinale()"
+              :disabled="bonCommandeEnCours || bonCommandePrintEnCours"
+              class="min-h-[48px] rounded-xl bg-gray-800 text-white font-black text-sm shadow hover:bg-gray-900 transition px-2 py-2 leading-tight whitespace-nowrap min-w-0 disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              <span x-show="!bonCommandeEnCours && !bonCommandePrintEnCours" class="block whitespace-nowrap">Facture finale</span>
+              <span x-show="bonCommandeEnCours || bonCommandePrintEnCours" class="block whitespace-nowrap">Traitement...</span>
+            </button>
+          @endif
         </div>
       </template>
     @endif
 
     <!-- Sélecteurs + Options -->
     <div class="bg-white rounded-2xl shadow p-1 min-h-0 h-auto mt-1 mb-0">
+      @unless($isServeuseInterface)
       <div class="flex flex-row flex-wrap gap-2 mb-4 justify-between items-center">
         <select
           class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-pink-500 text-white font-bold shadow focus:ring-2 focus:ring-pink-300 transition text-center mx-1 px-2 py-0.5 appearance-none"
@@ -172,8 +187,9 @@
           <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-1 px-2 py-0.5 appearance-none" style="height:40px;" @click="openPaiement()">Paiement</button>
         @endif
       </div>
+      @endunless
       <div class="flex flex-row flex-wrap gap-2 mb-2 justify-between items-center">
-        @if(app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user()))
+        @if(!$isServeuseInterface && app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user()))
           <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[140px] rounded-xl bg-gray-800 text-white 
           font-bold shadow hover:bg-gray-900 transition text-center px-4 py-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
           @click="if (!bonCommandeEnCours && !bonCommandePrintEnCours) imprimerFactureFinale()"
@@ -252,15 +268,20 @@
                 Retour plan
               </a>
 
-              <button type="button" @click.prevent="refreshCatalogueFromServer()" class="inline-flex items-center justify-center rounded bg-emerald-600 px-4 py-3 text-white text-sm font-semibold hover:bg-emerald-700 transition whitespace-nowrap min-w-[120px]">
+              <a href="{{ $retourPlanUrl }}" class="inline-flex items-center justify-center rounded bg-emerald-600 px-4 py-3 text-white text-sm font-semibold hover:bg-emerald-700 transition whitespace-nowrap min-w-[120px]">
                 Rafraîchir
-              </button>
+              </a>
 
-              @if(in_array(auth()->user()?->role, ['Serveuse', 'serveuse'], true))
-                <button type="button" @click.prevent="logoutServeuse()" class="rounded bg-gray-800 px-4 py-3 text-white text-sm font-semibold hover:bg-gray-700 transition whitespace-nowrap min-w-[120px]">
-                  Déconnexion
-                </button>
+              @if($isServeuseInterface)
+                <form method="POST" action="{{ route('logout') }}" class="inline-block" @submit.stop>
+                  @csrf
+                  <input type="hidden" name="serveuse_logout" value="1">
+                  <button type="submit" class="inline-flex items-center justify-center rounded bg-gray-800 px-4 py-3 text-white text-sm font-semibold hover:bg-gray-700 transition whitespace-nowrap min-w-[120px]">
+                    Déconnexion
+                  </button>
+                </form>
               @endif
+
             </div>
           </div>
           {{-- Catégories avec couleurs --}}
@@ -406,9 +427,6 @@
       <div class="flex flex-col sm:flex-row gap-3 justify-center">
         <button type="button" @click="continueCatalogueAfterPrint()" class="px-5 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">
           Continuer sur le catalogue
-        </button>
-        <button type="button" @click="logoutServeuse()" class="px-5 py-3 rounded-xl bg-gray-800 text-white font-semibold hover:bg-gray-700 transition">
-          Déconnexion
         </button>
       </div>
     </div>

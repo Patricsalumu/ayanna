@@ -55,7 +55,11 @@ class PermissionService
 
     public function canApplyDiscount(?object $user): bool
     {
-        return $this->isAdmin($user) || $this->isSuperAdmin($user) || ($this->isCashier($user) && !$this->isSupervisor($user));
+        return $this->isAdmin($user)
+            || $this->isSuperAdmin($user)
+            || $this->isWaitress($user)
+            || $this->isSupervisor($user)
+            || ($this->isCashier($user) && !$this->isSupervisor($user));
     }
 
     public function canManageSalesSession(?object $user): bool
@@ -80,7 +84,7 @@ class PermissionService
 
     public function canTransferTableProducts(?object $user): bool
     {
-        return $this->isAdmin($user) || $this->isSupervisor($user) || $this->isWaitress($user) || $this->isCashier($user);
+        return $this->isAdmin($user) || $this->isSupervisor($user);
     }
 
     public function canAccessPointDeVente(?object $user, ?int $pointDeVenteId): bool

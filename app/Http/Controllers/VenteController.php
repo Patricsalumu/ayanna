@@ -537,7 +537,7 @@ class VenteController extends Controller
             if (!$this->permissionService->canTransferTableProducts($user)) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Seules les serveuses et les caissiers peuvent effectuer un transfert de table.',
+                    'error' => 'Seuls les administrateurs et les superviseurs peuvent effectuer un transfert de table.',
                 ], 403);
             }
 

@@ -57,7 +57,7 @@ class RestaurantPermissionServiceTest extends TestCase
         $cashier->role = 'Caissier';
 
         $this->assertTrue($service->canApplyDiscount($cashier));
-        $this->assertTrue($service->canTransferTableProducts($cashier));
+        $this->assertFalse($service->canTransferTableProducts($cashier));
         $this->assertTrue($service->isCashier($cashier));
     }
 
@@ -80,8 +80,13 @@ class RestaurantPermissionServiceTest extends TestCase
         $this->assertFalse($service->canValidatePayment($supervisor));
         $this->assertTrue($service->canAddProductsToTable($supervisor));
         $this->assertTrue($service->canTransferTableProducts($supervisor));
-        $this->assertFalse($service->canApplyDiscount($supervisor));
+        $this->assertTrue($service->canApplyDiscount($supervisor));
         $this->assertFalse($service->canManageSalesSession($supervisor));
+
+        $waitress = new \stdClass();
+        $waitress->role = 'Serveuse';
+        $this->assertFalse($service->canTransferTableProducts($waitress));
+        $this->assertTrue($service->canApplyDiscount($waitress));
     }
 
     public function test_waitress_is_auto_assigned_to_her_own_orders(): void
