@@ -71,11 +71,6 @@
                                 </button>
                             @endif
                         @endif
-                        <button type="button"
-                            class="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
-                            @click.stop="open = false; showDelete = true">
-                            Supprimer
-                        </button>
                     </div>
                     <!-- MODALE EDITION POINT DE VENTE -->
                     <div x-show="showEdit" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
@@ -107,32 +102,6 @@
                                 <div class="text-center py-8 text-gray-500">Chargement...</div>
                             </template>
                             <div x-html="duplicateFormHtml"></div>
-                        </div>
-                    </div>
-                    <!-- MODALE DE CONFIRMATION SUPPRESSION -->
-                    <div x-show="showDelete" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-                        <div class="bg-white rounded-lg shadow-lg w-full max-w-sm p-6 relative text-center animate-fade-in">
-                            <div class="flex items-center justify-between mb-4">
-                                <img src="{{ asset('storage/logos/favicon.png') }}" alt="Ayanna" class="w-8 h-8 rounded-full shadow border-2 border-white bg-white">
-                                <button @click="showDelete = false" class="text-gray-400 hover:text-gray-600">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
-                            <div class="flex flex-col items-center justify-center">
-                                <div class="bg-red-100 rounded-full p-3 mb-3 mt-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                </div>
-                                <h3 class="text-lg font-bold text-gray-800 mb-2">Confirmer la suppression</h3>
-                                <p class="text-gray-600 mb-4">Voulez-vous vraiment supprimer le point de vente <span class="font-semibold">{{ $pdv->nom }}</span> ?<br><span class="text-xs text-gray-400">Cette action est irréversible.</span></p>
-                                <form method="POST" action="{{ route('pointsDeVente.destroy', [$entreprise->id, $pdv->id]) }}">
-                                    @csrf
-                                    @method('DELETE')
-                                    <div class="flex justify-center gap-3 mt-2">
-                                        <button type="button" @click="showDelete = false" class="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300">Annuler</button>
-                                        <button type="submit" class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700">Supprimer</button>
-                                    </div>
-                                </form>
-                            </div>
                         </div>
                     </div>
                 </div>

@@ -163,9 +163,9 @@ class PointDeVenteController extends Controller
     public function destroy(Entreprise $entreprise, $pointDeVenteId)
     {
         $pointDeVente = $entreprise->pointsDeVente()->findOrFail($pointDeVenteId);
-        $pointDeVente->delete();
-        return redirect()->route('pointsDeVente.show', [$entreprise->id, $pointDeVente->id, 'module_id' => $pointDeVente->module_id])
-            ->with('success', 'Point de vente supprimé !');
+
+        return redirect()->route('pointsDeVente.show', [$entreprise->id, 'module_id' => $pointDeVente->module_id])
+            ->with('error', 'La suppression d’un point de vente est désactivée.');
     }
 }
 ?>
