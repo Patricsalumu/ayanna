@@ -69,7 +69,7 @@
                 <tr class="border-t">
                   <td colspan="3" class="text-right py-1">Remise</td>
                   <td class="text-right">
-                    <input x-model.number="remise" type="number" min="0" step="0.01" class="w-full text-right border border-gray-300 rounded px-2 py-1" placeholder="0" />
+                    <input x-model.number="remise" @change="sauvegarderRemise()" type="number" min="0" step="0.01" class="w-full text-right border border-gray-300 rounded px-2 py-1" placeholder="0" />
                   </td>
                 </tr>
               @endif
@@ -574,6 +574,7 @@ window.SALLE_ID = @json(session('salle_id') ?? null);
 window.SET_CLIENT_URL = "{{ url('/panier/set-client') }}";
 window.SET_SERVEUSE_URL = "{{ url('/panier/set-serveuse') }}";
 window.PANIER_ID = @json($panier->id ?? ($panier['id'] ?? null));
+window.REMISE = @json($panier->total_remise ?? ($panier['total_remise'] ?? 0));
 window.USER_ROLE = @json(auth()->user()->role ?? null);
 window.CAN_ADD_PRODUCTS = @json($canModifyTableProducts ?? app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user()));
 window.CAN_APPLY_DISCOUNT = @json(app(\App\Services\PermissionService::class)->canApplyDiscount(auth()->user()));

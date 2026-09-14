@@ -488,6 +488,55 @@ class VenteController extends Controller
         }
     }
 
+    public function enregistrerRemise(Request $request)
+    {
+        $user = Auth::user();
+        if (!$this->permissionService->canApplyDiscount($user)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Vous n\'êtes pas autorisé à appliquer une remise.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'remise' => ['required', 'numeric', 'min:0'],
+            'table_id' => ['required', 'integer'],
+            'point_de_vente_id' => ['required', 'integer'],
+            'panier_id' => ['nullable', 'integer'],
+        ]);
+
+        $query = Panier::where('status', 'en_cours');
+        if (!empty($validated['panier_id'])) {
+            $query->where('id', $validated['panier_id']);
+        } else {
+            $query->where('table_id', $validated['table_id'])
+                ->where('point_de_vente_id', $validated['point_de_vente_id']);
+        }
+
+        $panier = $query->with('produits')->first();
+        if (!$panier) {
+            return response()->json(['success' => false, 'error' => 'Aucun panier en cours trouvé.'], 404);
+        }
+
+        $totalHt = $panier->produits->sum(function ($produit) {
+            return ($produit->pivot->quantite ?? 0) * (($produit->pivot->prix ?? $produit->prix_vente) ?? 0);
+        });
+        $remise = (float) $validated['remise'];
+
+        $panier->total_ht = $totalHt;
+        $panier->total_remise = $remise;
+        $panier->total_tva = 0;
+        $panier->total_ttc = max(0, $totalHt - $remise);
+        $panier->last_modified_by = $user->id;
+        $panier->save();
+
+        return response()->json([
+            'success' => true,
+            'panier_id' => $panier->id,
+            'remise' => $remise,
+        ]);
+    }
+
     public function getPanierEnBase(Request $request)
     {
         $panierId = $request->query('panier_id');
@@ -526,7 +575,12 @@ class VenteController extends Controller
             ];
         })->filter(fn ($item) => (int) ($item['qte'] ?? 0) > 0)->values()->all();
 
-        return response()->json(['success' => true, 'panier' => $items, 'panier_id' => $panier->id]);
+        return response()->json([
+            'success' => true,
+            'panier' => $items,
+            'panier_id' => $panier->id,
+            'remise' => (float) ($panier->total_remise ?? 0),
+        ]);
     }
 
     public function transfererProduits(Request $request)

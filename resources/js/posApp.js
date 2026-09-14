@@ -69,7 +69,7 @@ export function posApp() {
     montant_recu: '',
     renduMonnaie: '',
     mode: 'commande',
-    remise: 0,
+    remise: Number(window.REMISE || 0),
     transfer: {
       mode: 'all',
       destination_table_id: '',
@@ -407,6 +407,37 @@ export function posApp() {
       }
 
       return data;
+    },
+    async sauvegarderRemise() {
+      if (!this.canApplyDiscount || !window.TABLE_COURANTE || !window.POINT_DE_VENTE_ID) {
+        return;
+      }
+
+      try {
+        await this.syncPanierToServer();
+        const response = await fetch('/vente/panier/remise', {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': window.CSRF_TOKEN,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            remise: Math.max(0, Number(this.remise) || 0),
+            table_id: window.TABLE_COURANTE,
+            point_de_vente_id: window.POINT_DE_VENTE_ID,
+            panier_id: window.PANIER_ID || null,
+          })
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Impossible de sauvegarder la remise');
+        }
+        if (data.panier_id) {
+          window.PANIER_ID = data.panier_id;
+        }
+      } catch (error) {
+        alert(error.message || 'Erreur lors de la sauvegarde de la remise');
+      }
     },
     selectCat(id) {
       this.currentCat = Number(id);
@@ -904,6 +935,9 @@ export function posApp() {
             panier = data.panier.filter(item => Number(item.qte || 0) > 0);
             if (data.panier_id) {
               window.PANIER_ID = data.panier_id;
+            }
+            if (data.remise !== undefined && this.canApplyDiscount) {
+              this.remise = Number(data.remise) || 0;
             }
           }
         } catch (error) {
