@@ -321,7 +321,7 @@
                         <span class="block w-1 h-1 bg-gray-700 rounded-full"></span>
                     </button>
                     <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-40 bg-white border rounded shadow-lg z-10">
-                        <a href="#" @click.prevent="openEdit({id: {{ $user->id }}, name: '{{ addslashes($user->name) }}', email: '{{ addslashes($user->email) }}', role: '{{ $user->role }}', code_pin: '{{ $user->code_pin }}', point_de_vente_ids: @json($user->pointsDeVente->pluck('id')->map(fn($id) => (string) $id)->values()->all())})" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        <a href="{{ route('users.edit', [$entreprise->id, $user->id]) }}" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z" /></svg>
                             Modifier
                         </a>
@@ -363,7 +363,7 @@
                             <td class="p-3">{{ $user->email }}</td>
                             <td class="p-3">{{ $user->role }}</td>
                             <td class="p-3 flex gap-2">
-                                <a href="#" @click.prevent="openEdit({id: {{ $user->id }}, name: '{{ addslashes($user->name) }}', email: '{{ addslashes($user->email) }}', role: '{{ $user->role }}', code_pin: '{{ $user->code_pin }}', point_de_vente_ids: @json($user->pointsDeVente->pluck('id')->map(fn($id) => (string) $id)->values()->all())})" class="inline-flex items-center gap-1 bg-indigo-600 text-white px-3 py-1 rounded-md text-sm hover:bg-indigo-700">
+                                <a href="{{ route('users.edit', [$entreprise->id, $user->id]) }}" class="inline-flex items-center gap-1 bg-indigo-600 text-white px-3 py-1 rounded-md text-sm hover:bg-indigo-700">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z" /></svg>
                                     Modifier
                                 </a>

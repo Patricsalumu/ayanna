@@ -106,6 +106,9 @@ class UserController extends Controller
         if ($request->filled('password')) {
             // Super admin peut réinitialiser le mot de passe sans ancien mot de passe.
             $validated['password'] = Hash::make((string) $request->password);
+        } else {
+            // On ne remplace pas le mot de passe actuel si le champ est vide.
+            unset($validated['password']);
         }
 
         if ($request->has('code_pin')) {
@@ -116,7 +119,8 @@ class UserController extends Controller
         $pointDeVenteIds = $validated['point_de_vente_ids'] ?? [];
         unset($validated['point_de_vente_ids']);
 
-        $user->update($validated);
+        $user->fill($validated);
+        $user->save();
         $user->pointsDeVente()->sync($pointDeVenteIds);
 
         return redirect()->route('users.show', $entreprise)->with('success', 'Utilisateur modifié avec succès.');
