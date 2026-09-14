@@ -178,6 +178,8 @@ class SalleController extends Controller
             $table->nb_commandes = $qte;
             $table->montant_total = $montant;
             $table->is_busy = $qte > 0;
+            $table->has_panier_en_cours = $panier !== null;
+            $table->is_open_without_products = $panier !== null && $qte === 0;
             $table->serveuse_nom = $panier?->serveuse?->name ?? $table->serveuse?->name;
         }
 

@@ -47,6 +47,8 @@
 
                 @php
                     $tableOccupee = $table->is_busy ?? false;
+                    $tablePanierOuvertSansProduit = !empty($table->has_panier_en_cours) && !$tableOccupee;
+                    $serveuseNom = $table->serveuse_nom ?? ($table->serveuse?->name ?? null);
                 @endphp
 
                 @php
@@ -65,16 +67,16 @@
                         @if ($table->forme === 'cercle')
                             border-radius: 50%;
                         @endif
-                        background: {{ $tableOccupee ? '#4ade80' : '#f3f4f6' }};
+                        background: {{ $tableOccupee || $tablePanierOuvertSansProduit ? '#4ade80' : '#f3f4f6' }};
                         border-color: #22c55e;
                    ">
 
                       <span class="table-num relative z-10 text-center w-full select-none flex flex-col items-center justify-center pt-2"
                           style="pointer-events:none; font-size:1.3rem; font-weight:bold; color:#222;">
                         {{ $table->numero }}
-                        @if ($tableOccupee && ($table->serveuse?->name || $table->serveuse_nom))
+                        @if (($tableOccupee || $tablePanierOuvertSansProduit) && $serveuseNom)
                             <span style="font-size:0.7rem; font-weight:normal; color:#000;">
-                                {{ $table->serveuse?->name ?? $table->serveuse_nom }}
+                                {{ $serveuseNom }}
                             </span>
                         @endif
                     </span>
@@ -102,9 +104,9 @@
                     <span class="table-num text-center w-full select-none flex flex-col items-center justify-center"
                           style="pointer-events:none; font-size:1.3rem; font-weight:bold; color:#6b7280;">
                         {{ $table->numero }}
-                        @if ($tableOccupee && ($table->serveuse?->name || $table->serveuse_nom))
+                        @if (($tableOccupee || $tablePanierOuvertSansProduit) && $serveuseNom)
                             <span style="font-size:0.7rem; font-weight:normal; color:#000;">
-                                {{ $table->serveuse?->name ?? $table->serveuse_nom }}
+                                {{ $serveuseNom }}
                             </span>
                         @endif
                     </span>
