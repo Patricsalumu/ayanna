@@ -166,6 +166,19 @@ class VenteController extends Controller
                         'id' => $categorie->id,
                         'nom' => $categorie->nom,
                     ])->values()->all(),
+                    'tables' => $tables->map(fn ($table) => [
+                        'id' => $table->id,
+                        'numero' => $table->numero,
+                        'nom' => $table->nom,
+                        'salle_id' => $table->salle_id,
+                        'serveuse_id' => $table->serveuse_id,
+                        'status' => $table->status,
+                    ])->values()->all(),
+                    'serveuses' => $serveuses->map(fn ($serveuse) => [
+                        'id' => $serveuse->id,
+                        'name' => $serveuse->name,
+                        'nom' => $serveuse->name,
+                    ])->values()->all(),
                 ]);
             }
 

@@ -9,7 +9,8 @@ export function posApp() {
     showNavMenu: false,
     showPaiement: false,
     produits: (() => {
-      const cached = localStorage.getItem('ayanna_catalogue_produits');
+      const key = `ayanna_catalogue_produits_${window.POINT_DE_VENTE_ID || 'global'}_${window.SALLE_ID || 'global'}`;
+      const cached = localStorage.getItem(key);
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
@@ -18,10 +19,22 @@ export function posApp() {
           }
         } catch (e) {}
       }
+
+      const legacyKey = 'ayanna_catalogue_produits';
+      const legacy = localStorage.getItem(legacyKey);
+      if (legacy) {
+        try {
+          const parsed = JSON.parse(legacy);
+          if (Array.isArray(parsed) && parsed.length) {
+            return parsed;
+          }
+        } catch (e) {}
+      }
+
       return window.PRODUITS_ARRAY || [];
     })(),
     panier: (() => {
-      const key = `ayanna_panier_${window.TABLE_COURANTE || 'no-table'}`;
+      const key = `ayanna_panier_${window.POINT_DE_VENTE_ID || 'global'}_${window.SALLE_ID || 'global'}_${window.TABLE_COURANTE || 'no-table'}`;
       const cached = localStorage.getItem(key);
       if (cached) {
         try {
@@ -31,6 +44,18 @@ export function posApp() {
           }
         } catch (e) {}
       }
+
+      const legacyKey = `ayanna_panier_${window.TABLE_COURANTE || 'no-table'}`;
+      const legacy = localStorage.getItem(legacyKey);
+      if (legacy) {
+        try {
+          const parsed = JSON.parse(legacy);
+          if (Array.isArray(parsed)) {
+            return parsed;
+          }
+        } catch (e) {}
+      }
+
       return window.PANIER_ARRAY || [];
     })(),
     search: window.INITIAL_SEARCH || '',
@@ -126,12 +151,41 @@ export function posApp() {
       }
     },
     getLocalCacheKey(prefix) {
-      return `${prefix}_${window.POINT_DE_VENTE_ID || 'global'}_${window.TABLE_COURANTE || 'no-table'}`;
+      return `${prefix}_${window.POINT_DE_VENTE_ID || 'global'}_${window.SALLE_ID || 'global'}_${window.TABLE_COURANTE || 'no-table'}`;
+    },
+    clearApplicationCaches() {
+      const prefixes = [
+        'ayanna_catalogue_produits_',
+        'ayanna_panier_',
+        'ayanna_tables_',
+        'ayanna_serveuses_',
+      ];
+
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+
+        const matchesPrefix = prefixes.some(prefix => key.startsWith(prefix));
+        if (matchesPrefix || key === 'ayanna_catalogue_produits') {
+          localStorage.removeItem(key);
+        }
+      }
+
+      return true;
+    },
+    getCatalogueCacheKey() {
+      return `ayanna_catalogue_produits_${window.POINT_DE_VENTE_ID || 'global'}_${window.SALLE_ID || 'global'}`;
+    },
+    getTablesCacheKey() {
+      return `ayanna_tables_${window.POINT_DE_VENTE_ID || 'global'}_${window.SALLE_ID || 'global'}`;
+    },
+    getServeusesCacheKey() {
+      return `ayanna_serveuses_${window.POINT_DE_VENTE_ID || 'global'}_${window.SALLE_ID || 'global'}`;
     },
     persistCachedCart() {
       const key = this.getLocalCacheKey('ayanna_panier');
       localStorage.setItem(key, JSON.stringify(this.panier || []));
-      localStorage.setItem('ayanna_catalogue_produits', JSON.stringify(this.produits || []));
+      localStorage.setItem(this.getCatalogueCacheKey(), JSON.stringify(this.produits || []));
     },
     async refreshCatalogueFromServer() {
       const refreshUrl = new URL(window.location.href);
@@ -152,15 +206,15 @@ export function posApp() {
         const data = await response.json().catch(() => null);
         if (data && Array.isArray(data.produits)) {
           this.produits = data.produits;
-          localStorage.setItem('ayanna_catalogue_produits', JSON.stringify(this.produits));
+          localStorage.setItem(this.getCatalogueCacheKey(), JSON.stringify(this.produits));
         }
 
         if (data && Array.isArray(data.tables)) {
-          localStorage.setItem('ayanna_tables', JSON.stringify(data.tables));
+          localStorage.setItem(this.getTablesCacheKey(), JSON.stringify(data.tables));
         }
 
         if (data && Array.isArray(data.serveuses)) {
-          localStorage.setItem('ayanna_serveuses', JSON.stringify(data.serveuses));
+          localStorage.setItem(this.getServeusesCacheKey(), JSON.stringify(data.serveuses));
         }
 
         if (!data || !Array.isArray(data.produits)) {

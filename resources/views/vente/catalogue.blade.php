@@ -268,7 +268,9 @@
                 Retour plan
               </a>
 
-              <a href="{{ $retourPlanUrl }}" class="inline-flex items-center justify-center rounded bg-emerald-600 px-4 py-3 text-white text-sm font-semibold hover:bg-emerald-700 transition whitespace-nowrap min-w-[120px]">
+              <a href="{{ $retourPlanUrl }}"
+                 @click.prevent="clearApplicationCaches(); window.location.href = '{{ $retourPlanUrl }}';"
+                 class="inline-flex items-center justify-center rounded bg-emerald-600 px-4 py-3 text-white text-sm font-semibold hover:bg-emerald-700 transition whitespace-nowrap min-w-[120px]">
                 Rafraîchir
               </a>
 
