@@ -603,9 +603,10 @@
         const montant = document.getElementById('paiementJourMontant').value;
         const mode = document.getElementById('paiementJourMode').value;
         const token = document.querySelector('#paiementJourForm input[name="_token"]').value;
+        const originalHtml = submitButton.innerHTML;
 
         submitButton.disabled = true;
-        submitButton.textContent = 'Enregistrement...';
+        submitButton.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>Enregistrement...';
 
         try {
             const response = await fetch(`/creances/${commandeId}/paiement`, {
@@ -628,7 +629,7 @@
         } catch (error) {
             alert(error.message || 'Erreur lors de l’enregistrement du paiement.');
             submitButton.disabled = false;
-            submitButton.textContent = 'Enregistrer le paiement';
+            submitButton.innerHTML = originalHtml;
         }
     }
 

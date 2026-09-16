@@ -9,6 +9,12 @@ export function posApp() {
     showNavMenu: false,
     showPaiement: false,
     produits: (() => {
+      if (Array.isArray(window.PRODUITS_ARRAY)) {
+        localStorage.removeItem(`ayanna_catalogue_produits_${window.POINT_DE_VENTE_ID || 'global'}_${window.SALLE_ID || 'global'}`);
+        localStorage.removeItem('ayanna_catalogue_produits');
+        return window.PRODUITS_ARRAY;
+      }
+
       const key = `ayanna_catalogue_produits_${window.POINT_DE_VENTE_ID || 'global'}_${window.SALLE_ID || 'global'}`;
       const cached = localStorage.getItem(key);
       if (cached) {
@@ -34,6 +40,12 @@ export function posApp() {
       return window.PRODUITS_ARRAY || [];
     })(),
     panier: (() => {
+      if (Array.isArray(window.PANIER_ARRAY)) {
+        localStorage.removeItem(`ayanna_panier_${window.POINT_DE_VENTE_ID || 'global'}_${window.SALLE_ID || 'global'}_${window.TABLE_COURANTE || 'no-table'}`);
+        localStorage.removeItem(`ayanna_panier_${window.TABLE_COURANTE || 'no-table'}`);
+        return window.PANIER_ARRAY;
+      }
+
       const key = `ayanna_panier_${window.POINT_DE_VENTE_ID || 'global'}_${window.SALLE_ID || 'global'}_${window.TABLE_COURANTE || 'no-table'}`;
       const cached = localStorage.getItem(key);
       if (cached) {
@@ -154,23 +166,12 @@ export function posApp() {
       return `${prefix}_${window.POINT_DE_VENTE_ID || 'global'}_${window.SALLE_ID || 'global'}_${window.TABLE_COURANTE || 'no-table'}`;
     },
     clearApplicationCaches() {
-      const prefixes = [
-        'ayanna_catalogue_produits_',
-        'ayanna_panier_',
-        'ayanna_tables_',
-        'ayanna_serveuses_',
-      ];
-
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const key = localStorage.key(i);
-        if (!key) continue;
-
-        const matchesPrefix = prefixes.some(prefix => key.startsWith(prefix));
-        if (matchesPrefix || key === 'ayanna_catalogue_produits') {
-          localStorage.removeItem(key);
-        }
-      }
-
+      localStorage.removeItem(this.getLocalCacheKey('ayanna_panier'));
+      localStorage.removeItem(this.getCatalogueCacheKey());
+      localStorage.removeItem(this.getTablesCacheKey());
+      localStorage.removeItem(this.getServeusesCacheKey());
+      localStorage.removeItem(`ayanna_panier_${window.TABLE_COURANTE || 'no-table'}`);
+      localStorage.removeItem('ayanna_catalogue_produits');
       return true;
     },
     getCatalogueCacheKey() {
@@ -226,6 +227,7 @@ export function posApp() {
       }
     },
     async logoutServeuse() {
+      this.clearApplicationCaches();
       try {
         const response = await fetch('/logout', {
           method: 'POST',
@@ -690,8 +692,10 @@ export function posApp() {
       .then(res => res.json())
       .then(data => {
         if(data.success && data.redirect_url) {
+          this.clearApplicationCaches();
           window.location.href = data.redirect_url;
         } else if(data.success) {
+          this.clearApplicationCaches();
           window.location.reload();
         } else {
           alert(data.error || 'Erreur lors de la libération de la table');

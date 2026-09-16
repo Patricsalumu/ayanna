@@ -264,7 +264,7 @@
                     'point_de_vente_id' => $pointDeVente->id,
                 ]);
               @endphp
-              <a href="{{ $retourPlanUrl }}" class="inline-flex items-center justify-center rounded bg-slate-700 px-4 py-3 text-white text-sm font-semibold hover:bg-slate-800 transition whitespace-nowrap min-w-[120px]">
+              <a href="{{ $retourPlanUrl }}" @click="clearApplicationCaches()" class="inline-flex items-center justify-center rounded bg-slate-700 px-4 py-3 text-white text-sm font-semibold hover:bg-slate-800 transition whitespace-nowrap min-w-[120px]">
                 Retour plan
               </a>
 
@@ -275,7 +275,7 @@
               </a>
 
               @if($isServeuseInterface)
-                <form method="POST" action="{{ route('logout') }}" class="inline-block" @submit.stop>
+                <form method="POST" action="{{ route('logout') }}" class="inline-block" @submit="clearApplicationCaches(); $event.stopPropagation()">
                   @csrf
                   <input type="hidden" name="serveuse_logout" value="1">
                   <button type="submit" class="inline-flex items-center justify-center rounded bg-gray-800 px-4 py-3 text-white text-sm font-semibold hover:bg-gray-700 transition whitespace-nowrap min-w-[120px]">

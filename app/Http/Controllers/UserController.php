@@ -127,10 +127,19 @@ class UserController extends Controller
     }
 
     // Supprimer un utilisateur
-    public function destroy($entreprise, $user)
+    public function destroy(Request $request, $entreprise, $user)
     {
+        $entreprise = Entreprise::findOrFail($entreprise);
         $user = User::findOrFail($user);
         $user->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Utilisateur supprimé avec succès.',
+            ]);
+        }
+
         return redirect()->route('users.show', $entreprise)->with('success', 'Utilisateur supprimé avec succès.');
     }
 }

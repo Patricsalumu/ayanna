@@ -486,7 +486,7 @@
             }
             
             const submitBtn = document.querySelector('#modalePaiement button[onclick="enregistrerPaiement()"]');
-            const originalText = submitBtn ? submitBtn.textContent : 'Enregistrer le paiement';
+            const originalHtml = submitBtn ? submitBtn.innerHTML : 'Enregistrer le paiement';
             
             try {
                 if (submitBtn) {
@@ -510,29 +510,29 @@
                 
                 const result = await response.json();
                 
-                if (result.success) {
-                    fermerModalePaiement();
-                    
-                    // Afficher un message de succès
-                    const successDiv = document.createElement('div');
-                    successDiv.className = 'mb-6 p-4 bg-green-100 border border-green-300 text-green-700 rounded-xl shadow-sm text-center font-semibold';
-                    successDiv.textContent = result.message;
-                    document.querySelector('.max-w-7xl').insertBefore(successDiv, document.querySelector('.max-w-7xl').firstChild);
-                    
-                    // Recharger la page après 2 secondes
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
-                } else {
-                    alert('Erreur lors de l\'enregistrement du paiement');
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Erreur lors de l\'enregistrement du paiement');
                 }
+
+                fermerModalePaiement();
+                
+                // Afficher un message de succès
+                const successDiv = document.createElement('div');
+                successDiv.className = 'mb-6 p-4 bg-green-100 border border-green-300 text-green-700 rounded-xl shadow-sm text-center font-semibold';
+                successDiv.textContent = result.message;
+                document.querySelector('.max-w-7xl').insertBefore(successDiv, document.querySelector('.max-w-7xl').firstChild);
+                
+                // Recharger la page après 2 secondes
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
                 
             } catch (error) {
                 console.error('Erreur:', error);
-                alert('Une erreur est survenue');
+                alert(error.message || 'Une erreur est survenue');
             } finally {
                 if (submitBtn) {
-                    submitBtn.textContent = originalText;
+                    submitBtn.innerHTML = originalHtml;
                     submitBtn.disabled = false;
                 }
             }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Entreprise;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -76,6 +77,35 @@ class ProfileTest extends TestCase
             ->assertRedirect('/');
 
         $this->assertGuest();
+        $this->assertNull($user->fresh());
+    }
+
+    public function test_user_deletion_returns_json_success_when_requested_as_json(): void
+    {
+        $entreprise = Entreprise::create([
+            'nom' => 'Test Entreprise',
+            'module' => 'restaubar',
+        ]);
+        $admin = User::factory()->create([
+            'entreprise_id' => $entreprise->id,
+            'role' => 'admin',
+        ]);
+        $user = User::factory()->create([
+            'entreprise_id' => $entreprise->id,
+            'role' => 'caissier',
+        ]);
+
+        $response = $this
+            ->actingAs($admin)
+            ->deleteJson(route('users.destroy', [$entreprise->id, $user->id]));
+
+        $response
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'message' => 'Utilisateur supprimé avec succès.',
+            ]);
+
         $this->assertNull($user->fresh());
     }
 
