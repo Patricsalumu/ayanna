@@ -46,7 +46,9 @@
                 class="inline-flex items-center justify-center rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition">
                 Rapport sessions
             </a>
-            <a href="{{ route('paniers.jour.export-pdf') }}?session_from={{ $selectedSessionFrom ?? '' }}&session_to={{ $selectedSessionTo ?? '' }}&session={{ $selectedSession ?? '' }}"
+            <a href="{{ route('paniers.jour.export-pdf', request()->query()) }}"
+                data-export-count="{{ $paniers->count() }}"
+                onclick="return confirmerExportFactures(event, this)"
                 class="inline-flex items-center justify-center rounded-full bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 transition">
                 Exporter PDF
             </a>
@@ -279,6 +281,28 @@
     </div>
 </div>
 
+<div id="exportFacturesModal" class="fixed inset-0 z-[70] {{ session('export_error') ? 'flex' : 'hidden' }} items-center justify-center bg-black/50 px-4">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="exportFacturesTitle">
+        <div class="mb-4 flex items-start gap-3">
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                <i class="fas fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <h3 id="exportFacturesTitle" class="text-lg font-bold text-gray-900">Export trop volumineux</h3>
+                <p id="exportFacturesMessage" class="mt-2 text-sm text-gray-600">{{ session('export_error') }}</p>
+            </div>
+        </div>
+        <div class="flex justify-end gap-3">
+            <button type="button" onclick="fermerExportFacturesModal()" class="rounded-lg bg-gray-200 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-300">
+                Fermer
+            </button>
+            <a href="{{ route('paniers.jour.export-rapport-sessions-pdf', request()->query()) }}" class="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700">
+                Exporter le rapport résumé
+            </a>
+        </div>
+    </div>
+</div>
+
 <div id="paiementJourModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 px-4">
     <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" onclick="event.stopPropagation()">
         <div class="mb-4 flex items-center justify-between">
@@ -356,6 +380,27 @@
 </div>
 
 <script>
+    function confirmerExportFactures(event, link) {
+        const count = Number(link.dataset.exportCount || 0);
+        if (count <= 500) return true;
+
+        event.preventDefault();
+        document.getElementById('exportFacturesMessage').textContent =
+            `Cet export contient ${count.toLocaleString('fr-FR')} factures. Le PDF détaillé risque de dépasser la mémoire disponible. Utilisez le rapport résumé par session.`;
+        const modal = document.getElementById('exportFacturesModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+        return false;
+    }
+
+    function fermerExportFacturesModal() {
+        const modal = document.getElementById('exportFacturesModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = 'auto';
+    }
+
     let formToSubmit = null;
 
     // Attendre que le DOM soit chargé

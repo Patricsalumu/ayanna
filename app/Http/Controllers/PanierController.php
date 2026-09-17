@@ -380,7 +380,13 @@ class PanierController extends Controller
      */
     public function exportPaniersDuJourPdf(Request $request)
     {
-        $data = $this->getPaniersDuJourData($request);
+        $request->merge(['pdf_export' => true]);
+
+        try {
+            $data = $this->getPaniersDuJourData($request);
+        } catch (\RuntimeException $e) {
+            return redirect()->back()->with('export_error', $e->getMessage());
+        }
         $data['entreprise'] = Auth::user()?->entreprise;
 
         $fileName = 'paniers_du_jour_'.now()->format('Ymd_His').'.pdf';
@@ -646,6 +652,10 @@ class PanierController extends Controller
                     $pdvQuery->where('nom', 'like', "%{$searchTerm}%");
                 });
             });
+        }
+
+        if ($request->boolean('pdf_export') && (clone $paniersQuery)->count() > 500) {
+            throw new \RuntimeException('Cet export contient plus de 500 factures. Utilisez « Rapport sessions » pour exporter un résumé sans risque de surcharge mémoire.');
         }
 
         $paniers = $paniersQuery
