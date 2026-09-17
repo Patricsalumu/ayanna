@@ -1311,7 +1311,7 @@ class VenteController extends Controller
             $entreprisePaiement = \App\Models\PointDeVente::find($pointDeVenteId)?->entreprise ?? Auth::user()->entreprise;
             $modePaiement = app(ModePaiementService::class)->actifs($entreprisePaiement)
                 ->firstWhere('code', $request->mode);
-            if (!$modePaiement || in_array($modePaiement->code, ['compte_client', 'offre'], true)) {
+            if (!$modePaiement || $modePaiement->code === 'compte_client') {
                 throw new \Exception('Ce moyen de paiement n’est pas disponible pour le règlement de cette créance.');
             }
             
@@ -1409,8 +1409,12 @@ class VenteController extends Controller
             // Si complètement payé, marquer la commande comme payée
             if ($nouveauMontantRestant <= 0) {
                 $commande->statut = 'payé';
+                $commande->mode_paiement = $request->mode;
                 $commande->save();
-                Log::info('Commande marquée comme payée');
+                Log::info('Commande marquée comme payée avec son mode de règlement final', [
+                    'commande_id' => $commande->id,
+                    'mode_paiement' => $commande->mode_paiement,
+                ]);
             }
             
             return response()->json([

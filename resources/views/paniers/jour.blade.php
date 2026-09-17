@@ -248,7 +248,7 @@
                             @else
                                 <span class="text-gray-400 text-xs">-</span>
                             @endif
-                        @elseif(app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user()) && $panier->commande && $modeCode === 'compte_client' && $montantPaye < $netAPayer)
+                        @elseif(app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user()) && $panier->commande && $montantPaye < $netAPayer)
                             <button type="button"
                                     onclick="event.stopPropagation(); ouvrirPaiementJour(this)"
                                     data-commande-id="{{ $panier->commande->id }}"
@@ -322,14 +322,14 @@
             <label class="mb-1 block text-sm font-semibold text-gray-700" for="paiementJourMode">Mode de paiement</label>
             <select id="paiementJourMode" name="mode" required class="mb-5 w-full rounded-lg border-gray-300">
                 @foreach($modesPaiement as $modePaiement)
-                    @if($modePaiement->code !== 'compte_client' && $modePaiement->code !== 'offre')
+                    @if($modePaiement->code !== 'compte_client')
                         <option value="{{ $modePaiement->code }}">{{ $modePaiement->nom }}</option>
                     @endif
                 @endforeach
             </select>
             <div class="flex justify-end gap-3">
                 <button type="button" onclick="fermerPaiementJour()" class="rounded-lg bg-gray-200 px-4 py-2 font-semibold text-gray-700">Annuler</button>
-                <button id="paiementJourSubmit" type="submit" class="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700">Enregistrer le paiement</button>
+                <button id="paiementJourSubmit" type="button" onclick="enregistrerPaiementJour(event)" class="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700">Enregistrer le paiement</button>
             </div>
         </form>
     </div>
@@ -653,6 +653,8 @@
         const mode = document.getElementById('paiementJourMode').value;
         const token = document.querySelector('#paiementJourForm input[name="_token"]').value;
         const originalHtml = submitButton.innerHTML;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
 
         submitButton.disabled = true;
         submitButton.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>Enregistrement...';
@@ -665,9 +667,16 @@
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ montant, mode })
+                body: JSON.stringify({ montant, mode }),
+                signal: controller.signal
             });
-            const data = await response.json();
+            const responseText = await response.text();
+            let data = {};
+            try {
+                data = responseText ? JSON.parse(responseText) : {};
+            } catch (parseError) {
+                throw new Error(`Le serveur a renvoyé une réponse invalide (HTTP ${response.status}).`);
+            }
 
             if (!response.ok || !data.success) {
                 throw new Error(data.message || 'Le paiement n’a pas pu être enregistré.');
@@ -676,9 +685,14 @@
             fermerPaiementJour();
             window.location.reload();
         } catch (error) {
-            alert(error.message || 'Erreur lors de l’enregistrement du paiement.');
+            const message = error.name === 'AbortError'
+                ? 'Le serveur met trop de temps à répondre. Le paiement n’a pas été confirmé, veuillez vérifier avant de réessayer.'
+                : (error.message || 'Erreur lors de l’enregistrement du paiement.');
+            alert(message);
             submitButton.disabled = false;
             submitButton.innerHTML = originalHtml;
+        } finally {
+            clearTimeout(timeoutId);
         }
     }
 
