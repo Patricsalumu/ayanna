@@ -99,7 +99,7 @@ class ComptabiliteController extends Controller
         $user = Auth::user();
         $entrepriseId = $user->entreprise_id;
         
-        $dateDebut = $request->get('date_debut', now()->startOfMonth()->toDateString());
+        $dateDebut = $request->get('date_debut', now()->startOfYear()->toDateString());
         $dateFin = $request->get('date_fin', now()->toDateString());
         $search = trim($request->get('search', ''));
         
