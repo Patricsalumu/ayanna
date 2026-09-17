@@ -63,6 +63,18 @@
                         <option value="mouvement" {{ $typeOperation == 'mouvement' ? 'selected' : '' }}>Mouvement</option>
                     </select>
                 </div>
+                <div class="flex-1 min-w-64">
+                    <label for="journalSearch" class="block text-sm font-medium text-gray-700 mb-1">Rechercher une écriture</label>
+                    <div class="relative">
+                        <input type="search" id="journalSearch" placeholder="Libellé ou compte..." autocomplete="off"
+                               class="w-full border-gray-300 rounded-lg pl-10 pr-10 focus:ring-blue-500 focus:border-blue-500">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <button type="button" id="clearJournalSearch" aria-label="Effacer la recherche"
+                                class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
                 <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
                     <i class="fas fa-search mr-2"></i>Filtrer
                 </button>
@@ -90,7 +102,9 @@
                             $estAnnule = $journal->statut === 'annule';
                             $estBrouillon = $journal->statut === 'brouillon';
                         @endphp
-                        <tr class="hover:bg-gray-50 {{ $estAnnule ? 'bg-gray-100 opacity-60' : '' }}">
+                        <tr class="journal-row hover:bg-gray-50 {{ $estAnnule ? 'bg-gray-100 opacity-60' : '' }}"
+                            data-journal-id="{{ $journal->id }}"
+                            data-journal-search="{{ strtolower($journal->libelle . ' ' . ($journal->reference ?? '') . ' ' . $journal->ecritures->map(fn($ecriture) => ($ecriture->compte->numero ?? '') . ' ' . ($ecriture->compte->nom ?? '') . ' ' . ($ecriture->libelle_ecriture ?? ''))->implode(' ')) }}">
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 <div>{{ \Carbon\Carbon::parse($journal->date_ecriture)->format('d/m/Y') }}</div>
                                 @if(!empty($journal->heure_ecriture))
@@ -155,7 +169,7 @@
                         </tr>
                         
                         <!-- Détail des écritures (masqué par défaut) -->
-                        <tr id="detail-{{ $journal->id }}" class="bg-gray-50 hidden">
+                        <tr id="detail-{{ $journal->id }}" class="journal-detail-row bg-gray-50 hidden">
                             <td colspan="6" class="px-6 py-4">
                                 <div class="bg-white rounded-lg p-4 shadow-sm">
                                     <h4 class="font-medium text-gray-900 mb-3">Détail des écritures</h4>
@@ -205,7 +219,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr>
+                        <tr id="emptyJournalRow">
                             <td colspan="6" class="px-6 py-12 text-center text-gray-500">
                                 <i class="fas fa-book text-4xl mb-4 text-gray-300"></i>
                                 <p class="text-lg">Aucune écriture comptable trouvée</p>
@@ -213,6 +227,12 @@
                             </td>
                         </tr>
                     @endforelse
+                    <tr id="emptySearchJournalRow" class="hidden">
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                            <i class="fas fa-search text-4xl mb-4 text-gray-300"></i>
+                            <p class="text-lg">Aucune écriture ne correspond à cette recherche</p>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -225,6 +245,44 @@
         @endif
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('journalSearch');
+        const clearButton = document.getElementById('clearJournalSearch');
+        const journalRows = Array.from(document.querySelectorAll('.journal-row'));
+        const emptySearchRow = document.getElementById('emptySearchJournalRow');
+
+        if (!searchInput) return;
+
+        function filterJournalRows() {
+            const query = searchInput.value.trim().toLowerCase();
+            let visibleCount = 0;
+
+            journalRows.forEach(function (row) {
+                const matches = !query || (row.dataset.journalSearch || '').includes(query);
+                const detailRow = document.getElementById('detail-' + row.dataset.journalId);
+
+                row.classList.toggle('hidden', !matches);
+                if (!matches && detailRow) detailRow.classList.add('hidden');
+                if (matches) visibleCount += 1;
+            });
+
+            if (emptySearchRow) {
+                emptySearchRow.classList.toggle('hidden', visibleCount !== 0 || journalRows.length === 0);
+            }
+
+            clearButton.classList.toggle('hidden', query === '');
+        }
+
+        searchInput.addEventListener('input', filterJournalRows);
+        clearButton.addEventListener('click', function () {
+            searchInput.value = '';
+            filterJournalRows();
+            searchInput.focus();
+        });
+    });
+</script>
 
 <!-- Modale de transfert inter-comptes -->
 <div id="modaleTransfert" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
@@ -275,6 +333,7 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             <i class="fas fa-arrow-up text-red-500 mr-1"></i>
+
                             Compte à débiter
                         </label>
                         <input type="text" id="compteSourceSearch" list="compteSourceOptions" autocomplete="off"

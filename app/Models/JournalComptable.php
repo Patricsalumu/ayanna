@@ -77,9 +77,9 @@ class JournalComptable extends Model
         $prefix = strtoupper(substr($typeOperation, 0, 3)); // VEN, PAI, MOU, etc.
         $dateStr = $date->format('Ymd');
         
-        // Rechercher le dernier numéro pour ce préfixe, cette date et cette entreprise
-        $dernier = self::where('entreprise_id', $entrepriseId)
-            ->where('numero_piece', 'LIKE', "{$prefix}-{$dateStr}-%")
+        // numero_piece est unique dans toute la table, pas seulement par entreprise.
+        // Le prochain numéro doit donc tenir compte des écritures de toutes les entreprises.
+        $dernier = self::where('numero_piece', 'LIKE', "{$prefix}-{$dateStr}-%")
             ->orderByDesc('numero_piece')
             ->first();
             
