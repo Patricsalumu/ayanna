@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'serveuse.session.timeout' => \App\Http\Middleware\ServeuseSessionTimeout::class,
             'role.access' => \App\Http\Middleware\EnsureRoleAccess::class,
+            'entreprise.not_blocked' => \App\Http\Middleware\RejectBlockedEntreprise::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

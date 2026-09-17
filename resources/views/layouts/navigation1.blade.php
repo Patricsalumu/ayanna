@@ -42,6 +42,12 @@
                             {{ Auth::user()->entreprise_id ? __('Entreprise') : __('Créer mon entreprise') }}
                         </x-dropdown-link>
 
+                        @if(strtolower(trim((string) Auth::user()->role)) === 'super_admin')
+                            <x-dropdown-link :href="route('super-admin.entreprises.index')">
+                                {{ __('Liste des entreprises') }}
+                            </x-dropdown-link>
+                        @endif
+
                         <!-- Authentication -->
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
@@ -91,6 +97,12 @@
                 <x-responsive-nav-link :href="Auth::user()->entreprise_id ? route('entreprises.edit', Auth::user()->entreprise_id) : route('entreprises.create')">
                     {{ Auth::user()->entreprise_id ? __('Entreprise') : __('Créer mon entreprise') }}
                 </x-responsive-nav-link>
+
+                @if(strtolower(trim((string) Auth::user()->role)) === 'super_admin')
+                    <x-responsive-nav-link :href="route('super-admin.entreprises.index')">
+                        {{ __('Liste des entreprises') }}
+                    </x-responsive-nav-link>
+                @endif
 
                 <!-- Authentication -->
                 <form method="POST" action="{{ route('logout') }}">

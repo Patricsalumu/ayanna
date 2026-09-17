@@ -25,6 +25,11 @@ class Entreprise extends Model
         'email',
         'devise',
         'taux',
+        'blocked',
+    ];
+
+    protected $casts = [
+        'blocked' => 'boolean',
     ];
 
     /**

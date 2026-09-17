@@ -12,8 +12,12 @@ use App\Http\Controllers\VenteController;
 use App\Http\Controllers\RestaurantController;
 
 
-Route::middleware(['auth', 'serveuse.session.timeout'])->group(function () 
+Route::middleware(['auth', 'entreprise.not_blocked', 'serveuse.session.timeout'])->group(function ()
 {
+    Route::get('/super-admin/entreprises', [App\Http\Controllers\SuperAdminEntrepriseController::class, 'index'])
+        ->name('super-admin.entreprises.index');
+    Route::patch('/super-admin/entreprises/{entreprise}/blocked', [App\Http\Controllers\SuperAdminEntrepriseController::class, 'updateBlocked'])
+        ->name('super-admin.entreprises.blocked');
         // Routes clients
         Route::prefix('entreprises/{entreprise}')->middleware(['role.access:admin'])->group(function () {
         Route::get('clients', [ClientController::class, 'show'])->name('clients.show');
@@ -155,7 +159,7 @@ Route::middleware(['auth', 'serveuse.session.timeout'])->group(function ()
 });
 
 // Comptes & Entrées-Sorties
-    Route::middleware(['auth', 'role.access:admin'])->group(function () {
+    Route::middleware(['auth', 'entreprise.not_blocked', 'role.access:admin'])->group(function () {
     Route::get('/comptes', [\App\Http\Controllers\CompteController::class, 'index'])->name('comptes.index');
     Route::get('/classes-comptables', [\App\Http\Controllers\ClasseComptableController::class, 'index'])->name('classes-comptables.index');
     Route::get('/classes-comptables/{classeComptable}', [\App\Http\Controllers\ClasseComptableController::class, 'show'])->name('classes-comptables.show');
@@ -171,7 +175,7 @@ Route::middleware(['auth', 'serveuse.session.timeout'])->group(function ()
 });
 
 // Mouvements (entrées/sorties) d'un point de vente
-Route::middleware(['auth', 'role.access:admin'])->group(function () {
+Route::middleware(['auth', 'entreprise.not_blocked', 'role.access:admin'])->group(function () {
     Route::get('/points-de-vente/{pointDeVente}/mouvements', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'index'])->name('mouvements.pdv');
     Route::post('/points-de-vente/{pointDeVente}/mouvements', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'store'])->name('mouvements.pdv.store');
     Route::patch('/points-de-vente/{pointDeVente}/mouvements/{mouvement}/annuler', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'annuler'])->name('mouvements.pdv.annuler');
@@ -180,7 +184,7 @@ Route::middleware(['auth', 'role.access:admin'])->group(function () {
 
 
 // Stock journalier
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'entreprise.not_blocked'])->group(function () {
     Route::get('/stock-journalier/{pointDeVente?}', [\App\Http\Controllers\StockJournalierController::class, 'index'])->middleware(['role.access:admin,cashier,cashier1'])->name('stock_journalier.index');
     Route::post('/stock-journalier', [\App\Http\Controllers\StockJournalierController::class, 'store'])->name('stock_journalier.store');
     Route::get('/stock-journalier/{pointDeVente}/export-pdf', [App\Http\Controllers\StockJournalierController::class, 'exportPdf'])->middleware(['role.access:admin,cashier,cashier1'])->name('stock_journalier.export_pdf');
@@ -203,7 +207,7 @@ Route::get('/dashboard', function () {
     return redirect()->route('entreprises.show', 1);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'entreprise.not_blocked'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -212,7 +216,7 @@ Route::middleware('auth')->group(function () {
 require __DIR__.'/auth.php';
 
 // Routes AJAX panier (hors préfixe entreprise)
-    Route::middleware(['auth'])->group(function () {
+    Route::middleware(['auth', 'entreprise.not_blocked'])->group(function () {
     Route::post('/panier/set-client', [\App\Http\Controllers\PanierController::class, 'setClient'])->name('panier.setClient');
     Route::post('/panier/set-serveuse', [\App\Http\Controllers\PanierController::class, 'setServeuse'])->name('panier.setServeuse');
     Route::post('/panier/liberer', [\App\Http\Controllers\PanierController::class, 'libererTable'])->name('panier.libererTable');
@@ -224,7 +228,7 @@ Route::post('/panier/modifier-produit/{produit_id}', [\App\Http\Controllers\Pani
 Route::post('/panier/supprimer-produit/{produit_id}', [\App\Http\Controllers\PanierController::class, 'supprimerProduit'])->name('panier.supprimerProduit');
 
 // Liste des paniers du jour (comptoir)
-Route::middleware(['auth', 'role.access:admin,cashier,cashier1'])->group(function () {
+Route::middleware(['auth', 'entreprise.not_blocked', 'role.access:admin,cashier,cashier1'])->group(function () {
     Route::get('/paniers/jour', [\App\Http\Controllers\PanierController::class, 'paniersDuJour'])->name('paniers.jour');
     Route::get('/paniers/jour/export-pdf', [\App\Http\Controllers\PanierController::class, 'exportPaniersDuJourPdf'])->name('paniers.jour.export-pdf');
     Route::get('/paniers/jour/export-rapport-sessions-pdf', [\App\Http\Controllers\PanierController::class, 'exportRapportSessionsPdf'])->name('paniers.jour.export-rapport-sessions-pdf');
@@ -261,7 +265,7 @@ Route::prefix('transferts')->name('transferts.')->group(function () {
 });
 
 // Routes bons de commande
-Route::middleware(['auth'])->prefix('bon-commande')->name('bon-commande.')->group(function () {
+Route::middleware(['auth', 'entreprise.not_blocked'])->prefix('bon-commande')->name('bon-commande.')->group(function () {
     Route::get('/', [\App\Http\Controllers\BonCommandeController::class, 'index'])->name('index');
     Route::post('/create', [\App\Http\Controllers\BonCommandeController::class, 'store'])->name('store');
     Route::get('/panier/{panierId}/last', [\App\Http\Controllers\BonCommandeController::class, 'dernierPourPanier'])->name('panier.last');

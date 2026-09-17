@@ -100,19 +100,20 @@ class LoginRequest extends FormRequest
         }
 
         if ($user && $this->isValidPin($password) && $this->matchesPin($user, $password)) {
+            $this->ensureEntrepriseNotBlocked($user);
             Auth::login($user, $this->boolean('remember'));
         } elseif ($user && Auth::attempt(['email' => $user->email, 'password' => $password], $this->boolean('remember'))) {
-            // ok
+            $this->ensureEntrepriseNotBlocked($user);
         } elseif ($user && Auth::attempt(['name' => $user->name, 'password' => $password], $this->boolean('remember'))) {
-            // ok
+            $this->ensureEntrepriseNotBlocked($user);
         } elseif ($user && Auth::attempt(['phone' => $user->phone, 'password' => $password], $this->boolean('remember'))) {
-            // ok
+            $this->ensureEntrepriseNotBlocked($user);
         } elseif (Auth::attempt(['email' => $login, 'password' => $password], $this->boolean('remember'))) {
-            // ok
+            $this->ensureEntrepriseNotBlocked(Auth::user());
         } elseif (Auth::attempt(['name' => $login, 'password' => $password], $this->boolean('remember'))) {
-            // ok
+            $this->ensureEntrepriseNotBlocked(Auth::user());
         } elseif (Auth::attempt(['phone' => $login, 'password' => $password], $this->boolean('remember'))) {
-            // ok
+            $this->ensureEntrepriseNotBlocked(Auth::user());
         } else {
             RateLimiter::hit($this->throttleKey());
 
@@ -128,6 +129,21 @@ class LoginRequest extends FormRequest
         }
 
         RateLimiter::clear($this->throttleKey());
+    }
+
+    protected function ensureEntrepriseNotBlocked(?User $user): void
+    {
+        if (!$user?->entreprise_id || !$user->entreprise?->blocked || strtolower(trim((string) $user->role)) === 'super_admin') {
+            return;
+        }
+
+        Auth::logout();
+        $message = 'Votre entreprise a été bloquée. Vous ne pourrez pas continuer à utiliser l’application Ayanna Web. Contact Ayanna ERP : +243997554905. Attention : toute utilisation non autorisée ou toute forme de piratage expose votre établissement à des poursuites judiciaires. / Your company has been blocked. You cannot continue using Ayanna Web. Contact Ayanna ERP: +243997554905. Warning: unauthorized use or piracy may expose your establishment to legal proceedings.';
+        $this->session()->flash('blocked_error', $message);
+
+        throw ValidationException::withMessages([
+            $this->errorField() => 'Accès bloqué.',
+        ]);
     }
 
     /**
