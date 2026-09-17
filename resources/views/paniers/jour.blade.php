@@ -42,6 +42,10 @@
                 </div>
             </form>
             @if(!in_array(Auth::user()?->role, ['Serveuse', 'serveuse'], true))
+            <a href="{{ route('paniers.jour.export-rapport-sessions-pdf', request()->query()) }}"
+                class="inline-flex items-center justify-center rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition">
+                Rapport sessions
+            </a>
             <a href="{{ route('paniers.jour.export-pdf') }}?session_from={{ $selectedSessionFrom ?? '' }}&session_to={{ $selectedSessionTo ?? '' }}&session={{ $selectedSession ?? '' }}"
                 class="inline-flex items-center justify-center rounded-full bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 transition">
                 Exporter PDF

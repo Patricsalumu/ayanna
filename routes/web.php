@@ -227,6 +227,7 @@ Route::post('/panier/supprimer-produit/{produit_id}', [\App\Http\Controllers\Pan
 Route::middleware(['auth', 'role.access:admin,cashier,cashier1'])->group(function () {
     Route::get('/paniers/jour', [\App\Http\Controllers\PanierController::class, 'paniersDuJour'])->name('paniers.jour');
     Route::get('/paniers/jour/export-pdf', [\App\Http\Controllers\PanierController::class, 'exportPaniersDuJourPdf'])->name('paniers.jour.export-pdf');
+    Route::get('/paniers/jour/export-rapport-sessions-pdf', [\App\Http\Controllers\PanierController::class, 'exportRapportSessionsPdf'])->name('paniers.jour.export-rapport-sessions-pdf');
 });
 
 // Annuler un panier

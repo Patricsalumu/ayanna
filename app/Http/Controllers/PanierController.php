@@ -391,6 +391,136 @@ class PanierController extends Controller
     }
 
     /**
+     * Exporte un resume leger, une ligne par session, sans charger toutes les factures dans Dompdf.
+     */
+    public function exportRapportSessionsPdf(Request $request)
+    {
+        $user = Auth::user();
+        $entrepriseId = $user->entreprise_id ?? ($user->entreprise->id ?? null);
+        $pointDeVenteId = $request->integer('point_de_vente_id') ?: session('point_de_vente_id');
+        $pointDeVenteIds = PointDeVente::where('entreprise_id', $entrepriseId)->pluck('id');
+
+        if ($pointDeVenteId && $pointDeVenteIds->contains((int) $pointDeVenteId)) {
+            $pointDeVenteIds = collect([(int) $pointDeVenteId]);
+        } else {
+            $pointDeVenteId = null;
+        }
+
+        $sessionGroups = StockJournalier::with('pointDeVente')
+            ->whereIn('point_de_vente_id', $pointDeVenteIds)
+            ->orderBy('session')
+            ->get()
+            ->groupBy(fn ($stock) => $stock->point_de_vente_id.'|'.$stock->session);
+
+        $sessions = $sessionGroups->map(function ($stocks) {
+            $first = $stocks->sortBy('validated_at')->first();
+            $closedAt = Historiquepdv::where('point_de_vente_id', $first->point_de_vente_id)
+                ->where('etat', 'ferme')
+                ->where('opened_at', $first->validated_at)
+                ->value('closed_at');
+
+            return [
+                'nom' => (string) $first->session,
+                'date' => $first->validated_at ? Carbon::parse($first->validated_at)->format('d/m/Y') : '-',
+                'point_de_vente_id' => (int) $first->point_de_vente_id,
+                'debut' => $first->validated_at,
+                'fin' => $closedAt ? Carbon::parse($closedAt) : null,
+            ];
+        })->sortBy('debut')->values();
+
+        $sessions = $sessions->map(function ($session) use ($sessions) {
+            if (!$session['fin']) {
+                $nextSession = $sessions
+                    ->filter(fn ($candidate) => $candidate['point_de_vente_id'] === $session['point_de_vente_id'])
+                    ->filter(fn ($candidate) => Carbon::parse($candidate['debut'])->gt(Carbon::parse($session['debut'])))
+                    ->sortBy('debut')
+                    ->first();
+
+                $session['fin'] = $nextSession ? Carbon::parse($nextSession['debut']) : now();
+            }
+
+            return $session;
+        });
+
+        $selectedSession = $request->get('session');
+        $selectedSessionFrom = $request->get('session_from');
+        $selectedSessionTo = $request->get('session_to');
+        if ($selectedSession && $selectedSession !== 'all') {
+            $sessions = $sessions->where('nom', (string) $selectedSession)->values();
+        } elseif ($selectedSessionFrom || $selectedSessionTo) {
+            $from = $sessions->firstWhere('nom', (string) $selectedSessionFrom);
+            $to = $sessions->firstWhere('nom', (string) $selectedSessionTo);
+            $fromDate = $from ? Carbon::parse($from['debut']) : null;
+            $toDate = $to ? Carbon::parse($to['debut']) : null;
+
+            if ($fromDate && $toDate && $fromDate->gt($toDate)) {
+                [$fromDate, $toDate] = [$toDate, $fromDate];
+            }
+
+            $sessions = $sessions->filter(function ($session) use ($fromDate, $toDate) {
+                $sessionDate = Carbon::parse($session['debut']);
+                return (!$fromDate || $sessionDate->gte($fromDate))
+                    && (!$toDate || $sessionDate->lte($toDate));
+            })->values();
+        }
+
+        $modesPaiement = app(ModePaiementService::class)->actifs($user->entreprise);
+        $modeColumns = $modesPaiement->map(fn ($mode) => [
+            'code' => $mode->code,
+            'nom' => $mode->nom,
+        ])->values()->all();
+        $rows = [];
+
+        foreach ($sessions as $session) {
+            $row = [
+                'nom' => $session['nom'],
+                'date' => $session['date'],
+                'total_vente' => 0.0,
+                'total_paye' => 0.0,
+                'total_non_paye' => 0.0,
+                'total_remise' => 0.0,
+                'total_offre' => 0.0,
+                'modes' => collect($modeColumns)->mapWithKeys(fn ($mode) => [$mode['code'] => 0.0])->all(),
+            ];
+
+            Panier::where('point_de_vente_id', $session['point_de_vente_id'])
+                ->whereBetween('created_at', [$session['debut'], $session['fin']])
+                ->where('status', '!=', 'annulé')
+                ->with(['produits', 'commande.paiements'])
+                ->chunkById(200, function ($paniers) use (&$row) {
+                    foreach ($paniers as $panier) {
+                        $mode = $this->normalizeModePaiement($panier->commande?->mode_paiement ?? $panier->mode_paiement);
+                        if ($this->estModeCreditPaiement($mode)) {
+                            $mode = 'compte_client';
+                        }
+
+                        $net = $this->montantPanierAffiche($panier);
+                        $paye = (float) ($panier->commande?->paiements?->sum('montant') ?? 0);
+                        $row['total_vente'] += $this->montantPanierSansRemise($panier);
+                        $row['total_paye'] += $paye;
+                        $row['total_remise'] += (float) ($panier->total_remise ?? $panier->remise ?? 0);
+                        $row['total_non_paye'] += $mode === 'offre' ? 0 : max(0, $net - $paye);
+                        if ($mode === 'offre') {
+                            $row['total_offre'] += $net;
+                        }
+                        if (array_key_exists($mode, $row['modes'])) {
+                            $row['modes'][$mode] += $net;
+                        }
+                    }
+                });
+
+            $rows[] = $row;
+        }
+
+        $entreprise = $user->entreprise;
+        $fileName = 'rapport_sessions_'.now()->format('Ymd_His').'.pdf';
+
+        return Pdf::loadView('paniers.rapport-sessions-pdf', compact('rows', 'modeColumns', 'entreprise'))
+            ->setPaper('a4', 'landscape')
+            ->download($fileName);
+    }
+
+    /**
      * Prepare les donnees de la page et du PDF des paniers du jour.
      */
     private function getPaniersDuJourData(Request $request): array
