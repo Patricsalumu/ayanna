@@ -25,6 +25,8 @@ class StockJournalierController extends Controller
     public function index(Request $request, $pointDeVenteId = null)
     {
         $session = $request->get('session');
+        $sessionFrom = $request->get('session_from', $session);
+        $sessionTo = $request->get('session_to', $session);
         if (!$pointDeVenteId) {
             $pointDeVenteId = $request->get('point_de_vente_id');
         }
@@ -49,11 +51,11 @@ class StockJournalierController extends Controller
             ? array_values(array_filter(array_map('intval', (array) $request->input('categories', []))))
             : null;
 
-        $data = $this->getStockJournalierSessionData($pointDeVenteId, $session, $selectedCategoryIds);
+        $data = $this->getStockJournalierSessionData($pointDeVenteId, $session, $selectedCategoryIds, $sessionFrom, $sessionTo);
         return view('stock_journalier.index', $data);
     }
 
-    private function getStockJournalierSessionData($pointDeVenteId, $session = null, ?array $selectedCategoryIds = null)
+    private function getStockJournalierSessionData($pointDeVenteId, $session = null, ?array $selectedCategoryIds = null, $sessionFrom = null, $sessionTo = null)
     {
         $pointDeVente = PointDeVente::find($pointDeVenteId);
         $nomPointDeVente = $pointDeVente ? $pointDeVente->nom : null;
@@ -68,10 +70,23 @@ class StockJournalierController extends Controller
             $session = $sessions->first();
         }
 
+        $sessionFrom = $sessionFrom ?: $session;
+        $sessionTo = $sessionTo ?: $sessionFrom;
+        $fromIndex = $sessions->search($sessionFrom);
+        $toIndex = $sessions->search($sessionTo);
+        if ($fromIndex === false) $fromIndex = $toIndex !== false ? $toIndex : 0;
+        if ($toIndex === false) $toIndex = $fromIndex;
+        $rangeStart = min($fromIndex, $toIndex);
+        $rangeEnd = max($fromIndex, $toIndex);
+        $selectedSessions = $sessions->slice($rangeStart, $rangeEnd - $rangeStart + 1)->values();
+        $sessionFrom = $selectedSessions->last() ?? $sessionFrom;
+        $sessionTo = $selectedSessions->first() ?? $sessionTo;
+        $session = $sessionTo;
+
         $stocks = StockJournalier::with('produit')
             ->where('point_de_vente_id', $pointDeVenteId)
-            ->when($session, function ($q) use ($session) {
-                $q->where('session', $session);
+            ->when($selectedSessions->isNotEmpty(), function ($q) use ($selectedSessions) {
+                $q->whereIn('session', $selectedSessions->all());
             })
             ->get();
 
@@ -88,7 +103,16 @@ class StockJournalierController extends Controller
 
         $date = $stocks->first()?->date ?? now()->toDateString();
         $sessionLabel = null;
-        if ($session) {
+        if ($sessionFrom && $sessionTo) {
+            $formatSession = function ($value) {
+                return strlen($value) === 14 && ctype_digit($value)
+                    ? Carbon::createFromFormat('YmdHis', $value)->format('d/m/Y H:i:s')
+                    : $value;
+            };
+            $sessionLabel = $sessionFrom === $sessionTo
+                ? $formatSession($sessionFrom)
+                : $formatSession($sessionFrom).' au '.$formatSession($sessionTo);
+        } elseif ($session) {
             if (strlen($session) === 14 && ctype_digit($session)) {
                 $sessionLabel = Carbon::createFromFormat('YmdHis', $session)->format('d/m/Y H:i:s');
             } else {
@@ -100,9 +124,9 @@ class StockJournalierController extends Controller
         $heureFermeture = null;
         $sessionEnCours = false;
         $firstStock = null;
-        if ($session) {
+        if ($sessionFrom) {
             $firstStock = StockJournalier::where('point_de_vente_id', $pointDeVenteId)
-                ->where('session', $session)
+            ->where('session', $sessionFrom)
                 ->orderBy('created_at')
                 ->first();
             if ($firstStock && $firstStock->validated_at) {
@@ -112,6 +136,16 @@ class StockJournalierController extends Controller
                 ->where('etat', 'ferme')
                 ->where('opened_at', $firstStock?->validated_at)
                 ->first();
+            if ($sessionTo !== $sessionFrom) {
+                $lastStock = StockJournalier::where('point_de_vente_id', $pointDeVenteId)
+                    ->where('session', $sessionTo)
+                    ->orderByDesc('created_at')
+                    ->first();
+                $fermeture = Historiquepdv::where('point_de_vente_id', $pointDeVenteId)
+                    ->where('etat', 'ferme')
+                    ->where('opened_at', $lastStock?->validated_at)
+                    ->first();
+            }
             if ($fermeture && $fermeture->closed_at) {
                 $heureFermeture = Carbon::parse($fermeture->closed_at);
             } else {
@@ -137,10 +171,12 @@ class StockJournalierController extends Controller
                 ->toArray();
         }
 
-        $produitsData = $produits->map(function ($produit) use ($stocks, $ventesParProduit) {
-            $stock = $stocks->where('produit_id', $produit->id)->last();
-            $q_init = $stock->quantite_initiale ?? 0;
-            $q_ajout = $stock->quantite_ajoutee ?? 0;
+        $produitsData = $produits->map(function ($produit) use ($stocks, $ventesParProduit, $sessionFrom) {
+            $stocksProduit = $stocks->where('produit_id', $produit->id);
+            $stock = $stocksProduit->sortByDesc('session')->first();
+            $stockInitial = $stocksProduit->where('session', $sessionFrom)->first();
+            $q_init = $stockInitial->quantite_initiale ?? $stock->quantite_initiale ?? 0;
+            $q_ajout = $stocksProduit->sum('quantite_ajoutee');
             $q_vendue = $ventesParProduit[$produit->id] ?? ($stock->quantite_vendue ?? 0);
             $q_total = $q_init + $q_ajout;
             $q_reste = $q_total - $q_vendue;
@@ -322,6 +358,8 @@ class StockJournalierController extends Controller
             'categoryMargins',
             'date',
             'session',
+            'sessionFrom',
+            'sessionTo',
             'sessionLabel',
             'heureOuverture',
             'heureFermeture',
@@ -434,6 +472,8 @@ class StockJournalierController extends Controller
     {
         $date = $request->get('date', now()->toDateString());
         $session = $request->get('session');
+        $sessionFrom = $request->get('session_from', $session);
+        $sessionTo = $request->get('session_to', $session);
         $onlySold = $request->boolean('only_sold');
         if (!$pointDeVenteId) {
             $pointDeVenteId = $request->get('point_de_vente_id');
@@ -459,7 +499,7 @@ class StockJournalierController extends Controller
             ? array_values(array_filter(array_map('intval', (array) $request->input('categories', []))))
             : null;
 
-        $data = $this->getStockJournalierSessionData($pointDeVenteId, $session, $selectedCategoryIds);
+        $data = $this->getStockJournalierSessionData($pointDeVenteId, $session, $selectedCategoryIds, $sessionFrom, $sessionTo);
         $data['produitsByCategory'] = $data['produitsByCategory']->map(function ($produits) {
             return $produits->map(function ($produit) {
                 $q_total = ($produit['q_init'] ?? 0) + ($produit['q_ajout'] ?? 0);
@@ -485,12 +525,14 @@ class StockJournalierController extends Controller
         }
 
         $fileName = 'stock_journalier_'.$data['date'];
-        if ($session) {
-            if (strlen($session) === 14 && ctype_digit($session)) {
-                $sessionFormatted = Carbon::createFromFormat('YmdHis', $session)->format('Y-m-d_H-i-s');
+        if ($data['sessionFrom'] ?? null) {
+            if (($data['sessionFrom'] ?? '') === ($data['sessionTo'] ?? '')) {
+                $sessionFormatted = strlen($data['sessionFrom']) === 14 && ctype_digit($data['sessionFrom'])
+                    ? Carbon::createFromFormat('YmdHis', $data['sessionFrom'])->format('Y-m-d_H-i-s')
+                    : $this->sanitizeFileName($data['sessionFrom']);
                 $fileName .= '_session_'.$sessionFormatted;
             } else {
-                $fileName .= '_session_'.$this->sanitizeFileName($session);
+                $fileName .= '_sessions_'.$this->sanitizeFileName($data['sessionFrom']).'_au_'.$this->sanitizeFileName($data['sessionTo']);
             }
         }
         $fileName .= '.pdf';
@@ -509,6 +551,8 @@ class StockJournalierController extends Controller
     public function exportPdf80mm(Request $request, $pointDeVenteId)
     {
         $session = $request->get('session');
+        $sessionFrom = $request->get('session_from', $session);
+        $sessionTo = $request->get('session_to', $session);
         $onlySold = $request->boolean('only_sold');
         $selectedCategoryIds = $request->exists('categories')
             ? array_values(array_filter(array_map('intval', (array) $request->input('categories', []))))
@@ -518,7 +562,7 @@ class StockJournalierController extends Controller
             $pointDeVenteId = $request->get('point_de_vente_id') ?? auth()->user()->point_de_vente_id ?? \App\Models\PointDeVente::first()?->id;
         }
 
-        $data = $this->getStockJournalierSessionData($pointDeVenteId, $session, $selectedCategoryIds);
+        $data = $this->getStockJournalierSessionData($pointDeVenteId, $session, $selectedCategoryIds, $sessionFrom, $sessionTo);
 
         $produitsByCategory = $data['produitsByCategory'];
         $categoryTotals = $data['categoryTotals'] ?? collect();
@@ -544,12 +588,14 @@ class StockJournalierController extends Controller
 
         // Filename and session formatting (JJ-MM HH-MM)
         $fileName = 'fiche_stock_80mm_'.$data['date'];
-        if ($session) {
-            if (strlen($session) === 14 && ctype_digit($session)) {
-                $sessionFormatted = Carbon::createFromFormat('YmdHis', $session)->format('d-m H-i');
+        if ($data['sessionFrom'] ?? null) {
+            if (($data['sessionFrom'] ?? '') === ($data['sessionTo'] ?? '')) {
+                $sessionFormatted = strlen($data['sessionFrom']) === 14 && ctype_digit($data['sessionFrom'])
+                    ? Carbon::createFromFormat('YmdHis', $data['sessionFrom'])->format('d-m H-i')
+                    : $this->sanitizeFileName($data['sessionFrom']);
                 $fileName .= '_session_'.$sessionFormatted;
             } else {
-                $fileName .= '_session_'.$this->sanitizeFileName($session);
+                $fileName .= '_sessions_'.$this->sanitizeFileName($data['sessionFrom']).'_au_'.$this->sanitizeFileName($data['sessionTo']);
             }
         }
         $fileName .= '.pdf';

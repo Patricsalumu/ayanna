@@ -38,17 +38,35 @@
             <form method="GET" class="flex flex-wrap gap-4 items-end">
                 @if(isset($sessions) && $sessions->count() > 0)
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Session :</label>
-                        <select name="session" 
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Session de :</label>
+                        <select name="session_from"
                                 class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
                                 onchange="this.form.submit()">
                             @foreach($sessions as $sess)
                                 @if($sess && strlen($sess) === 14 && ctype_digit($sess))
-                                    <option value="{{ $sess }}" @if($sess == $session) selected @endif>
+                                    <option value="{{ $sess }}" @if($sess == ($sessionFrom ?? $session)) selected @endif>
                                         {{ \Carbon\Carbon::createFromFormat('YmdHis', $sess)->format('d/m/Y H:i:s') }}
                                     </option>
                                 @else
                                     <option value="{{ $sess }}" @if($sess == $session) selected @endif>
+                                        Session inconnue ({{ $sess }})
+                                    </option>
+                                @endif
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Session à :</label>
+                        <select name="session_to"
+                            class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                onchange="this.form.submit()">
+                            @foreach($sessions as $sess)
+                                @if($sess && strlen($sess) === 14 && ctype_digit($sess))
+                                    <option value="{{ $sess }}" @if($sess == ($sessionTo ?? $session)) selected @endif>
+                                        {{ \Carbon\Carbon::createFromFormat('YmdHis', $sess)->format('d/m/Y H:i:s') }}
+                                    </option>
+                                @else
+                                    <option value="{{ $sess }}" @if($sess == ($sessionTo ?? $session)) selected @endif>
                                         Session inconnue ({{ $sess }})
                                     </option>
                                 @endif
@@ -97,9 +115,10 @@
                     </div>
                 </div>
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <form method="GET" action="{{ route('stock_journalier.export_pdf', ['pointDeVente' => $pointDeVenteId, 'date' => $date, 'session' => $session ?? '']) }}" target="_blank" class="w-full sm:w-auto" id="exportPdfForm">
+                    <form method="GET" action="{{ route('stock_journalier.export_pdf', ['pointDeVente' => $pointDeVenteId, 'date' => $date]) }}" target="_blank" class="w-full sm:w-auto" id="exportPdfForm">
                         <input type="hidden" name="date" value="{{ $date }}">
-                        <input type="hidden" name="session" value="{{ $session ?? '' }}">
+                        <input type="hidden" name="session_from" value="{{ $sessionFrom ?? $session ?? '' }}">
+                        <input type="hidden" name="session_to" value="{{ $sessionTo ?? $session ?? '' }}">
                         <input type="hidden" name="export_form" value="1">
                         <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                             <input type="checkbox" name="only_sold" value="1" class="only-sold-filter rounded border-gray-300 text-blue-600 focus:ring-blue-500">
@@ -113,9 +132,10 @@
                         </button>
                     </form>
 
-                    <form method="GET" action="{{ route('stock_journalier.export_80mm', ['pointDeVente' => $pointDeVenteId, 'date' => $date, 'session' => $session ?? '']) }}" target="_blank" class="w-full sm:w-auto" id="export80Form">
+                    <form method="GET" action="{{ route('stock_journalier.export_80mm', ['pointDeVente' => $pointDeVenteId, 'date' => $date]) }}" target="_blank" class="w-full sm:w-auto" id="export80Form">
                         <input type="hidden" name="date" value="{{ $date }}">
-                        <input type="hidden" name="session" value="{{ $session ?? '' }}">
+                        <input type="hidden" name="session_from" value="{{ $sessionFrom ?? $session ?? '' }}">
+                        <input type="hidden" name="session_to" value="{{ $sessionTo ?? $session ?? '' }}">
                         <input type="hidden" name="export_form" value="1">
                         <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                             <input type="checkbox" name="only_sold" value="1" class="only-sold-filter rounded border-gray-300 text-yellow-600 focus:ring-yellow-500">
