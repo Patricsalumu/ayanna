@@ -1,6 +1,6 @@
 <div style="width:100%; font-family: 'DejaVu Sans', Arial, sans-serif;">
     <div style="text-align:center; font-size:11px; color:#6b7280; margin-bottom:6px;">
-        Généré par Ayanna le {{ date('d/m/Y H:i') }}
+        informatisé par Ayanna Erp, exporté le {{ date('d/m/Y H:i') }}
     </div>
 
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -16,7 +16,33 @@
             @endif
         </div>
         <div style="text-align:right; max-width:320px;">
-            <div style="font-size:20px; font-weight:bold; color:#1d4ed8; margin-bottom:6px;">Fiche de stock journalier</div>
+            @php
+                $sessionDate = function ($value) {
+                    if (!$value) {
+                        return '';
+                    }
+
+                    try {
+                        return \Carbon\Carbon::createFromFormat('YmdHis', $value)->format('d-m-Y');
+                    } catch (\Throwable $exception) {
+                        return \Carbon\Carbon::parse($value)->format('d-m-Y');
+                    }
+                };
+                $sessionStart = $sessionFrom ?? $session ?? null;
+                $sessionEnd = $sessionTo ?? $session ?? null;
+                $sessionPeriod = $sessionStart && $sessionEnd && $sessionStart !== $sessionEnd
+                    ? $sessionDate($sessionStart).' à '.$sessionDate($sessionEnd)
+                    : $sessionDate($sessionStart);
+            @endphp
+            <div style="font-size:20px; font-weight:bold; color:#1d4ed8; margin-bottom:6px;">
+                FICHE STOCK DE VENTE
+                @if($sessionPeriod)
+                    <br><span style="font-size:15px;">{{ $sessionPeriod }}</span>
+                @endif
+                @if($nomPointDeVente ?? null)
+                    <br><span style="font-size:15px; color:#374151;">{{ $nomPointDeVente }}</span>
+                @endif
+            </div>
         </div>
     </div>
     <table style="width:100%; border-collapse:collapse; font-size:13px; color:#111827;">
