@@ -275,7 +275,7 @@
                         $montantRestant = max(0, $montantTotal - $montantPaye);
                     @endphp
                     <tr>
-                        <td class="font-bold">#{{ $commande->id }}</td>
+                        <td class="font-bold">{{ $commande->numero_facture ?? $commande->panier->numero_facture ?? '—' }}</td>
                         <td>{{ \Carbon\Carbon::parse($commande->created_at)->format('d/m/Y H:i') }}</td>
                         <td>{{ $commande->panier->openedBy?->name ?? '—' }}</td>
                         <td>{{ $commande->panier->serveuse->name ?? 'N/A' }}</td>

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Panier extends Model
 {
@@ -20,6 +21,7 @@ class Panier extends Model
         'last_modified_by',
         'annule_by',
         'annule_at',
+        'numero_facture',
         'produits_json',
         'mode_paiement',
         'status', // Ajouté pour permettre la modification
@@ -36,6 +38,39 @@ class Panier extends Model
                 $panier->mode_paiement = 'compte_client';
             }
         });
+    }
+
+    public function assignNumeroFacture(): ?int
+    {
+        if ($this->numero_facture !== null) {
+            return (int) $this->numero_facture;
+        }
+
+        $entrepriseId = $this->point_de_vente_id
+            ? PointDeVente::whereKey($this->point_de_vente_id)->value('entreprise_id')
+            : null;
+
+        if (!$entrepriseId && $this->table_id) {
+            $entrepriseId = TableResto::with('salle')->find($this->table_id)?->salle?->entreprise_id;
+        }
+
+        if (!$entrepriseId) {
+            return null;
+        }
+
+        $this->numero_facture = DB::transaction(function () use ($entrepriseId) {
+            $entreprise = Entreprise::query()->whereKey($entrepriseId)->lockForUpdate()->first();
+            if (!$entreprise) {
+                return null;
+            }
+
+            $numero = (int) $entreprise->dernier_numero_facture + 1;
+            $entreprise->forceFill(['dernier_numero_facture' => $numero])->save();
+
+            return $numero;
+        });
+
+        return $this->numero_facture === null ? null : (int) $this->numero_facture;
     }
 
     // Relations

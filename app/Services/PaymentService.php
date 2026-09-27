@@ -12,8 +12,13 @@ class PaymentService
     {
         return DB::transaction(function () use ($data, $user) {
             $panier = Panier::where('table_id', $data['table_id'])->where('status', 'en_cours')->firstOrFail();
+            $numeroFacture = $panier->assignNumeroFacture();
+            if ($panier->isDirty('numero_facture')) {
+                $panier->save();
+            }
             $commande = Commande::create([
                 'panier_id' => $panier->id,
+                'numero_facture' => $numeroFacture,
                 'mode_paiement' => $data['mode_paiement'],
                 'statut' => 'validé',
                 'validated_by' => $user?->id,

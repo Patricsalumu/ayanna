@@ -576,6 +576,7 @@ window.SALLE_ID = @json(session('salle_id') ?? null);
 window.SET_CLIENT_URL = "{{ url('/panier/set-client') }}";
 window.SET_SERVEUSE_URL = "{{ url('/panier/set-serveuse') }}";
 window.PANIER_ID = @json($panier->id ?? ($panier['id'] ?? null));
+window.PANIER_NUMERO_FACTURE = @json($panier->numero_facture ?? ($panier['numero_facture'] ?? null));
 window.REMISE = @json($panier->total_remise ?? ($panier['total_remise'] ?? 0));
 window.USER_ROLE = @json(auth()->user()->role ?? null);
 window.CAN_ADD_PRODUCTS = @json($canModifyTableProducts ?? app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user()));

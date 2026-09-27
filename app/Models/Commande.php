@@ -16,6 +16,7 @@ class Commande extends Model
         'statut', 
         'created_at',
         'validated_by',
+        'numero_facture',
     ];
 
     public function panier()

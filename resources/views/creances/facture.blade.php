@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recu paiement #{{ $commande->id }}</title>
+    <title>Recu paiement #{{ $commande->numero_facture ?? $commande->panier->numero_facture ?? '—' }}</title>
     <style>
         html, body { margin: 0; padding: 0; background: #fff; color: #111; }
         body { display: flex; justify-content: center; font-family: monospace; }
@@ -93,10 +93,10 @@
         @endif
 
         <div class="line"></div>
-        <div class="row">Facture n° <b>{{ $commande->id }}</b></div>
+        <div class="row">Facture n° <b>{{ $commande->numero_facture ?? $commande->panier->numero_facture ?? '—' }}</b></div>
         <div class="row">Client : <b>{{ $commande->panier->client->nom ?? '-' }}</b></div>
         <div class="row">Serveuse : <b>{{ $commande->panier->serveuse->name ?? '-' }}</b></div>
-        <div class="row">Table : <b>{{ $commande->panier->tableResto->numero ?? $commande->panier->table_id }}</b> | Panier n° <b>{{ $commande->panier->id }}</b></div>
+        <div class="row">Table : <b>{{ $commande->panier->tableResto->numero ?? $commande->panier->table_id }}</b></div>
         <div class="row">Mode de paiement : <b>{{ $modeLabel }}</b></div>
         <div class="row">Etat paiement : <b>{{ $statutLabel }}</b></div>
         <div class="row">Date : <b>{{ \Carbon\Carbon::parse($commande->created_at)->format('d/m/Y H:i') }}</b></div>

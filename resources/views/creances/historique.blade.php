@@ -7,7 +7,7 @@
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800">Historique des paiements</h1>
-                <p class="text-gray-600">Créance #{{ $commande->id }}</p>
+                <p class="text-gray-600">Créance #{{ $commande->numero_facture ?? $commande->panier->numero_facture ?? '—' }}</p>
             </div>
             <a href="{{ route('creances.liste') }}" 
                class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-colors">

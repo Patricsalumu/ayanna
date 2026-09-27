@@ -461,6 +461,9 @@ export function posApp() {
       if (data.panier_id) {
         window.PANIER_ID = data.panier_id;
       }
+      if (data.numero_facture !== undefined && data.numero_facture !== null) {
+        window.PANIER_NUMERO_FACTURE = data.numero_facture;
+      }
 
       return data;
     },
@@ -913,14 +916,6 @@ export function posApp() {
       }
       try {
         await this.syncPanierToServer();
-
-        // Important: imprimer d'abord, puis valider/libérer la table ensuite.
-        await this.printAddition('paiement', {
-          showAfterPrintModal: false,
-          waitForPrint: true,
-          skipSync: true,
-        });
-
         const response = await fetch('/vente/valider', {
           method: 'POST',
           headers: {
@@ -940,14 +935,22 @@ export function posApp() {
           })
         });
         const data = await response.json();
-        if(data.success) {
-          if(data.redirect_url) {
-            window.location.href = data.redirect_url;
-          } else {
-            window.location.href = '/restaurant';
-          }
-        } else {
+        if (!response.ok || !data.success) {
           alert(data.error || 'Erreur lors du paiement');
+          return;
+        }
+
+        window.PANIER_NUMERO_FACTURE = data.numero_facture ?? window.PANIER_NUMERO_FACTURE;
+        await this.printAddition('paiement', {
+          showAfterPrintModal: false,
+          waitForPrint: true,
+          skipSync: true,
+        });
+
+        if (data.redirect_url) {
+          window.location.href = data.redirect_url;
+        } else {
+          window.location.href = '/restaurant';
         }
       } catch (e) {
         alert('Erreur de connexion avec le serveur');
@@ -959,7 +962,9 @@ export function posApp() {
       const skipSync = options.skipSync === true;
       const tableId = window.TABLE_COURANTE;
       const pointDeVenteId = window.POINT_DE_VENTE_ID;
-      const panierId = window.PANIER_ID || null;
+      const panierId = (Array.isArray(this.panier) && this.panier.length && this.panier[0].panier_id)
+        ? this.panier[0].panier_id
+        : (window.PANIER_ID || null);
       let panier = Array.isArray(this.panier) ? this.panier.filter(item => Number(item.qte || 0) > 0) : [];
 
       if (!skipSync) {
@@ -974,9 +979,7 @@ export function posApp() {
       }
 
       const query = new URLSearchParams();
-      if (window.PANIER_ID) {
-        query.set('panier_id', String(window.PANIER_ID));
-      } else if (panierId) {
+      if (panierId) {
         query.set('panier_id', String(panierId));
       } else if (tableId) {
         query.set('table_id', String(tableId));
@@ -987,12 +990,15 @@ export function posApp() {
 
       if (query.toString()) {
         try {
-          const response = await fetch(`/vente/panier/base?${query.toString()}`);
+          const response = await fetch(`/vente/panier/base?${query.toString()}`, { cache: 'no-store' });
           const data = await response.json();
           if (data && Array.isArray(data.panier)) {
             panier = data.panier.filter(item => Number(item.qte || 0) > 0);
             if (data.panier_id) {
               window.PANIER_ID = data.panier_id;
+            }
+            if (data.numero_facture !== undefined && data.numero_facture !== null) {
+              window.PANIER_NUMERO_FACTURE = data.numero_facture;
             }
             if (data.remise !== undefined && this.canApplyDiscount) {
               this.remise = Number(data.remise) || 0;
@@ -1012,7 +1018,8 @@ export function posApp() {
       const entreprise = window.ENTREPRISE || {};
       const client = this.paiement.client_id ? (window.CLIENTS?.find?.(c => c.id == this.paiement.client_id) ?? null) : null;
       const serveuse = this.paiement.serveuse_id ? (window.SERVEUSES?.find?.(s => s.id == this.paiement.serveuse_id) ?? null) : null;
-      const activePanierId = window.PANIER_ID || panierId;
+      const activePanierId = panierId || window.PANIER_ID;
+      const numeroFacture = window.PANIER_NUMERO_FACTURE ?? null;
 
       const baseTotalHt = panier.reduce((sum, item) => sum + (Number(item.qte || 0) * Number(item.prix || 0)), 0);
       const baseTotalRemise = Number(this.totalRemise || 0);
@@ -1036,9 +1043,10 @@ export function posApp() {
       if(entreprise.telephone) html += `<div style='text-align:center;font-size:14px;color:#111;'>${entreprise.telephone}</div>`;
       if(entreprise.adresse) html += `<div style='text-align:center;font-size:14px;color:#111;'>${entreprise.adresse}</div>`;
       html += `<div style='border-top:1px solid #111;margin:8px 0;'></div>`;
+      html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Facture n° <b>${numeroFacture ?? '—'}</b></div>`;
       html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Client : <b>${client?.nom ?? '-'}</b></div>`;
       html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Serveuse : <b>${serveuse?.name ?? '-'}</b></div>`;
-      html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Table : <b>${table}</b> | Panier n° <b>${activePanierId ?? '-'}</b></div>`;
+      html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Table : <b>${table}</b></div>`;
       if(type === 'paiement') {
         const modePaiementLibelle = (window.MODES_PAIEMENT || [])
           .find(mode => mode.code === this.paiement.modePaiement)?.nom || this.paiement.modePaiement;
@@ -1205,6 +1213,7 @@ export function posApp() {
           bon_id: data.bon_id,
           panier_id: data.panier_id ?? panierId,
           numero_bon: data.numero_bon,
+          numero_facture: data.numero_facture,
           commande_no: data.commande_no ?? 1,
           produits: bonItems,
           table: window.TABLE_COURANTE_LABEL || '',
@@ -1218,7 +1227,7 @@ export function posApp() {
         this.bonCommandePrintEnCours = false;
       }
     },
-    imprimerTicketFactureBon({ bon_id, panier_id, numero_bon, commande_no, produits, table, client, serveuse }) {
+    imprimerTicketFactureBon({ bon_id, panier_id, numero_bon, numero_facture, commande_no, produits, table, client, serveuse }) {
       const entreprise = window.ENTREPRISE || {};
       const now = new Date();
       const dateStr = now.toLocaleDateString('fr-FR');
@@ -1256,7 +1265,8 @@ export function posApp() {
       if (entreprise.telephone) html += `<div style='text-align:center;font-size:14px;color:#111;'>${entreprise.telephone}</div>`;
       if (entreprise.adresse) html += `<div style='text-align:center;font-size:14px;color:#111;'>${entreprise.adresse}</div>`;
       html += `<div style='border-top:1px solid #111;margin:8px 0;'></div>`;
-      html += `<div style='font-size:15px;color:#111;font-weight:bold;display:flex;justify-content:space-between;gap:8px;'><span>Facture <b>${numero_bon ?? bon_id ?? '-'}</b></span><span>Commande No <b>${Number(commande_no) || 1}</b></span></div>`;
+      html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Facture n° <b>${numero_facture ?? '—'}</b></div>`;
+      html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Bon n° <b>${numero_bon ?? bon_id ?? '-'}</b> | Envoi n° <b>${Number(commande_no) || 1}</b></div>`;
       html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Client : <b>${client?.nom ?? '-'}</b></div>`;
       html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Serveuse : <b>${serveuse?.name ?? '-'}</b></div>`;
       html += `<div style='font-size:15px;color:#111;font-weight:bold;'>Table : <b>${table}</b></div>`;
@@ -1424,6 +1434,9 @@ export function posApp() {
           }
 
           if (data.success) {
+            if (data.numero_facture !== undefined && data.numero_facture !== null) {
+              window.PANIER_NUMERO_FACTURE = data.numero_facture;
+            }
             this.printBonCommande(data.bon_id);
           } else {
             alert('❌ Erreur : ' + (data.error || 'Impossible de générer le bon'));

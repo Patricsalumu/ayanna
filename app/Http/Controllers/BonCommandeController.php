@@ -9,6 +9,7 @@ use App\Models\Produit;
 use App\Models\StockJournalier;
 use App\Models\Historiquepdv;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class BonCommandeController extends Controller
@@ -202,15 +203,32 @@ class BonCommandeController extends Controller
 
             \Log::info('[BonCommande] Numéro généré', ['numero_bon' => $numero_bon]);
 
-            // Créer le bon de commande
-            $bon = BonCommande::create([
-                'numero_bon' => $numero_bon,
-                'panier_id' => $panier_id,
-                'serveuse_id' => $serveuse_id,
-                'client_id' => $panier->client_id,
-                'utilisateur_id' => Auth::id(),
-                'produits_json' => $nouveauxProduits,
-            ]);
+            // Le premier bon cuisine déclenche l'attribution du numéro de facture du panier.
+            $bon = DB::transaction(function () use ($panier_id, $numero_bon, $serveuse_id, $nouveauxProduits) {
+                $panierVerrouille = Panier::query()->lockForUpdate()->findOrFail($panier_id);
+                $numeroFacture = $panierVerrouille->assignNumeroFacture();
+
+                if (!$numeroFacture) {
+                    throw new \RuntimeException('Impossible d’attribuer un numéro de facture à ce panier.');
+                }
+
+                if ($panierVerrouille->isDirty('numero_facture')) {
+                    $panierVerrouille->save();
+                }
+
+                $bon = BonCommande::create([
+                    'numero_bon' => $numero_bon,
+                    'panier_id' => $panierVerrouille->id,
+                    'serveuse_id' => $serveuse_id,
+                    'client_id' => $panierVerrouille->client_id,
+                    'utilisateur_id' => Auth::id(),
+                    'produits_json' => $nouveauxProduits,
+                ]);
+
+                $bon->numero_facture = $numeroFacture;
+
+                return $bon;
+            });
 
             \Log::info('[BonCommande] Bon créé', ['bon_id' => $bon->id, 'numero' => $bon->numero_bon]);
 
@@ -218,6 +236,7 @@ class BonCommandeController extends Controller
                 'success' => true,
                 'bon_id' => $bon->id,
                 'numero_bon' => $bon->numero_bon,
+                'numero_facture' => $bon->numero_facture,
                 'message' => 'Bon de commande créé avec succès.',
             ]);
 
@@ -279,6 +298,7 @@ class BonCommandeController extends Controller
             'bon_id' => $bon->id,
             'panier_id' => (int) $panierId,
             'numero_bon' => $bon->numero_bon,
+            'numero_facture' => $bon->panier?->numero_facture,
             'commande_no' => $commandeNo,
             'produits' => $produits,
         ]);

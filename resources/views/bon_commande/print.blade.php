@@ -146,7 +146,7 @@
         <div class="serveuse-info">{{ $bon->serveuse?->name ?? 'N/A' }} | Table {{ $bon->panier?->tableResto?->numero ?? $bon->panier?->table_id ?? 'N/A' }}</div>
 
         <div class="details">
-            Panier #{{ $bon->panier_id }} | {{ $bon->created_at->format('d/m/Y H:i') }}
+            Facture n° {{ $bon->panier?->numero_facture ?? '—' }} | {{ $bon->created_at->format('d/m/Y H:i') }}
         </div>
 
         <div class="separator"></div>

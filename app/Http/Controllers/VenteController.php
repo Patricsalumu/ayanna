@@ -492,6 +492,7 @@ class VenteController extends Controller
             return response()->json([
                 'success' => true,
                 'panier_id' => $panier->id,
+                'numero_facture' => $panier->numero_facture,
                 'count' => count($syncData),
             ]);
         } catch (\Throwable $e) {
@@ -574,7 +575,16 @@ class VenteController extends Controller
         $panier = $query->first();
 
         if (!$panier) {
-            return response()->json(['success' => true, 'panier' => [], 'panier_id' => null]);
+            $numeroFacture = $panierId
+                ? Panier::whereKey($panierId)->value('numero_facture')
+                : null;
+
+            return response()->json([
+                'success' => true,
+                'panier' => [],
+                'panier_id' => $panierId ? (int) $panierId : null,
+                'numero_facture' => $numeroFacture,
+            ]);
         }
 
         $items = $panier->produits->map(function ($produit) use ($panier) {
@@ -594,6 +604,7 @@ class VenteController extends Controller
             'success' => true,
             'panier' => $items,
             'panier_id' => $panier->id,
+            'numero_facture' => $panier->numero_facture,
             'remise' => (float) ($panier->total_remise ?? 0),
         ]);
     }
@@ -1081,7 +1092,12 @@ class VenteController extends Controller
 
             // 2. Créer la commande à partir du panier (seulement les champs qui existent dans la table)
             $commande = new Commande();
+            $numeroFacture = $panier->assignNumeroFacture();
+            if ($panier->isDirty('numero_facture')) {
+                $panier->save();
+            }
             $commande->panier_id = $panier->id;
+            $commande->numero_facture = $numeroFacture;
             $commande->mode_paiement = $data['mode_paiement'];
             $commande->statut = (!$isCompteClient && $montantRestant <= 0) ? 'payé' : 'validé';
             $commande->validated_by = Auth::id();
@@ -1167,6 +1183,7 @@ class VenteController extends Controller
             return response()->json([
                 'success' => true, 
                 'commande_id' => $commande->id,
+                'numero_facture' => $commande->numero_facture,
                 'redirect_url' => $redirectUrl,
                 'table_liberated' => true,
                 'message' => 'Commande validée avec succès'
@@ -1317,6 +1334,7 @@ class VenteController extends Controller
         $commande = \App\Models\Commande::findOrFail($commandeId);
         $commande->statut = 'payé';
         $commande->validated_by = Auth::id();
+        $commande->numero_facture ??= $commande->panier?->numero_facture;
         $commande->save();
         return redirect()->back()->with('success', 'Créance confirmée comme payée.');
     }

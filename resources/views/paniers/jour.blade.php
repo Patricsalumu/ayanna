@@ -151,9 +151,11 @@
                     $dernierPaiement = $paiements?->sortByDesc(fn ($paiement) => $paiement->date_paiement ?? $paiement->created_at)->first();
                     $validateurPaiement = $dernierPaiement?->user?->name ?? $panier->commande?->validatedBy?->name;
                     $annulateur = $panier->status === 'annulé' ? ($panier->annuleBy?->name ?? '') : '';
+                    $numeroFacture = $panier->commande?->numero_facture ?? $panier->numero_facture;
+                    $referencePanier = $numeroFacture ? 'Facture #' . $numeroFacture : 'En cours';
                     $panierDetails = [
                         'id' => $panier->id,
-                        'reference' => $panier->commande?->id ? 'Facture #' . $panier->commande->id : 'Panier #' . $panier->id,
+                        'reference' => $referencePanier,
                         'table' => $panier->tableResto->numero ?? $panier->table_id,
                         'serveuse' => $panier->serveuse->name ?? '-',
                         'client' => $panier->client->nom ?? '-',
@@ -187,7 +189,7 @@
                     data-montant-paye="{{ $montantPaye }}"
                     data-panier='@json($panierDetails)'
                     data-produits="{{ strtolower(collect($panier->produits)->pluck('nom')->implode(',')) }}">
-                    <td class="p-3 font-semibold">{{ $panier->commande?->id ? 'Facture #' . $panier->commande->id : 'Panier #' . $panier->id }}</td>
+                    <td class="p-3 font-semibold">{{ $referencePanier }}</td>
                     <td class="p-3">{{ $panier->tableResto->numero ?? $panier->table_id }}</td>
                     <td class="p-3">{{ $panier->serveuse->name ?? '-' }}</td>
                     <td class="p-3">{{ $panier->client->nom ?? '-' }}</td>
