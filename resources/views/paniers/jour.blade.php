@@ -149,7 +149,7 @@
                     $montantPaye = (float) ($panier->commande?->paiements?->sum('montant') ?? 0);
                     $paiements = $panier->commande?->paiements;
                     $dernierPaiement = $paiements?->sortByDesc(fn ($paiement) => $paiement->date_paiement ?? $paiement->created_at)->first();
-                    $validateurPaiement = $dernierPaiement?->user?->name;
+                    $validateurPaiement = $dernierPaiement?->user?->name ?? $panier->commande?->validatedBy?->name;
                     $annulateur = $panier->status === 'annulé' ? ($panier->annuleBy?->name ?? '') : '';
                     $panierDetails = [
                         'id' => $panier->id,
@@ -248,27 +248,42 @@
                             @else
                                 <span class="text-gray-400 text-xs">-</span>
                             @endif
-                        @elseif(app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user()) && $panier->commande && $montantPaye < $netAPayer)
-                            <button type="button"
-                                    onclick="event.stopPropagation(); ouvrirPaiementJour(this)"
-                                    data-commande-id="{{ $panier->commande->id }}"
-                                    data-client-nom="{{ $panier->client->nom ?? 'N/A' }}"
-                                    data-montant-total="{{ $netAPayer }}"
-                                    data-montant-restant="{{ max(0, $netAPayer - $montantPaye) }}"
-                                    class="inline-flex items-center rounded-full bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700"
-                                    title="Payer cette facture à crédit">
-                                Payer
-                            </button>
-                        @elseif(app(\App\Services\PermissionService::class)->canPrintReceipt(auth()->user()) && $panier->commande && in_array($panier->commande->statut, ['validé', 'payé'], true))
-                            <a href="{{ route('creances.imprimer', $panier->commande->id) }}?auto_print=1"
-                               target="_blank"
-                               onclick="event.stopPropagation()"
-                               class="inline-flex items-center rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-700"
-                               title="Réimprimer le reçu de paiement">
-                                Réimprimer reçu
-                            </a>
                         @else
-                            <span class="text-gray-400 text-xs">-</span>
+                            @php
+                                $afficherBoutonPaiement = app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user())
+                                    && $panier->commande
+                                    && $modeCode === 'compte_client'
+                                    && $montantPaye < $netAPayer;
+                                $afficherBoutonReimpression = app(\App\Services\PermissionService::class)->canPrintReceipt(auth()->user())
+                                    && $panier->commande
+                                    && in_array($panier->commande->statut, ['validé', 'payé'], true);
+                            @endphp
+                            <div class="flex flex-wrap items-center gap-2">
+                                @if($afficherBoutonPaiement)
+                                    <button type="button"
+                                            onclick="event.stopPropagation(); ouvrirPaiementJour(this)"
+                                            data-commande-id="{{ $panier->commande->id }}"
+                                            data-client-nom="{{ $panier->client->nom ?? 'N/A' }}"
+                                            data-montant-total="{{ $netAPayer }}"
+                                            data-montant-restant="{{ max(0, $netAPayer - $montantPaye) }}"
+                                            class="inline-flex items-center rounded-full bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700"
+                                            title="Payer cette facture à crédit">
+                                        Payer
+                                    </button>
+                                @endif
+                                @if($afficherBoutonReimpression)
+                                    <a href="{{ route('creances.imprimer', $panier->commande->id) }}?auto_print=1"
+                                       target="_blank"
+                                       onclick="event.stopPropagation()"
+                                       class="inline-flex items-center rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-700"
+                                       title="Réimprimer le reçu de paiement">
+                                        Réimprimer reçu
+                                    </a>
+                                @endif
+                                @unless($afficherBoutonPaiement || $afficherBoutonReimpression)
+                                    <span class="text-gray-400 text-xs">-</span>
+                                @endunless
+                            </div>
                         @endif
                     </td>
                 </tr>

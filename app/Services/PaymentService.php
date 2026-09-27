@@ -16,6 +16,7 @@ class PaymentService
                 'panier_id' => $panier->id,
                 'mode_paiement' => $data['mode_paiement'],
                 'statut' => 'validé',
+                'validated_by' => $user?->id,
             ]);
 
             $panier->forceFill(['status' => 'validé'])->save();

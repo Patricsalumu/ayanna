@@ -14,7 +14,8 @@ class Commande extends Model
         'panier_id', 
         'mode_paiement', 
         'statut', 
-        'created_at'
+        'created_at',
+        'validated_by',
     ];
 
     public function panier()
@@ -25,6 +26,11 @@ class Commande extends Model
     public function paiements()
     {
         return $this->hasMany(Paiement::class);
+    }
+
+    public function validatedBy()
+    {
+        return $this->belongsTo(User::class, 'validated_by');
     }
 
     public function getTotalPayeAttribute()

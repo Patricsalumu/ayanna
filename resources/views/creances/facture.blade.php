@@ -32,7 +32,7 @@
 <body>
     @php
         $entreprise = $commande->panier->pointDeVente->entreprise ?? null;
-        $devise = $entreprise->devise ?? '$';
+        $devise = $entreprise->devise ?? '';
         $modeRaw = $commande->mode_paiement ?? $commande->panier->mode_paiement ?? 'compte_client';
         $modeNorm = strtolower(str_replace([' ', '-', 'é', 'è', 'ê', 'à'], ['_', '_', 'e', 'e', 'e', 'a'], $modeRaw));
         $modeLabel = match ($modeNorm) {

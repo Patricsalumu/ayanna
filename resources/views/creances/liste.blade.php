@@ -2,8 +2,12 @@
 @section('content')
 
 <div class="max-w-7xl mx-auto px-6 py-3">
-    @php($canPrintReceipt = app(\App\Services\PermissionService::class)->canPrintReceipt(auth()->user()))
-    @php($canValidatePayment = app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user()))
+    @php
+        $canPrintReceipt = app(\App\Services\PermissionService::class)->canPrintReceipt(auth()->user());
+    @endphp
+    @php
+        $canValidatePayment = app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user());
+    @endphp
     <!-- Messages de statut -->
     @if(session('success'))
         <div class="mb-3 p-3 bg-green-100 border border-green-300 text-green-700 rounded-lg text-center font-medium">
@@ -17,9 +21,9 @@
     @endif
 
     <!-- En-tête redesigné avec contrôles centraux -->
-    <div class="bg-white rounded-xl shadow-lg p-6 mb-4 border border-gray-100">
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-4 border border-gray-100 space-y-4">
         <!-- Ligne principale : Titre - Contrôles - Statistiques -->
-        <div class="flex items-center justify-between gap-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
             <!-- Titre à gauche -->
             <div class="flex-shrink-0">
                 <h1 class="text-2xl font-bold text-gray-800 flex items-center">
@@ -30,70 +34,68 @@
                 </h1>
             </div>
             
-            <!-- Contrôles centraux -->
-            <div class="flex-1 max-w-2xl">
-                <div class="flex gap-4 items-center justify-center">
-                    <!-- Filtre par période avec style moderne -->
-                    <form method="GET" class="flex items-center gap-3">
-                        <div class="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg px-4 py-2 border border-blue-200">
+            <!-- Filtre par session de caisse -->
+            <form method="GET" class="flex flex-wrap items-center justify-center gap-3">
+                        <div class="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg px-3 py-2 border border-blue-200">
                             <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
-                            <input type="date" name="date" value="{{ $date ?? now()->toDateString() }}" 
-                                   class="bg-transparent border-none text-sm font-medium text-blue-700 focus:ring-0 focus:outline-none cursor-pointer">
+                            <select name="session" aria-label="Date de début" class="w-40 bg-transparent border-none text-sm font-medium text-blue-700 focus:ring-0 focus:outline-none cursor-pointer">
+                                <option value="all" @selected($selectedSession === 'all')>Toutes</option>
+                                @foreach($sessions as $session)
+                                    <option value="{{ $session['key'] }}" @selected($selectedSession === $session['key'])>
+                                        {{ \Carbon\Carbon::parse($session['debut'])->format('d-m-Y H:i') }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
+                        <select name="session_to" aria-label="Date de fin" class="w-40 bg-white border border-blue-200 rounded-lg px-2 py-2 text-sm font-medium text-blue-700 focus:ring-2 focus:ring-blue-500">
+                            <option value="">Jusqu’à</option>
+                            @foreach($sessions as $session)
+                                <option value="{{ $session['key'] }}" @selected($selectedSessionTo === $session['key'])>
+                                    {{ \Carbon\Carbon::parse($session['debut'])->format('d-m-Y H:i') }}
+                                </option>
+                            @endforeach
+                        </select>
                         <button type="submit" class="inline-flex items-center px-4 py-2.5 bg-blue-600 text-white font-medium rounded-lg text-sm hover:bg-blue-700 transition-all shadow-sm">
                             Appliquer
                         </button>
-                    </form>
-                    
-                    <!-- Barre de recherche moderne -->
-                    <div class="flex-1 max-w-md relative">
-                        <div class="relative">
-                            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
-                            <input type="text" id="search-creance" 
-                                   placeholder="Rechercher client, serveuse, table..." 
-                                   class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-colors" 
-                                   oninput="filtrerCreances()">
-                        </div>
-                    </div>
-                    
-                    <!-- Bouton Export Liste -->
-                    <button onclick="exporterListe()" 
-                            class="inline-flex items-center px-4 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-lg text-sm hover:from-green-700 hover:to-emerald-700 transition-all shadow-sm"
-                            title="Exporter la liste actuelle en PDF">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                        </svg>
-                        Export Liste
-                    </button>
-                </div>
-            </div>
+            </form>
             
             <!-- Statistiques à droite -->
             <div class="flex-shrink-0">
                 <div class="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl px-6 py-4 border border-orange-200 shadow-sm">
                     <div class="text-center">
                         <div class="text-2xl font-bold text-orange-600 total-creances-montant">
-                            @php
-                                $totalRestant = $creances->sum(function($commande) {
-                                    if ($commande->panier && $commande->panier->produits) {
-                                        $montantTotal = $commande->panier->produits->sum(fn($p) => $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0));
-                                        $montantPaye = $commande->paiements->sum('montant');
-                                        return max(0, $montantTotal - $montantPaye);
-                                    }
-                                    return 0;
-                                });
-                            @endphp
-                            {{ number_format($totalRestant, 0, ',', ' ') }} $
+                            {{ $entreprise?->formatAmount($totalRestant) ?? number_format($totalRestant, 0, ',', ' ') }}
                         </div>
                         <div class="text-xs text-orange-700 font-medium total-creances-nombre">{{ $creances->count() }} créances</div>
                         <div class="text-xs text-gray-500 mt-1">À encaisser</div>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Recherche et export sur une rangée dédiée -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 border-t border-gray-100 pt-4">
+            <div class="w-full sm:w-auto sm:flex-1 relative">
+                <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input type="text" id="search-creance"
+                       placeholder="Rechercher client, serveuse, table..."
+                       class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-colors"
+                       oninput="filtrerCreances()">
+            </div>
+
+            <button onclick="exporterListe()"
+                    class="inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-lg text-sm hover:from-green-700 hover:to-emerald-700 transition-all shadow-sm"
+                    title="Exporter la liste actuelle en PDF">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 5.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Export Liste
+            </button>
         </div>
     </div>
 
@@ -157,7 +159,7 @@
                                 <!-- Montant total -->
                                 <td class="px-4 py-2 text-right">
                                     <div class="font-semibold text-green-600">
-                                    {{ number_format($commande->panier->produits->sum(fn($p) => $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0)), 0, ',', ' ') }} $
+                                    {{ $entreprise?->formatAmount($commande->panier->produits->sum(fn($p) => $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0))) ?? number_format($commande->panier->produits->sum(fn($p) => $p->pivot->quantite * (($p->pivot->prix ?? $p->prix_vente) ?? 0)), 0, ',', ' ') }}
                                 
                                 <!-- Montant restant -->
                                 <td class="px-4 py-2 text-right">
@@ -178,11 +180,11 @@
                                         </div>
                                     @else
                                         <div class="font-semibold text-orange-600">
-                                            {{ number_format($montantRestant, 0, ',', ' ') }} $
+                                            {{ $entreprise?->formatAmount($montantRestant) ?? number_format($montantRestant, 0, ',', ' ') }}
                                         </div>
                                         @if($montantPaye > 0)
                                             <div class="text-xs text-gray-500">
-                                                Payé: {{ number_format($montantPaye, 0, ',', ' ') }} $
+                                                Payé: {{ $entreprise?->formatAmount($montantPaye) ?? number_format($montantPaye, 0, ',', ' ') }}
                                             </div>
                                         @endif
                                     @endif
@@ -293,8 +295,8 @@
                 </div>
                 <h3 class="text-lg font-medium text-gray-900 mb-2">Aucune créance</h3>
                 <p class="text-gray-500 text-sm">
-                    @if(!empty($date))
-                        Aucune créance pour le {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}.
+                    @if($selectedSession !== 'all' || $selectedSessionTo)
+                        Aucune créance pour la session sélectionnée.
                     @else
                         Aucune créance enregistrée.
                     @endif
@@ -437,6 +439,7 @@
 </div>
     <script>
         const creances = {!! json_encode($creances) !!};
+        const deviseSymbole = @json($entreprise?->devise ?? '');
         let page = 1;
         const lignesParPage = 10;
 
@@ -449,8 +452,8 @@
             
             document.getElementById('commandeId').value = commandeId;
             document.getElementById('clientNom').textContent = clientNom;
-            document.getElementById('montantTotal').textContent = montantTotal.toLocaleString() + ' $';
-            document.getElementById('montantRestant').textContent = montantRestant.toLocaleString() + ' $';
+            document.getElementById('montantTotal').textContent = montantTotal.toLocaleString('fr-FR') + (deviseSymbole ? ' ' + deviseSymbole : '');
+            document.getElementById('montantRestant').textContent = montantRestant.toLocaleString('fr-FR') + (deviseSymbole ? ' ' + deviseSymbole : '');
             document.getElementById('montantRecu').value = '';
             document.getElementById('montantRecu').max = montantRestant;
             
@@ -594,8 +597,8 @@
                     <tr class="hover:bg-gray-50">
                         <td class="px-3 py-3 font-medium text-gray-900">${prod.nom}</td>
                         <td class="px-3 py-3 text-center text-gray-700">${prod.pivot.quantite}</td>
-                        <td class="px-3 py-3 text-right text-gray-700">${unitPrice.toLocaleString()} $</td>
-                        <td class="px-3 py-3 text-right font-bold text-green-600">${total.toLocaleString()} $</td>
+                        <td class="px-3 py-3 text-right text-gray-700">${unitPrice.toLocaleString('fr-FR')} ${deviseSymbole}</td>
+                        <td class="px-3 py-3 text-right font-bold text-green-600">${total.toLocaleString('fr-FR')} ${deviseSymbole}</td>
                     </tr>
                 `;
             });
@@ -605,7 +608,7 @@
                         <tfoot class="bg-green-50 border-t-2 border-green-200">
                             <tr>
                                 <td colspan="3" class="px-3 py-4 font-bold text-green-700">Total commande :</td>
-                                <td class="px-3 py-4 text-right font-bold text-green-700 text-lg">${totalGeneral.toLocaleString()} $</td>
+                                <td class="px-3 py-4 text-right font-bold text-green-700 text-lg">${totalGeneral.toLocaleString('fr-FR')} ${deviseSymbole}</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -638,7 +641,8 @@
         // Fonction pour exporter la liste des créances
         function exporterListe() {
             const search = document.getElementById('search-creance').value;
-            const date = document.querySelector('input[name="date"]').value || '{{ $date ?? now()->toDateString() }}';
+            const session = document.querySelector('select[name="session"]').value;
+            const sessionTo = document.querySelector('select[name="session_to"]').value;
             
             // Collecter les IDs des créances visibles
             const rows = document.querySelectorAll('#body-creances tr');
@@ -664,7 +668,8 @@
             
             // Construire l'URL d'export avec les paramètres
             const params = new URLSearchParams({
-                date: date,
+                session: session,
+                session_to: sessionTo,
                 search: search,
                 ids: creancesVisibles.join(',')
             });
@@ -705,7 +710,7 @@
             const nombreElement = document.querySelector('.total-creances-nombre');
             
             if (totalElement) {
-                totalElement.textContent = totalRestantFiltre.toLocaleString() + ' $';
+                totalElement.textContent = totalRestantFiltre.toLocaleString('fr-FR') + (deviseSymbole ? ' ' + deviseSymbole : '');
             }
             if (nombreElement) {
                 nombreElement.textContent = nombreCreancesFiltre + ' créances';

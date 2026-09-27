@@ -6,7 +6,9 @@ use App\Models\PointDeVente;
 use App\Models\Historiquepdv;
 use App\Models\Panier;
 use App\Models\Commande;
+use App\Models\StockJournalier;
 use App\Services\PermissionService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -1082,6 +1084,7 @@ class VenteController extends Controller
             $commande->panier_id = $panier->id;
             $commande->mode_paiement = $data['mode_paiement'];
             $commande->statut = (!$isCompteClient && $montantRestant <= 0) ? 'payé' : 'validé';
+            $commande->validated_by = Auth::id();
             $commande->created_at = now();
             
             Log::info('[VALIDATION PAIEMENT] Données commande à sauvegarder', [
@@ -1219,22 +1222,92 @@ class VenteController extends Controller
     public function creances(Request $request)
     {
         $user = Auth::user();
-        $entrepriseId = $user->entreprise_id ?? ($user->entreprise->id ?? null);
-        $date = $request->get('date', now()->toDateString());
+        $entreprise = $user->entreprise ?? null;
+        $entrepriseId = $user->entreprise_id ?? $entreprise?->id;
+        $pointDeVenteIds = PointDeVente::where('entreprise_id', $entrepriseId)->pluck('id');
+        $sessions = StockJournalier::with('pointDeVente')
+            ->whereIn('point_de_vente_id', $pointDeVenteIds)
+            ->orderByDesc('validated_at')
+            ->get()
+            ->groupBy(fn ($stock) => $stock->point_de_vente_id.'|'.$stock->session)
+            ->map(function ($stocks, $key) {
+                $first = $stocks->sortBy('validated_at')->first();
+                $closedAt = Historiquepdv::where('point_de_vente_id', $first->point_de_vente_id)
+                    ->where('etat', 'ferme')
+                    ->where('opened_at', $first->validated_at)
+                    ->value('closed_at');
+
+                return [
+                    'key' => (string) $key,
+                    'nom' => (string) $first->session,
+                    'point_de_vente_id' => (int) $first->point_de_vente_id,
+                    'point_de_vente_nom' => $first->pointDeVente?->nom ?? 'Point de vente',
+                    'debut' => $first->validated_at ?? $first->created_at,
+                    'fin' => $closedAt,
+                ];
+            })
+            ->sortByDesc('debut')
+            ->values();
+
+        $sessions = $sessions->map(function ($session) use ($sessions) {
+            if (!$session['fin']) {
+                $nextSession = $sessions
+                    ->filter(fn ($candidate) => $candidate['point_de_vente_id'] === $session['point_de_vente_id'])
+                    ->filter(fn ($candidate) => Carbon::parse($candidate['debut'])->gt(Carbon::parse($session['debut'])))
+                    ->sortBy('debut')
+                    ->first();
+
+                $session['fin'] = $nextSession['debut'] ?? now();
+                $session['fin_exclusive'] = (bool) $nextSession;
+            } else {
+                $session['fin_exclusive'] = false;
+            }
+
+            return $session;
+        });
+
+        $selectedSession = $request->input('session', 'all');
+        $selectedSessionTo = $request->input('session_to');
+        $sessionFrom = $sessions->firstWhere('key', $selectedSession);
+        $sessionTo = $sessions->firstWhere('key', $selectedSessionTo);
+
+        if ($sessionFrom && $sessionTo && Carbon::parse($sessionFrom['debut'])->gt(Carbon::parse($sessionTo['debut']))) {
+            [$sessionFrom, $sessionTo] = [$sessionTo, $sessionFrom];
+        }
         
-        $query = Commande::with(['panier', 'panier.client', 'panier.serveuse', 'panier.tableResto', 'panier.pointDeVente', 'paiements'])
+        $query = Commande::with(['panier', 'panier.client', 'panier.serveuse', 'panier.tableResto', 'panier.pointDeVente', 'panier.produits', 'paiements'])
             ->where('mode_paiement', 'compte_client')
             ->whereHas('panier.tableResto.salle', function($q) use ($entrepriseId) {
                 $q->where('entreprise_id', $entrepriseId);
             });
             
-        if (!empty($date) && $date !== 'all') {
-            $query->whereDate('created_at', $date);
+        if ($sessionFrom || $sessionTo) {
+            $startSession = $sessionFrom ?? $sessions->last();
+            $endSession = $sessionTo ?? $sessionFrom;
+
+            if ($startSession) {
+                $query->where('created_at', '>=', $startSession['debut']);
+            }
+            if ($endSession) {
+                $query->where('created_at', $endSession['fin_exclusive'] ? '<' : '<=', $endSession['fin']);
+            }
         }
         
         $creances = $query->orderByDesc('created_at')->get();
+        $totalRestant = $creances->sum(function ($commande) {
+            if (!$commande->panier || !$commande->panier->produits) {
+                return 0;
+            }
+
+            $montantTotal = $commande->panier->produits->sum(
+                fn ($produit) => $produit->pivot->quantite * (($produit->pivot->prix ?? $produit->prix_vente) ?? 0)
+            );
+            $montantPaye = $commande->paiements->sum('montant');
+
+            return max(0, $montantTotal - $montantPaye);
+        });
         
-        return view('creances.liste', compact('creances', 'date'));
+        return view('creances.liste', compact('creances', 'sessions', 'selectedSession', 'selectedSessionTo', 'totalRestant', 'entreprise'));
     }
 
     public function confirmerCreance($commandeId)
@@ -1243,6 +1316,7 @@ class VenteController extends Controller
 
         $commande = \App\Models\Commande::findOrFail($commandeId);
         $commande->statut = 'payé';
+        $commande->validated_by = Auth::id();
         $commande->save();
         return redirect()->back()->with('success', 'Créance confirmée comme payée.');
     }
@@ -1438,10 +1512,12 @@ class VenteController extends Controller
 
     public function historiqueCreance($commandeId)
     {
-        $commande = \App\Models\Commande::with(['panier.client', 'panier.serveuse', 'panier.tableResto', 'panier.produits', 'paiements.user'])
+        $commande = \App\Models\Commande::with(['panier.client', 'panier.serveuse', 'panier.tableResto', 'panier.produits', 'panier.pointDeVente.entreprise', 'paiements.user'])
             ->findOrFail($commandeId);
-        
-        return view('creances.historique', compact('commande'));
+
+        $entreprise = $commande->panier->pointDeVente->entreprise ?? Auth::user()?->entreprise;
+
+        return view('creances.historique', compact('commande', 'entreprise'));
     }
 
     public function imprimerCreance(Request $request, $commandeId)
@@ -1461,7 +1537,11 @@ class VenteController extends Controller
 
     public function exporterListeCreances(Request $request)
     {
-        $date = $request->get('date', today()->toDateString());
+        $user = Auth::user();
+        $entreprise = $user?->entreprise;
+        $entrepriseId = $user?->entreprise_id ?? $entreprise?->id;
+        $selectedSession = $request->input('session', 'all');
+        $selectedSessionTo = $request->input('session_to');
         $search = $request->get('search', '');
         $ids = $request->get('ids', '');
         
@@ -1471,13 +1551,15 @@ class VenteController extends Controller
             'panier.serveuse', 
             'panier.tableResto', 
             'panier.produits', 
+            'panier.openedBy',
             'panier.pointDeVente.entreprise',
             'paiements'
         ])->where('mode_paiement', 'compte_client');
 
-        // Appliquer le filtre de date
-        if (!empty($date) && $date !== 'all') {
-            $query->whereDate('created_at', $date);
+        if ($entrepriseId) {
+            $query->whereHas('panier.tableResto.salle', function ($q) use ($entrepriseId) {
+                $q->where('entreprise_id', $entrepriseId);
+            });
         }
 
         // Si des IDs spécifiques sont fournis (depuis la recherche), les utiliser
@@ -1505,13 +1587,12 @@ class VenteController extends Controller
         }
 
         // Informations pour l'en-tête du PDF
-        $entreprise = null;
-        if ($creances->isNotEmpty() && $creances->first()->panier && $creances->first()->panier->pointDeVente) {
-            $entreprise = $creances->first()->panier->pointDeVente->entreprise;
-        }
+        $entreprise = $creances->first()?->panier?->pointDeVente?->entreprise ?? $entreprise;
 
         $dateGeneration = now();
-        $periode = !empty($date) ? 'du ' . \Carbon\Carbon::parse($date)->format('d/m/Y') : 'toutes périodes';
+        $periode = $selectedSession !== 'all'
+            ? ($selectedSessionTo ? 'sessions sélectionnées' : 'session sélectionnée')
+            : ($selectedSessionTo ? 'sessions jusqu’à la sélection' : 'toutes les sessions');
         $critereRecherche = !empty($search) ? " (recherche: \"$search\")" : '';
 
         // Générer le PDF
@@ -1526,7 +1607,7 @@ class VenteController extends Controller
             'critereRecherche'
         ));
 
-        $pdf->setPaper('A4', 'portrait');
+        $pdf->setPaper('A4', 'landscape');
         
         // Nom du fichier avec timestamp
         $fileName = 'liste_creances_' . date('d-m-Y_H-i-s') . '.pdf';

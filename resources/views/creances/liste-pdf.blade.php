@@ -6,34 +6,30 @@
     <title>Liste des Créances - {{ $periode }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'DejaVu Sans', Arial, sans-serif; 
-            font-size: 11px; 
-            line-height: 1.4; 
-            color: #333;
-            margin: 20px;
+        .summary {
+            width: 100%;
+            margin-bottom: 16px;
+            border-collapse: collapse;
+            table-layout: fixed;
         }
-        
-        .header { 
-            text-align: center; 
-            border-bottom: 3px solid #2563eb; 
-            padding-bottom: 20px; 
-            margin-bottom: 25px; 
-            position: relative;
+        .summary td {
+            width: 33.33%;
+            padding: 9px 12px;
+            border: 1px solid #bfdbfe;
+            background: #eff6ff;
+            text-align: center;
         }
-        
-        .header-content {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 15px;
+        .summary-label {
+            display: block;
+            margin-bottom: 3px;
+            color: #6b7280;
+            font-size: 9px;
+            font-weight: 600;
         }
-        
-        .logo { 
-            width: 70px; 
-            height: 70px; 
-            margin-right: 20px;
-            border-radius: 8px;
+        .summary-value { font-size: 14px; font-weight: bold; }
+        .summary-value.total { color: #059669; }
+        .summary-value.restant { color: #dc2626; }
+        .summary-value.nombre { color: #2563eb; }
         }
         
         .company-info { 
@@ -77,9 +73,9 @@
         
         .info-section { 
             background-color: #f8fafc; 
-            padding: 15px; 
+            padding: 10px;
             border-radius: 8px; 
-            margin-bottom: 25px; 
+            margin-bottom: 16px;
             border: 1px solid #e2e8f0;
         }
         
@@ -98,7 +94,7 @@
         }
         
         .info-label { 
-            font-size: 10px; 
+            font-size: 9px;
             color: #6b7280; 
             margin-bottom: 4px; 
             font-weight: 600;
@@ -124,21 +120,32 @@
         }
         
         th { 
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8); 
-            color: white; 
-            padding: 8px 6px; 
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+            padding: 7px 5px;
             text-align: left; 
             font-weight: bold; 
-            font-size: 9px;
+            font-size: 8px;
         }
         
         th.text-center { text-align: center; }
         th.text-right { text-align: right; }
         
         td { 
-            padding: 6px; 
+            padding: 5px;
             border-bottom: 1px solid #e5e7eb; 
             vertical-align: middle;
+            overflow-wrap: anywhere;
+        }
+
+        tr { page-break-inside: avoid; }
+        .products {
+            font-size: 7px;
+            line-height: 1.35;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            word-wrap: break-word;
         }
         
         tr:nth-child(even) { 
@@ -206,13 +213,7 @@
     <!-- En-tête professionnel -->
     <div class="header">
         
-        <div class="header-content">
-            @if($entreprise && $entreprise->logo)
-                <img src="{{ public_path('storage/logos/' . $entreprise->logo) }}" alt="Logo" class="logo">
-            @else
-                <img src="{{ public_path('storage/logos/favicon.png') }}" alt="Ayanna" class="logo">
-            @endif
-            
+        <div class="header-content">        
             <div class="company-info">
                 <div class="company-name">{{ $entreprise->nom ?? 'Mon Entreprise' }}</div>
                 <div class="company-details">
@@ -233,35 +234,36 @@
     </div>
 
     <!-- Résumé des informations -->
-    <div class="info-section">
-        <div class="info-grid">
-            <div class="info-item">
-                <div class="info-label">Nombre de créances</div>
-                <div class="info-value nombre">{{ $nombreCreances }}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Montant total</div>
-                <div class="info-value total">{{ number_format($totalGeneral, 0, ',', ' ') }} $</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Montant restant à encaisser</div>
-                <div class="info-value restant">{{ number_format($totalRestant, 0, ',', ' ') }} $</div>
-            </div>
-        </div>
-    </div>
+    <table class="summary">
+        <tr>
+            <td>
+                <span class="summary-label">Nombre de créances</span>
+                <span class="summary-value nombre">{{ $nombreCreances }}</span>
+            </td>
+            <td>
+                <span class="summary-label">Montant total</span>
+                <span class="summary-value total">{{ $entreprise?->formatAmount($totalGeneral) ?? number_format($totalGeneral, 0, ',', ' ') }}</span>
+            </td>
+            <td>
+                <span class="summary-label">Montant restant à encaisser</span>
+                <span class="summary-value restant">{{ $entreprise?->formatAmount($totalRestant) ?? number_format($totalRestant, 0, ',', ' ') }}</span>
+            </td>
+        </tr>
+    </table>
 
     <!-- Tableau des créances -->
     @if($creances->isNotEmpty())
         <table>
             <thead>
                 <tr>
-                    <th>Table</th>
-                    <th>Client</th>
-                    <th>Serveuse</th>
-                    <th>Date</th>
-                    <th class="text-right">Montant Total</th>
-                    <th class="text-right">Montant Restant</th>
-                    <th class="text-center">Statut</th>
+                    <th style="width: 6%;">N° facture</th>
+                    <th style="width: 11%;">Date et heure</th>
+                    <th style="width: 10%;">Caissier</th>
+                    <th style="width: 10%;">Serveuse</th>
+                    <th style="width: 10%;">Client</th>
+                    <th class="text-right" style="width: 9%;">Total montant</th>
+                    <th class="text-right" style="width: 9%;">Restant</th>
+                    <th style="width: 35%;">Produits × quantité</th>
                 </tr>
             </thead>
             <tbody>
@@ -273,31 +275,28 @@
                         $montantRestant = max(0, $montantTotal - $montantPaye);
                     @endphp
                     <tr>
-                        <td>
-                            <span class="table-numero">
-                                {{ $commande->panier->tableResto->numero ?? 'N/A' }}
-                            </span>
-                        </td>
-                        <td class="font-bold">{{ $commande->panier->client->nom ?? 'N/A' }}</td>
+                        <td class="font-bold">#{{ $commande->id }}</td>
+                        <td>{{ \Carbon\Carbon::parse($commande->created_at)->format('d/m/Y H:i') }}</td>
+                        <td>{{ $commande->panier->openedBy?->name ?? '—' }}</td>
                         <td>{{ $commande->panier->serveuse->name ?? 'N/A' }}</td>
-                        <td>
-                            {{ \Carbon\Carbon::parse($commande->created_at)->format('d/m/Y H:i') }}
-                        </td>
+                        <td class="font-bold">{{ $commande->panier->client->nom ?? 'N/A' }}</td>
                         <td class="montant total">
-                            {{ number_format($montantTotal, 0, ',', ' ') }} $
+                            {{ $entreprise?->formatAmount($montantTotal) ?? number_format($montantTotal, 0, ',', ' ') }}
                         </td>
                         <td class="montant {{ $montantRestant <= 0 ? 'solde' : 'restant' }}">
                             @if($montantRestant <= 0)
                                 Soldé
                             @else
-                                {{ number_format($montantRestant, 0, ',', ' ') }} $
+                                {{ $entreprise?->formatAmount($montantRestant) ?? number_format($montantRestant, 0, ',', ' ') }}
                             @endif
                         </td>
-                        <td class="text-center">
-                            @if($commande->mode_paiement === 'compte_client' && $commande->statut === 'payé')
-                                <span class="statut paye">Payé</span>
+                        <td class="products">
+                            @if($commande->panier->produits->isEmpty())
+                                —
                             @else
-                                <span class="statut attente">En attente</span>
+                                @foreach($commande->panier->produits as $produit)
+                                    @if(!$loop->first), @endif{{ $produit->nom }} x {{ $produit->pivot->quantite }}
+                                @endforeach
                             @endif
                         </td>
                     </tr>
@@ -313,7 +312,7 @@
     <!-- Pied de page -->
     <div class="footer">
         <div class="generation-info">
-            Généré par Ayanna le {{ $dateGeneration->format('d/m/Y à H:i') }}
+            Informatisé par Ayanna Erp, Généré le {{ $dateGeneration->format('d/m/Y à H:i') }}
         </div>
     </div>
 </body>

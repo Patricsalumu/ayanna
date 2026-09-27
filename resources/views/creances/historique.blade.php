@@ -52,16 +52,16 @@
                 <div class="space-y-2 text-sm">
                     <div class="flex justify-between">
                         <span class="text-gray-600">Montant total :</span>
-                        <span class="font-bold text-green-600">{{ number_format($montantTotal, 0, ',', ' ') }} $</span>
+                        <span class="font-bold text-green-600">{{ $entreprise?->formatAmount($montantTotal) ?? number_format($montantTotal, 0, ',', ' ') }}</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Montant payé :</span>
-                        <span class="font-medium text-blue-600">{{ number_format($montantPaye, 0, ',', ' ') }} $</span>
+                        <span class="font-medium text-blue-600">{{ $entreprise?->formatAmount($montantPaye) ?? number_format($montantPaye, 0, ',', ' ') }}</span>
                     </div>
                     <div class="flex justify-between border-t border-green-300 pt-2">
                         <span class="text-gray-600 font-bold">Montant restant :</span>
                         <span class="font-bold {{ $montantRestant <= 0 ? 'text-green-600' : 'text-orange-600' }}">
-                            {{ number_format($montantRestant, 0, ',', ' ') }} $
+                            {{ $entreprise?->formatAmount($montantRestant) ?? number_format($montantRestant, 0, ',', ' ') }}
                         </span>
                     </div>
                 </div>
@@ -100,7 +100,7 @@
                                 <!-- Montant -->
                                 <td class="px-6 py-4 text-right">
                                     <div class="font-bold text-green-600 text-lg">
-                                        {{ number_format($paiement->montant, 0, ',', ' ') }} $
+                                        {{ $entreprise?->formatAmount($paiement->montant) ?? number_format($paiement->montant, 0, ',', ' ') }}
                                     </div>
                                 </td>
                                 
@@ -151,7 +151,7 @@
                         <tr>
                             <td colspan="5" class="px-6 py-4 font-bold text-green-700">Total payé :</td>
                             <td class="px-6 py-4 text-center font-bold text-green-700 text-lg">
-                                {{ number_format($montantPaye, 0, ',', ' ') }} $
+                                {{ $entreprise?->formatAmount($montantPaye) ?? number_format($montantPaye, 0, ',', ' ') }}
                             </td>
                         </tr>
                     </tfoot>
@@ -191,9 +191,9 @@
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-6 py-4 font-medium text-gray-900">{{ $produit->nom }}</td>
                             <td class="px-6 py-4 text-center text-gray-700">{{ $produit->pivot->quantite }}</td>
-                            <td class="px-6 py-4 text-right text-gray-700">{{ number_format(($produit->pivot->prix ?? $produit->prix_vente) ?? 0, 0, ',', ' ') }} $</td>
+                            <td class="px-6 py-4 text-right text-gray-700">{{ $entreprise?->formatAmount(($produit->pivot->prix ?? $produit->prix_vente) ?? 0) ?? number_format(($produit->pivot->prix ?? $produit->prix_vente) ?? 0, 0, ',', ' ') }}</td>
                             <td class="px-6 py-4 text-right font-bold text-green-600">
-                                {{ number_format($produit->pivot->quantite * (($produit->pivot->prix ?? $produit->prix_vente) ?? 0), 0, ',', ' ') }} $
+                                {{ $entreprise?->formatAmount($produit->pivot->quantite * (($produit->pivot->prix ?? $produit->prix_vente) ?? 0)) ?? number_format($produit->pivot->quantite * (($produit->pivot->prix ?? $produit->prix_vente) ?? 0), 0, ',', ' ') }}
                             </td>
                         </tr>
                     @endforeach
@@ -202,7 +202,7 @@
                     <tr>
                         <td colspan="3" class="px-6 py-4 font-bold text-green-700">Total commande :</td>
                         <td class="px-6 py-4 text-right font-bold text-green-700 text-lg">
-                            {{ number_format($montantTotal, 0, ',', ' ') }} $
+                            {{ $entreprise?->formatAmount($montantTotal) ?? number_format($montantTotal, 0, ',', ' ') }}
                         </td>
                     </tr>
                 </tfoot>

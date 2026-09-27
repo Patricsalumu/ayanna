@@ -659,7 +659,7 @@ class PanierController extends Controller
         }
 
         $paniers = $paniersQuery
-            ->with(['tableResto', 'serveuse', 'client', 'produits', 'pointDeVente', 'commande.paiements'])
+            ->with(['tableResto', 'serveuse', 'client', 'produits', 'pointDeVente', 'commande.paiements.user', 'commande.validatedBy'])
             ->orderBy('created_at', 'desc')
             ->get();
 
