@@ -19,7 +19,13 @@
                                 </div>
                                 Entrées/Sorties - {{ $pointDeVente->nom }}
                             </h1>
-                            <p class="text-blue-100 text-sm font-medium">{{ now()->format('d/m/Y') }} - Mouvements du jour</p>
+                            <p class="text-blue-100 text-sm font-medium">
+                                @if($sessionDebut && $sessionFin)
+                                    Session du {{ $sessionDebut->format('d/m/Y H:i') }} au {{ $sessionFin->format('d/m/Y H:i') }}
+                                @else
+                                    Aucune session ouverte
+                                @endif
+                            </p>
                         </div>
                     </div>
 
@@ -44,16 +50,30 @@
                 </div>
             @endif
 
-            <!-- Filtres : période et recherche -->
+            <!-- Recherche dans la session -->
             <form method="GET" class="mb-6 flex flex-col lg:flex-row lg:items-end gap-3">
-                <div class="flex items-center gap-2">
-                    <label class="text-sm text-gray-600">De :</label>
-                    <input type="date" name="date_from" value="{{ request('date_from') }}" class="border rounded-lg px-3 py-2">
+                <div>
+                    <label for="session_from" class="block text-sm text-gray-600 mb-1">Session de :</label>
+                    <select id="session_from" name="session_from" class="border rounded-lg px-3 py-2">
+                        <option value="">Choisir une session</option>
+                        @foreach($sessions as $sessionOption)
+                            <option value="{{ $sessionOption->session }}" {{ (string) $selectedSessionFrom === (string) $sessionOption->session ? 'selected' : '' }}>
+                                {{ \Carbon\Carbon::parse($sessionOption->validated_at)->format('d/m/Y H:i') }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
 
-                <div class="flex items-center gap-2">
-                    <label class="text-sm text-gray-600">À :</label>
-                    <input type="date" name="date_to" value="{{ request('date_to') }}" class="border rounded-lg px-3 py-2">
+                <div>
+                    <label for="session_to" class="block text-sm text-gray-600 mb-1">Session à :</label>
+                    <select id="session_to" name="session_to" class="border rounded-lg px-3 py-2">
+                        <option value="">Choisir une session</option>
+                        @foreach($sessions as $sessionOption)
+                            <option value="{{ $sessionOption->session }}" {{ (string) $selectedSessionTo === (string) $sessionOption->session ? 'selected' : '' }}>
+                                {{ \Carbon\Carbon::parse($sessionOption->validated_at)->format('d/m/Y H:i') }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
 
                 <div class="flex-1">
@@ -63,7 +83,7 @@
 
                 <div class="flex items-center gap-2">
                     <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Filtrer</button>
-                    <a href="{{ route('mouvements.pdv.export_pdf', $pointDeVente->id) }}?date_from={{ request('date_from') }}&date_to={{ request('date_to') }}&q={{ urlencode(request('q')) }}" class="px-4 py-2 bg-gray-800 text-white rounded-lg">Exporter PDF</a>
+                    <a href="{{ route('mouvements.pdv.export_pdf', $pointDeVente->id) }}?session_from={{ urlencode($selectedSessionFrom ?? '') }}&session_to={{ urlencode($selectedSessionTo ?? '') }}&q={{ urlencode(request('q')) }}" class="px-4 py-2 bg-gray-800 text-white rounded-lg">Exporter PDF</a>
                     <a href="{{ url()->current() }}" class="px-4 py-2 border rounded-lg text-gray-700">Réinitialiser</a>
                 </div>
             </form>
@@ -199,7 +219,7 @@
                                     <td colspan="5" class="px-4 py-8 text-center">
                                         <div class="flex flex-col items-center">
                                             <i data-lucide="inbox" class="w-10 h-10 text-gray-300 mb-3"></i>
-                                            <p class="text-gray-500 text-base font-medium">Aucun mouvement aujourd'hui</p>
+                                            <p class="text-gray-500 text-base font-medium">Aucun mouvement dans cette session</p>
                                             <p class="text-gray-400 text-sm mt-1">Commencez par ajouter un nouveau mouvement</p>
                                         </div>
                                     </td>

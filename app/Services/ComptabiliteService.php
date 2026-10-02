@@ -705,27 +705,31 @@ class ComptabiliteService
                 'point_de_vente_id' => $mouvement->point_de_vente_id,
                 'user_id' => $mouvement->user_id,
                 'type_operation' => $mouvement->type === 'entree' ? 'recette' : 'depense',
-                'statut' => 'valide'
+                'statut' => 'brouillon'
             ]);
 
             // Écriture selon le type (entrée/sortie)
             if ($mouvement->type === 'entree') {
-                // Entrée : Débit du compte concerné (entrée d'argent)
+                $pointDeVente = $mouvement->pointDeVente;
+                $compteCaisse = $pointDeVente?->compteCaisse;
+                if (!$compteCaisse || (int) $compteCaisse->entreprise_id !== (int) $entreprise->id) {
+                    throw new \RuntimeException('Configurez un compte caisse valide pour ce point de vente avant d’enregistrer une entrée.');
+                }
+
+                // Entrée : débit de la caisse et crédit du compte sélectionné.
                 EcritureComptable::create([
                     'journal_id' => $journal->id,
-                    'compte_id' => $compte->id,
-                    'libelle' => $mouvement->libele,
+                    'compte_id' => $compteCaisse->id,
+                    'libelle' => 'Entrée caisse - ' . $mouvement->libele,
                     'debit' => $mouvement->montant,
                     'credit' => 0,
                     'ordre' => 1
                 ]);
 
-                // Crédit : Compte de contrepartie 
-                $compteContrepartie = $this->obtenirCompteContrepartie($compte, 'recette', $entreprise);
                 EcritureComptable::create([
                     'journal_id' => $journal->id,
-                    'compte_id' => $compteContrepartie->id,
-                    'libelle' => "Contrepartie " . $mouvement->libele,
+                    'compte_id' => $compte->id,
+                    'libelle' => $mouvement->libele,
                     'debit' => 0,
                     'credit' => $mouvement->montant,
                     'ordre' => 2
