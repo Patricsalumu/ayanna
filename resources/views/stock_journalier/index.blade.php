@@ -8,6 +8,11 @@
             {{ session('success') }}
         </div>
     @endif
+    @if(session('error'))
+        <div class="mb-6 p-4 bg-red-100 border border-red-300 text-red-700 rounded-xl shadow-sm text-center font-semibold">
+            {{ session('error') }}
+        </div>
+    @endif
     @if(isset($message))
         <div class="mb-6 p-4 bg-red-100 border border-red-300 text-red-700 rounded-xl shadow-sm text-center font-semibold">
             {{ $message }}
@@ -100,6 +105,13 @@
                            oninput="filterProducts()">
                 </div>
             </div>
+
+            @if($sessionEnCours ?? false)
+                <button type="button" onclick="openDamagedStockModal()" class="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 text-white font-semibold rounded-lg hover:bg-rose-700 shadow transition">
+                    <span aria-hidden="true">!</span>
+                    Déclarer un produit abîmé
+                </button>
+            @endif
             
             <!-- Export PDF -->
             <div class="w-full lg:w-auto">
@@ -188,6 +200,7 @@
                         <th class="px-4 py-4 text-center text-sm font-bold text-gray-700">Q. Ajoutée</th>
                         <th class="px-4 py-4 text-center text-sm font-bold text-gray-700">Q. Totale</th>
                         <th class="px-4 py-4 text-center text-sm font-bold text-gray-700">Q. Vendue</th>
+                        <th class="px-4 py-4 text-center text-sm font-bold text-gray-700">Q. Abîmée</th>
                         <th class="px-4 py-4 text-center text-sm font-bold text-gray-700">Q. Restante</th>
                         <th class="px-4 py-4 text-right text-sm font-bold text-gray-700">Prix unitaire</th>
                         <th class="px-4 py-4 text-right text-sm font-bold text-gray-700">Total</th>
@@ -199,7 +212,7 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                 @foreach($produitsByCategory as $categorie => $produitsCategorie)
                     <tr class="bg-blue-50 border-y border-blue-200 category-row" data-category-id="{{ $produitsCategorie->first()['categorie_id'] ?? '' }}">
-                        <td colspan="8" class="px-4 py-3 text-left font-bold text-blue-900">
+                        <td colspan="9" class="px-4 py-3 text-left font-bold text-blue-900">
                             Catégorie : {{ $categorie }}
                         </td>
                         <td class="px-4 py-3 text-right font-bold text-blue-900 category-total" data-total="{{ $categoryTotals[$categorie] ?? 0 }}">
@@ -234,6 +247,9 @@
                             </td>
                             <td class="px-4 py-4 text-center">
                                 <span class="inline-flex items-center px-3 py-1 rounded-full bg-orange-100 text-orange-800 text-sm font-medium">{{ $produit['q_vendue'] }}</span>
+                            </td>
+                            <td class="px-4 py-4 text-center">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full {{ $produit['q_abimee'] > 0 ? 'bg-rose-100 text-rose-800' : 'bg-gray-100 text-gray-600' }} text-sm font-medium">{{ $produit['q_abimee'] }}</span>
                             </td>
                             <td class="px-4 py-4 text-center">
                                 <span class="inline-flex items-center px-3 py-1 rounded-full {{ $produit['q_reste'] > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }} text-sm font-medium">{{ $produit['q_reste'] }}</span>
@@ -318,6 +334,38 @@
     @endif
 </div>
 
+@if($sessionEnCours ?? false)
+<div id="modal-produit-abime" class="fixed inset-0 bg-black/50 hidden z-[70] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-produit-abime-title">
+    <div class="w-full max-w-md rounded-xl bg-white shadow-2xl">
+        <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+            <h2 id="modal-produit-abime-title" class="text-lg font-bold text-gray-900">Déclarer un produit abîmé</h2>
+            <button type="button" onclick="closeDamagedStockModal()" class="p-2 text-gray-500 hover:text-gray-900" aria-label="Fermer">&times;</button>
+        </div>
+        <form method="POST" action="{{ route('stock_journalier.store_abime', ['pointDeVente' => $pointDeVenteId]) }}" class="space-y-4 p-5">
+            @csrf
+            <input type="hidden" name="session" value="{{ $session }}">
+            <div>
+                <label for="damaged-product-search" class="mb-1 block text-sm font-medium text-gray-700">Rechercher un produit</label>
+                <input id="damaged-product-search" type="search" autocomplete="off" placeholder="Nom du produit..." oninput="filterDamagedProducts()" class="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-rose-500 focus:ring-2 focus:ring-rose-200">
+                <select id="damaged-product-id" name="produit_id" required size="6" class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-rose-500 focus:ring-2 focus:ring-rose-200">
+                    @foreach($produits as $produitOption)
+                        <option value="{{ $produitOption->id }}">{{ $produitOption->nom }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <label for="damaged-quantity" class="mb-1 block text-sm font-medium text-gray-700">Quantité abîmée</label>
+                <input id="damaged-quantity" type="number" name="quantite_abimee" min="1" step="1" required class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-rose-500 focus:ring-2 focus:ring-rose-200">
+            </div>
+            <div class="flex justify-end gap-2 border-t border-gray-100 pt-4">
+                <button type="button" onclick="closeDamagedStockModal()" class="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50">Annuler</button>
+                <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 font-semibold text-white hover:bg-rose-700">Valider</button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
+
 <!-- Modal moderne -->
 <div id="modal-stock" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all duration-200 scale-95">
@@ -358,6 +406,29 @@
 </div>
 
 <script>
+    function openDamagedStockModal() {
+        document.getElementById('modal-produit-abime')?.classList.remove('hidden');
+        document.getElementById('damaged-product-search')?.focus();
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeDamagedStockModal() {
+        document.getElementById('modal-produit-abime')?.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    function filterDamagedProducts() {
+        const query = (document.getElementById('damaged-product-search')?.value || '').trim().toLocaleLowerCase();
+        const options = document.querySelectorAll('#damaged-product-id option');
+        options.forEach(option => {
+            option.hidden = !option.textContent.toLocaleLowerCase().includes(query);
+        });
+        const selectedVisible = Array.from(options).some(option => !option.hidden && option.selected);
+        if (!selectedVisible) {
+            Array.from(options).find(option => !option.hidden)?.setAttribute('selected', 'selected');
+        }
+    }
+
     function openModal(produitId) {
         var row = document.querySelector('button[onclick="openModal(\''+produitId+'\')"]').closest('tr');
         var nomProduit = row.querySelector('td').innerText;
@@ -466,7 +537,7 @@
                 noResultRow = document.createElement('tr');
                 noResultRow.id = 'no-result-row';
                 noResultRow.innerHTML = `
-                    <td colspan="10" class="px-6 py-8 text-center">
+                    <td colspan="13" class="px-6 py-8 text-center">
                         <div class="text-gray-500">
                             <div class="text-4xl mb-3">🔍</div>
                             <div class="text-lg font-medium mb-2">Aucun produit trouvé</div>

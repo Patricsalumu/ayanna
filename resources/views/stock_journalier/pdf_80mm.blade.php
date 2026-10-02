@@ -37,18 +37,19 @@
     <table>
       <thead>
         <tr>
-          <th style="width:36%">Produit</th>
-          <th style="width:9%" class="right">QI</th>
-          <th style="width:9%" class="right">QA</th>
-          <th style="width:9%" class="right">QV</th>
-          <th style="width:9%" class="right">QR</th>
-          <th style="width:28%" class="right">Total</th>
+          <th style="width:34%">Produit</th>
+          <th style="width:8%" class="right">QI</th>
+          <th style="width:8%" class="right">QAj</th>
+          <th style="width:8%" class="right">QV</th>
+          <th style="width:8%" class="right">QAb</th>
+          <th style="width:8%" class="right">QR</th>
+          <th style="width:26%" class="right">Total</th>
         </tr>
       </thead>
       <tbody>
         @foreach($produitsByCategory as $categorie => $produits)
           <tr class="category-row">
-            <td colspan="5" class="category">{{ $categorie }}</td>
+            <td colspan="6" class="category">{{ $categorie }}</td>
             <td class="right category">{{ number_format($categoryTotals[$categorie] ?? 0, 0, ',', ' ') }}</td>
           </tr>
           @foreach($produits as $p)
@@ -57,6 +58,7 @@
               <td class="right">{{ $p['q_init'] ?? 0 }}</td>
               <td class="right">{{ $p['q_ajout'] ?? 0 }}</td>
               <td class="right">{{ $p['q_vendue'] ?? 0 }}</td>
+              <td class="right">{{ $p['q_abimee'] ?? 0 }}</td>
               <td class="right">{{ $p['q_reste'] ?? 0 }}</td>
               <td class="right">{{ number_format($p['total'] ?? 0, 0, ',', ' ') }}</td>
             </tr>

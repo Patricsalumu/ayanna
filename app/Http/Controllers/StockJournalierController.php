@@ -178,8 +178,9 @@ class StockJournalierController extends Controller
             $q_init = $stockInitial->quantite_initiale ?? $stock->quantite_initiale ?? 0;
             $q_ajout = $stocksProduit->sum('quantite_ajoutee');
             $q_vendue = $ventesParProduit[$produit->id] ?? ($stock->quantite_vendue ?? 0);
+            $q_abimee = $stocksProduit->sum('quantite_abimee');
             $q_total = $q_init + $q_ajout;
-            $q_reste = $q_total - $q_vendue;
+            $q_reste = max(0, $q_total - $q_vendue - $q_abimee);
             $prix = $produit->prix_vente;
             $total = $q_vendue * $prix;
             $prixAchat = (float) ($produit->prix_achat ?? 0);
@@ -196,6 +197,7 @@ class StockJournalierController extends Controller
                 'q_ajout' => $q_ajout,
                 'q_total' => $q_total,
                 'q_vendue' => $q_vendue,
+                'q_abimee' => $q_abimee,
                 'q_reste' => $q_reste,
                 'prix' => $prix,
                 'prix_achat' => $prixAchat,
@@ -406,6 +408,60 @@ class StockJournalierController extends Controller
         return redirect()->back()->with('success', 'Quantité ajoutée enregistrée.');
     }
 
+    public function storeqtAbimee(Request $request, $pointDeVenteId)
+    {
+        $data = $request->validate([
+            'produit_id' => 'required|exists:produits,id',
+            'session' => 'required|string|max:20',
+            'quantite_abimee' => 'required|integer|min:1',
+        ]);
+
+        $pointDeVente = PointDeVente::findOrFail($pointDeVenteId);
+        if ($pointDeVente->etat !== 'ouvert') {
+            return redirect()->back()->with('error', 'La déclaration de produit abîmé est possible uniquement pendant une session ouverte.');
+        }
+
+        $sessionCourante = StockJournalier::where('point_de_vente_id', $pointDeVente->id)
+            ->orderByDesc('date')
+            ->orderByDesc('session')
+            ->orderByDesc('id')
+            ->value('session');
+        if (!$sessionCourante || (string) $sessionCourante !== (string) $data['session']) {
+            return redirect()->back()->with('error', 'La déclaration doit être enregistrée dans la session actuellement ouverte.');
+        }
+
+        try {
+            DB::transaction(function () use ($data, $pointDeVente) {
+                $stock = StockJournalier::where('point_de_vente_id', $pointDeVente->id)
+                    ->where('produit_id', $data['produit_id'])
+                    ->where('session', $data['session'])
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$stock) {
+                    throw new \RuntimeException('Aucune ligne de stock trouvée pour ce produit dans la session ouverte.');
+                }
+
+                $quantiteDisponible = max(0,
+                    (int) ($stock->quantite_initiale ?? 0)
+                    + (int) ($stock->quantite_ajoutee ?? 0)
+                    - (int) ($stock->quantite_vendue ?? 0)
+                    - (int) ($stock->quantite_abimee ?? 0)
+                );
+                if ((int) $data['quantite_abimee'] > $quantiteDisponible) {
+                    throw new \RuntimeException('La quantité abîmée dépasse le stock disponible (' . $quantiteDisponible . ').');
+                }
+
+                $stock->quantite_abimee = (int) ($stock->quantite_abimee ?? 0) + (int) $data['quantite_abimee'];
+                $stock->recalculerQuantiteReste();
+            });
+        } catch (\RuntimeException $exception) {
+            return redirect()->back()->with('error', $exception->getMessage());
+        }
+
+        return redirect()->back()->with('success', 'Quantité de produit abîmé enregistrée.');
+    }
+
     // Saisie ou modification de la quantité initiale du stock journalier pour un produit
     public function storeqtinitial(Request $request)
     {
@@ -424,16 +480,18 @@ class StockJournalierController extends Controller
         }
         $stock = $stockQuery->first();
 
-        $quantite_ajoutee = $stock->quantite_ajoutee ?? 0;
-        $quantite_vendue = $stock->quantite_vendue ?? 0;
+        $quantite_ajoutee = (int) ($stock?->quantite_ajoutee ?? 0);
+        $quantite_vendue = (int) ($stock?->quantite_vendue ?? 0);
+        $quantite_abimee = (int) ($stock?->quantite_abimee ?? 0);
         $quantite_initiale = $data['quantite_initiale'];
         $q_total = $quantite_initiale + $quantite_ajoutee;
-        $quantite_reste = $stock ? ($stock->quantite_reste ?? ($q_total - $quantite_vendue)) : ($q_total - $quantite_vendue);
+        $quantite_reste = max(0, $q_total - $quantite_vendue - $quantite_abimee);
 
         $saveData = [
             'quantite_initiale' => $quantite_initiale,
             'quantite_ajoutee' => $quantite_ajoutee,
             'quantite_vendue' => $quantite_vendue,
+            'quantite_abimee' => $quantite_abimee,
             'quantite_reste' => $quantite_reste,
         ];
 
@@ -503,7 +561,7 @@ class StockJournalierController extends Controller
         $data['produitsByCategory'] = $data['produitsByCategory']->map(function ($produits) {
             return $produits->map(function ($produit) {
                 $q_total = ($produit['q_init'] ?? 0) + ($produit['q_ajout'] ?? 0);
-                $produit['q_reste'] = $q_total - ($produit['q_vendue'] ?? 0);
+                $produit['q_reste'] = max(0, $q_total - ($produit['q_vendue'] ?? 0) - ($produit['q_abimee'] ?? 0));
                 return $produit;
             })->values();
         });

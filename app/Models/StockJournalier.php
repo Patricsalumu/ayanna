@@ -19,6 +19,7 @@ class StockJournalier extends Model
         'quantite_initiale',
         'quantite_ajoutee',
         'quantite_vendue',
+        'quantite_abimee',
         'quantite_reste',
     ];
 
@@ -37,8 +38,9 @@ class StockJournalier extends Model
         $quantiteInitiale = (int) ($this->quantite_initiale ?? 0);
         $quantiteAjoutee = (int) ($this->quantite_ajoutee ?? 0);
         $quantiteVendue = (int) ($this->quantite_vendue ?? 0);
+        $quantiteAbimee = (int) ($this->quantite_abimee ?? 0);
 
-        $this->quantite_reste = $quantiteInitiale + $quantiteAjoutee - $quantiteVendue;
+        $this->quantite_reste = $quantiteInitiale + $quantiteAjoutee - $quantiteVendue - $quantiteAbimee;
         $this->save();
 
         return (int) $this->quantite_reste;

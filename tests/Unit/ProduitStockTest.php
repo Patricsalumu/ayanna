@@ -75,6 +75,7 @@ class ProduitStockTest extends TestCase
             'quantite_initiale' => 10,
             'quantite_ajoutee' => 5,
             'quantite_vendue' => 3,
+            'quantite_abimee' => 2,
             'quantite_reste' => 12,
         ]);
 
@@ -86,7 +87,8 @@ class ProduitStockTest extends TestCase
             'quantite_initiale' => 12,
             'quantite_ajoutee' => 2,
             'quantite_vendue' => 4,
-            'quantite_reste' => 10,
+            'quantite_abimee' => 1,
+            'quantite_reste' => 9,
         ]);
 
         $panierCourant = Panier::create([
@@ -105,12 +107,12 @@ class ProduitStockTest extends TestCase
         ]);
         $autrePanier->produits()->attach($produit->id, ['quantite' => 1, 'prix' => 250]);
 
-        $this->assertSame(10, $produit->stockPourPointDeVente($pointDeVente->id));
-        $this->assertSame(7, $produit->stockDisponiblePourPointDeVente($pointDeVente->id));
-        $this->assertSame(9, $produit->stockDisponiblePourPointDeVente($pointDeVente->id, $panierCourant->id));
+        $this->assertSame(9, $produit->stockPourPointDeVente($pointDeVente->id));
+        $this->assertSame(6, $produit->stockDisponiblePourPointDeVente($pointDeVente->id));
+        $this->assertSame(8, $produit->stockDisponiblePourPointDeVente($pointDeVente->id, $panierCourant->id));
     }
 
-    public function test_session_close_recalculates_stock_rest_from_initial_plus_added_minus_sold(): void
+    public function test_session_close_recalculates_stock_rest_after_sales_and_damaged_quantity(): void
     {
         $entreprise = Entreprise::create([
             'nom' => 'Ayanna',
@@ -146,6 +148,7 @@ class ProduitStockTest extends TestCase
             'quantite_initiale' => 10,
             'quantite_ajoutee' => 5,
             'quantite_vendue' => 3,
+            'quantite_abimee' => 2,
             'quantite_reste' => 0,
         ]);
 
@@ -171,7 +174,7 @@ class ProduitStockTest extends TestCase
             ->orderBy('id')
             ->get();
 
-        $this->assertSame(12, $rows->first()->quantite_reste);
+        $this->assertSame(10, $rows->first()->quantite_reste);
         $this->assertSame(0, $rows->last()->quantite_reste);
     }
 }

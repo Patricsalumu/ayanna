@@ -76,7 +76,8 @@ class Produit extends Model
 
         return (int) ((int) ($stock->quantite_initiale ?? 0)
             + (int) ($stock->quantite_ajoutee ?? 0)
-            - (int) ($stock->quantite_vendue ?? 0));
+            - (int) ($stock->quantite_vendue ?? 0)
+            - (int) ($stock->quantite_abimee ?? 0));
     }
 
     public function quantiteReserveeDansPaniersEnCours($pointDeVenteId, $excludePanierId = null): int

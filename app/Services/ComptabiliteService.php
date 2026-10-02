@@ -340,17 +340,20 @@ class ComptabiliteService
         ]);
         $dateLibelle = $this->dateLibelleSession($date);
         $debitsVariation = [];
-        $creditsStock = [];
+        $debitsPertesAbimees = [];
+        $creditsStockVendu = [];
+        $creditsStockAbime = [];
 
         foreach ($stocks as $stock) {
-            $quantite = (float) ($stock->quantite_vendue ?? 0);
-            if ($quantite <= 0) {
+            $quantiteVendue = (float) ($stock->quantite_vendue ?? 0);
+            $quantiteAbimee = (float) ($stock->quantite_abimee ?? 0);
+            if ($quantiteVendue <= 0 && $quantiteAbimee <= 0) {
                 continue;
             }
 
             $produit = $stock->produit;
             if (!$produit) {
-                throw new \RuntimeException('Le prix d’achat doit être configuré pour chaque produit vendu avant la clôture comptable.');
+                throw new \RuntimeException('Le produit vendu ou abîmé est introuvable lors de la clôture comptable.');
             }
 
             $prixAchat = (float) $produit->prix_achat;
@@ -361,7 +364,8 @@ class ComptabiliteService
                 Log::info('[Comptabilité Session] Produit vendu considéré gratuit', [
                     'produit_id' => $produit->id,
                     'produit' => $produit->nom,
-                    'quantite_vendue' => $quantite,
+                    'quantite_vendue' => $quantiteVendue,
+                    'quantite_abimee' => $quantiteAbimee,
                 ]);
                 continue;
             }
@@ -379,18 +383,34 @@ class ComptabiliteService
                 '6',
                 "compte de variation de stock de la catégorie du produit {$produit->nom}"
             );
-            $montant = round($quantite * $prixAchat, 2);
+            $montantVendu = round($quantiteVendue * $prixAchat, 2);
+            $montantAbime = round($quantiteAbimee * $prixAchat, 2);
 
-            $debitsVariation[$categorie->id] = [
-                'compte_id' => $compteVariation->id,
-                'categorie' => $categorie->nom,
-                'montant' => ($debitsVariation[$categorie->id]['montant'] ?? 0) + $montant,
-            ];
-            $creditsStock[$categorie->id] = [
-                'compte_id' => $compteStock->id,
-                'categorie' => $categorie->nom,
-                'montant' => ($creditsStock[$categorie->id]['montant'] ?? 0) + $montant,
-            ];
+            if ($montantVendu > 0) {
+                $debitsVariation[$categorie->id] = [
+                    'compte_id' => $compteVariation->id,
+                    'categorie' => $categorie->nom,
+                    'montant' => ($debitsVariation[$categorie->id]['montant'] ?? 0) + $montantVendu,
+                ];
+                $creditsStockVendu[$categorie->id] = [
+                    'compte_id' => $compteStock->id,
+                    'categorie' => $categorie->nom,
+                    'montant' => ($creditsStockVendu[$categorie->id]['montant'] ?? 0) + $montantVendu,
+                ];
+            }
+
+            if ($montantAbime > 0) {
+                $debitsPertesAbimees[$categorie->id] = [
+                    'compte_id' => $compteVariation->id,
+                    'categorie' => $categorie->nom,
+                    'montant' => ($debitsPertesAbimees[$categorie->id]['montant'] ?? 0) + $montantAbime,
+                ];
+                $creditsStockAbime[$categorie->id] = [
+                    'compte_id' => $compteStock->id,
+                    'categorie' => $categorie->nom,
+                    'montant' => ($creditsStockAbime[$categorie->id]['montant'] ?? 0) + $montantAbime,
+                ];
+            }
         }
 
         $lignes = [];
@@ -403,17 +423,36 @@ class ComptabiliteService
                 'client_id' => null,
             ];
         }
-        foreach ($creditsStock as $sortie) {
+        foreach ($debitsPertesAbimees as $perte) {
+            $lignes[] = [
+                'compte_id' => $perte['compte_id'],
+                'libelle' => 'Perte stock abîmé ' . $perte['categorie'] . ' du ' . $dateLibelle,
+                'debit' => round($perte['montant'], 2),
+                'credit' => 0,
+                'client_id' => null,
+            ];
+        }
+        foreach ($creditsStockVendu as $sortie) {
             $lignes[] = [
                 'compte_id' => $sortie['compte_id'],
-                'libelle' => 'Sortie stock ' . $sortie['categorie'] . ' du ' . $dateLibelle,
+                'libelle' => 'Sortie stock vendu ' . $sortie['categorie'] . ' du ' . $dateLibelle,
+                'debit' => 0,
+                'credit' => round($sortie['montant'], 2),
+                'client_id' => null,
+            ];
+        }
+        foreach ($creditsStockAbime as $sortie) {
+            $lignes[] = [
+                'compte_id' => $sortie['compte_id'],
+                'libelle' => 'Sortie stock abîmé ' . $sortie['categorie'] . ' du ' . $dateLibelle,
                 'debit' => 0,
                 'credit' => round($sortie['montant'], 2),
                 'client_id' => null,
             ];
         }
 
-        $total = array_sum(array_column($debitsVariation, 'montant'));
+        $total = array_sum(array_column($debitsVariation, 'montant'))
+            + array_sum(array_column($debitsPertesAbimees, 'montant'));
         return $this->creerJournalBrouillonSession(
             $pointDeVente, $date, $session, $userId, 'ajustement',
             'Variation stock du ' . Carbon::parse($date)->format('d-m-Y'), $total, $lignes

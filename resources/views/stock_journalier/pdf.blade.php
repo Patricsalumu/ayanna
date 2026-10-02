@@ -53,6 +53,7 @@
                 <th style="padding:8px; border:1px solid #bfdbfe; text-align:center;">Q. Ajtée</th>
                 <th style="padding:8px; border:1px solid #bfdbfe; text-align:center;">Q. Ttle</th>
                 <th style="padding:8px; border:1px solid #bfdbfe; text-align:center;">Q. Vdue</th>
+                <th style="padding:8px; border:1px solid #bfdbfe; text-align:center;">Q. Abîmée</th>
                 <th style="padding:8px; border:1px solid #bfdbfe; text-align:center;">Q. Rst</th>
                 <th style="padding:8px; border:1px solid #bfdbfe; text-align:right;">Prix unit</th>
                 <th style="padding:8px; border:1px solid #bfdbfe; text-align:right;">Total</th>
@@ -63,7 +64,7 @@
         <tbody>
         @foreach($produitsByCategory as $categorie => $produits)
             <tr style="background:#e0f2fe; color:#0f172a;">
-                <td colspan="7" style="padding:10px 12px; border:1px solid #bfdbfe; font-weight:700; font-size:14px;">{{ $categorie }}</td>
+                <td colspan="8" style="padding:10px 12px; border:1px solid #bfdbfe; font-weight:700; font-size:14px;">{{ $categorie }}</td>
                 <td style="padding:10px 12px; border:1px solid #bfdbfe; text-align:right; font-weight:700; font-size:13px;">{{ $company?->formatAmount($categoryTotals[$categorie] ?? 0, true, 2) }}</td>
                 <td style="padding:10px 12px; border:1px solid #bfdbfe; text-align:right; font-weight:700; font-size:13px;">{{ $company?->formatAmount($categoryCosts[$categorie] ?? 0, true, 2) }}</td>
                 <td style="padding:10px 12px; border:1px solid #bfdbfe; text-align:right; font-weight:700; font-size:13px;">{{ $company?->formatAmount($categoryMargins[$categorie] ?? 0, true, 2) }}</td>
@@ -75,6 +76,7 @@
                     <td style="padding:8px; border:1px solid #dbeafe; text-align:center;">{{ $produit['q_ajout'] }}</td>
                     <td style="padding:8px; border:1px solid #dbeafe; text-align:center;">{{ $produit['q_total'] }}</td>
                     <td style="padding:8px; border:1px solid #dbeafe; text-align:center;">{{ $produit['q_vendue'] }}</td>
+                    <td style="padding:8px; border:1px solid #dbeafe; text-align:center;">{{ $produit['q_abimee'] ?? 0 }}</td>
                     <td style="padding:8px; border:1px solid #dbeafe; text-align:center;">{{ $produit['q_reste'] }}</td>
                     <td style="padding:8px; border:1px solid #dbeafe; text-align:right;">{{ $company?->formatAmount($produit['prix'], true, 2) }}</td>
                     <td style="padding:8px; border:1px solid #dbeafe; text-align:right; font-weight:700;">{{ $company?->formatAmount($produit['total'], true, 2) }}</td>

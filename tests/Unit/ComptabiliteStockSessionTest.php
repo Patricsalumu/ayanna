@@ -175,15 +175,16 @@ class ComptabiliteStockSessionTest extends TestCase
             'prix_vente' => 12,
         ]);
 
-        foreach ([[$produitGratuit, 2], [$produitPayant, 4], [$produitRepas, 1]] as [$produit, $quantiteVendue]) {
+        foreach ([[$produitGratuit, 2, 0], [$produitPayant, 4, 2], [$produitRepas, 1, 0]] as [$produit, $quantiteVendue, $quantiteAbimee]) {
             StockJournalier::create([
                 'produit_id' => $produit->id,
                 'point_de_vente_id' => $pointDeVente->id,
                 'date' => '2026-10-02',
                 'session' => '20261002090000',
-                'quantite_initiale' => $quantiteVendue,
+            'quantite_initiale' => $quantiteVendue + $quantiteAbimee,
                 'quantite_vendue' => $quantiteVendue,
-                'quantite_reste' => 0,
+            'quantite_abimee' => $quantiteAbimee,
+            'quantite_reste' => 0,
             ]);
         }
 
@@ -318,16 +319,19 @@ class ComptabiliteStockSessionTest extends TestCase
             - $lignesPaiement->where('compte_id', $compteCarte->id)->sum('debit'));
 
         $lignesStock = $journalStock->ecritures;
-        $this->assertSame(2, $lignesStock->where('debit', '>', 0)->count());
-        $this->assertSame(2, $lignesStock->where('credit', '>', 0)->count());
+        $this->assertSame(3, $lignesStock->where('debit', '>', 0)->count());
+        $this->assertSame(3, $lignesStock->where('credit', '>', 0)->count());
         $this->assertSame(1, $lignesStock->where('libelle', 'Variation stock Produits test du vendredi 02-10-2026')->count());
-        $this->assertSame(1, $lignesStock->where('libelle', 'Sortie stock Repas du vendredi 02-10-2026')->count());
+        $this->assertSame(1, $lignesStock->where('libelle', 'Perte stock abîmé Produits test du vendredi 02-10-2026')->count());
+        $this->assertEquals(20, $lignesStock->where('libelle', 'Perte stock abîmé Produits test du vendredi 02-10-2026')->sum('debit'));
+        $this->assertSame(1, $lignesStock->where('libelle', 'Sortie stock vendu Repas du vendredi 02-10-2026')->count());
+        $this->assertSame(1, $lignesStock->where('libelle', 'Sortie stock abîmé Produits test du vendredi 02-10-2026')->count());
 
         $this->assertNotNull($journalStock);
         $this->assertSame('Variation stock du 02-10-2026', $journalStock->libelle);
-        $this->assertSame('44.00', $journalStock->fresh()->montant_total);
-        $this->assertEquals(44, $journalStock->ecritures()->sum('debit'));
-        $this->assertEquals(44, $journalStock->ecritures()->sum('credit'));
+        $this->assertSame('64.00', $journalStock->fresh()->montant_total);
+        $this->assertEquals(64, $journalStock->ecritures()->sum('debit'));
+        $this->assertEquals(64, $journalStock->ecritures()->sum('credit'));
         $this->assertSame(1, JournalComptable::where('point_de_vente_id', $pointDeVente->id)
             ->where('type_operation', 'ajustement')
             ->count());
