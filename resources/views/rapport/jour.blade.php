@@ -112,7 +112,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 <!-- 1. Ventes -->
                 <div class="bg-green-50 rounded-lg p-4 border border-green-200">
-                    <h4 class="font-bold text-green-700 mb-3">🛒 Ventes du jour</h4>
+                    <h4 class="font-bold text-green-700 mb-3">🛒 Ventes de la session</h4>
                     <div class="text-2xl font-bold text-green-600 mb-2">{{ optional($entreprise ?? auth()->user()?->entreprise)->formatAmount($recettesVentes, true, 0) }}</div>
                     
                     @if($ventesParMode->isNotEmpty())
@@ -199,7 +199,7 @@
                         @empty
                             <tr>
                                 <td colspan="3" class="px-4 py-8 text-center text-gray-500 italic">
-                                    Aucune créance ce jour
+                                    Aucune créance pour cette session
                                 </td>
                             </tr>
                         @endforelse
@@ -243,7 +243,7 @@
                         @empty
                             <tr>
                                 <td colspan="3" class="px-4 py-8 text-center text-gray-500 italic">
-                                    Aucune dépense ce jour
+                                    Aucune dépense pour cette session
                                 </td>
                             </tr>
                         @endforelse

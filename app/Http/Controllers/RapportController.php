@@ -18,6 +18,7 @@ class RapportController extends Controller
         $date = $request->get('date', now()->toDateString());
         $selectedSessionFrom = $request->get('session_from', null);
         $selectedSessionTo = $request->get('session_to', null);
+        $sessionCourante = $this->sessionEnCours($pointDeVenteId);
 
         // Récupérer les sessions disponibles pour ce point de vente
         $sessionStocks = \App\Models\StockJournalier::where('point_de_vente_id', $pointDeVenteId)
@@ -31,6 +32,11 @@ class RapportController extends Controller
                 'point_de_vente_id' => $first->point_de_vente_id,
             ];
         })->values();
+
+        if (!$selectedSessionFrom && !$selectedSessionTo && $sessionCourante) {
+            $selectedSessionFrom = $sessionCourante->session;
+            $selectedSessionTo = $sessionCourante->session;
+        }
         
         // Déterminer bornes temporelles selon sessions selectionnées ou date
         $start = null;
@@ -50,8 +56,8 @@ class RapportController extends Controller
                     ->where('opened_at', $toInfo->validated_at)
                     ->value('closed_at');
                 if ($closedAtTo) $end = $closedAtTo;
-                else if ($end) $end = Carbon::parse($end)->endOfDay();
-                else if ($end) $end = Carbon::parse($end)->endOfDay();
+                elseif ($end && $sessionCourante && (string) $toInfo->session === (string) $sessionCourante->session) $end = now();
+                elseif ($end) $end = Carbon::parse($end)->endOfDay();
             }
         }
 
@@ -161,6 +167,11 @@ class RapportController extends Controller
         $date = $request->get('date', now()->toDateString());
         $selectedSessionFrom = $request->get('session_from', null);
         $selectedSessionTo = $request->get('session_to', null);
+        $sessionCourante = $this->sessionEnCours($pointDeVenteId);
+        if (!$selectedSessionFrom && !$selectedSessionTo && $sessionCourante) {
+            $selectedSessionFrom = $sessionCourante->session;
+            $selectedSessionTo = $sessionCourante->session;
+        }
         $start = null; $end = null;
         if ($selectedSessionFrom || $selectedSessionTo) {
             $sessionStocks = \App\Models\StockJournalier::where('point_de_vente_id', $pointDeVenteId)->get();
@@ -179,6 +190,8 @@ class RapportController extends Controller
                     ->where('opened_at', $toInfo->validated_at)
                     ->value('closed_at');
                 if ($closedAtTo) $end = $closedAtTo;
+                elseif ($end && $sessionCourante && (string) $toInfo->session === (string) $sessionCourante->session) $end = now();
+                elseif ($end) $end = Carbon::parse($end)->endOfDay();
             }
         }
         $pointDeVente = \App\Models\PointDeVente::with('entreprise')->findOrFail($pointDeVenteId);
@@ -263,5 +276,19 @@ class RapportController extends Controller
             'ventesParMode', 'paiementsCreances', 'entresDiverses',
             'totalCreance', 'detailsCreance', 'depenses', 'solde', 'date', 'pointDeVente', 'entreprise'
         ))->download('rapport_journalier_'.$date.'.pdf');
+    }
+
+    private function sessionEnCours($pointDeVenteId)
+    {
+        $pointDeVente = \App\Models\PointDeVente::find($pointDeVenteId);
+        if (!$pointDeVente || $pointDeVente->etat !== 'ouvert') {
+            return null;
+        }
+
+        return \App\Models\StockJournalier::where('point_de_vente_id', $pointDeVenteId)
+            ->orderByDesc('date')
+            ->orderByDesc('session')
+            ->orderByDesc('id')
+            ->first(['session', 'date', 'validated_at']);
     }
 }
