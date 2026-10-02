@@ -1027,12 +1027,13 @@ class VenteController extends Controller
                 Log::info('[VALIDATION PAIEMENT] Aucun montant fourni, calcul depuis le panier');
             }
 
-            // Gestion de la remise
-            $remise = isset($data['remise']) ? floatval($data['remise']) : 0;
-            if ($remise < 0) {
+            // Une remise transmise ne peut être modifiée que par un utilisateur autorisé.
+            $peutAppliquerRemise = $this->permissionService->canApplyDiscount($user);
+            $remiseTransmise = array_key_exists('remise', $data) ? (float) $data['remise'] : null;
+            if ($remiseTransmise !== null && $remiseTransmise < 0) {
                 return response()->json(['error' => 'La remise doit être positive'], 400);
             }
-            if ($remise > 0 && !$this->permissionService->canApplyDiscount($user)) {
+            if ($remiseTransmise !== null && $remiseTransmise > 0 && !$peutAppliquerRemise) {
                 return response()->json([
                     'success' => false,
                     'error' => 'Seul le caissier peut appliquer une remise.',
@@ -1093,6 +1094,9 @@ class VenteController extends Controller
             // Calculer le montant depuis le panier si pas fourni
             $panier->load('produits');
             $this->verifierStockDisponiblePourPanier($panier);
+            $remise = $peutAppliquerRemise && $remiseTransmise !== null
+                ? $remiseTransmise
+                : (float) ($panier->total_remise ?? $panier->remise ?? 0);
 
             if (!$montant) {
                 $panierTotalHt = $panier->produits->sum(function($produit) {

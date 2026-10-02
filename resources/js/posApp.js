@@ -1013,7 +1013,7 @@ export function posApp() {
             if (data.numero_facture !== undefined && data.numero_facture !== null) {
               window.PANIER_NUMERO_FACTURE = data.numero_facture;
             }
-            if (data.remise !== undefined && this.canApplyDiscount) {
+            if (data.remise !== undefined) {
               this.remise = Number(data.remise) || 0;
             }
           }

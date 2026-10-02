@@ -62,17 +62,19 @@
           <table class="w-full text-sm sticky bottom-0 bg-white">
             <tbody>
               <tr class="border-t">
-                <td colspan="3" class="text-right py-1">Sous-total</td>
+                <td colspan="3" class="text-right py-1">Total à payer</td>
                 <td class="text-right" x-text="formatMoney(totalHt)"></td>
               </tr>
-              @if(app(\App\Services\PermissionService::class)->canApplyDiscount(auth()->user()))
-                <tr class="border-t">
-                  <td colspan="3" class="text-right py-1">Remise</td>
-                  <td class="text-right">
+              <tr class="border-t">
+                <td colspan="3" class="text-right py-1">Remise</td>
+                <td class="text-right">
+                  @if(app(\App\Services\PermissionService::class)->canApplyDiscount(auth()->user()))
                     <input x-model.number="remise" @change="sauvegarderRemise()" type="number" min="0" step="0.01" class="w-full text-right border border-gray-300 rounded px-2 py-1" placeholder="0" />
-                  </td>
-                </tr>
-              @endif
+                  @else
+                    <span x-text="formatMoney(totalRemise)"></span>
+                  @endif
+                </td>
+              </tr>
               <tr class="font-bold border-t">
                 <td colspan="3" class="text-right py-1">Net à payer</td>
                 <td class="text-right" x-text="formatMoney(total)"></td>
