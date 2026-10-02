@@ -3,6 +3,16 @@
 @section('content')
 <!-- CONTENU DE LA PAGE SEULEMENT -->
 <main class="flex-1 px-1 sm:px-2 lg:px-4 py-2">
+    @if(session('success'))
+        <div class="mx-2 mb-4 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm font-medium text-green-800">
+            {{ session('success') }}
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="mx-2 mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+            {{ session('error') }}
+        </div>
+    @endif
     <div class="flex items-center justify-center space-x-4 my-6">
         <!-- Barre de recherche -->
         <div class="relative hidden sm:block">

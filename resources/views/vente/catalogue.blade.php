@@ -183,7 +183,7 @@
             <option selected>Table</option>
           @endif
         </select>
-        @if(app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user()))
+        @if(app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user(), $pointDeVente ?? null))
           <button class="flex-none sm:flex-1 w-full sm:w-auto h-12 min-w-[80px] max-w-[110px] text-base border-0 rounded-xl bg-blue-500 text-white font-bold shadow focus:ring-2 focus:ring-blue-300 transition text-center mx-1 px-2 py-0.5 appearance-none" style="height:40px;" @click="openPaiement()">Paiement</button>
         @endif
       </div>
@@ -327,7 +327,7 @@
           ]"
         >
           <template x-for="prod in filteredProduits" :key="prod.id">
-            <div @click="canAddProducts ? ajouterProduit(prod) : null"
+            <div @click="canAddProducts && !isProduitIndisponible(prod) ? ajouterProduit(prod) : null"
                  @mouseenter="hoveredProductId = prod.id"
                  @mouseleave="hoveredProductId = null; infoProductId = null; clearProductPress()"
                  @touchstart="startProductPress(prod.id)"
@@ -335,7 +335,7 @@
                  @touchmove="clearProductPress()"
                  @mousedown="startProductPress(prod.id)"
                  @mouseup="clearProductPress()"
-                 :class="canAddProducts ? 'cursor-pointer hover:ring-2 hover:ring-blue-500' : 'cursor-not-allowed opacity-60'"
+                 :class="isProduitIndisponible(prod) ? 'cursor-not-allowed opacity-50 grayscale' : (canAddProducts ? 'cursor-pointer hover:ring-2 hover:ring-blue-500' : 'cursor-not-allowed opacity-60')"
                  class="relative bg-white p-2 rounded-xl shadow transition h-[102px] min-h-[102px] max-h-[102px] flex flex-col items-center justify-end overflow-visible">
               
               <!-- Bande colorée en bas selon la catégorie -->
@@ -353,6 +353,9 @@
                     <span class="font-semibold">Stock :</span>
                     <span class="text-slate-900" x-text="Number(prod.stock_qte ?? 0)"></span>
                   </div>
+                  <template x-if="isProduitIndisponible(prod)">
+                    <div class="mt-1 text-[10px] font-bold uppercase tracking-wide text-red-600">Rupture</div>
+                  </template>
                 </div>
               </template>
               
@@ -413,7 +416,7 @@
         </div>
         <div class="flex justify-between mt-4 gap-2">
           <button @click="mode = 'commande'" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Retour</button>
-          @if(app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user()))
+          @if(app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user(), $pointDeVente ?? null))
             <button @click="validerPaiement()" class="px-4 py-2 rounded bg-green-600 text-white font-bold shadow hover:bg-green-700 transition">Valider</button>
             <button @click="validerEtImprimer()" class="px-4 py-2 rounded bg-blue-600 text-white font-bold shadow hover:bg-blue-700 transition">Valider et imprimer</button>
           @endif
@@ -580,6 +583,7 @@ window.PANIER_NUMERO_FACTURE = @json($panier->numero_facture ?? ($panier['numero
 window.REMISE = @json($panier->total_remise ?? ($panier['total_remise'] ?? 0));
 window.USER_ROLE = @json(auth()->user()->role ?? null);
 window.CAN_ADD_PRODUCTS = @json($canModifyTableProducts ?? app(\App\Services\PermissionService::class)->canAddProductsToTable(auth()->user()));
+window.PDV_INTERDICTION_STOCK = @json((bool) ($pointDeVente->interdire_commande_si_stock_null ?? false));
 window.CAN_APPLY_DISCOUNT = @json(app(\App\Services\PermissionService::class)->canApplyDiscount(auth()->user()));
 window.CAN_EDIT_SERVEUSE = @json(app(\App\Services\PermissionService::class)->canEditServeuseAssignment(auth()->user()));
 window.ENTREPRISE = @json($pointDeVente->entreprise);

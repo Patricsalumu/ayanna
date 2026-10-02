@@ -105,4 +105,41 @@ class RestaurantPermissionServiceTest extends TestCase
         $this->assertSame('7', $service->resolveServeuseId($waitress, null));
         $this->assertSame('7', $service->resolveServeuseId($waitress, '8'));
     }
+
+    public function test_waitress_can_validate_payment_when_pdv_option_is_enabled(): void
+    {
+        $service = new PermissionService();
+
+        $waitress = new \stdClass();
+        $waitress->id = 7;
+        $waitress->role = 'Serveuse';
+
+        $enabledPdv = new \App\Models\PointDeVente([
+            'serveuse_peut_valider_paiement' => true,
+        ]);
+
+        $disabledPdv = new \App\Models\PointDeVente([
+            'serveuse_peut_valider_paiement' => false,
+        ]);
+
+        $this->assertTrue($service->canValidatePayment($waitress, $enabledPdv));
+        $this->assertFalse($service->canValidatePayment($waitress, $disabledPdv));
+    }
+
+    public function test_stock_null_is_blocked_when_pdv_option_is_enabled(): void
+    {
+        $enabledPdv = new \App\Models\PointDeVente([
+            'interdire_commande_si_stock_null' => true,
+        ]);
+
+        $disabledPdv = new \App\Models\PointDeVente([
+            'interdire_commande_si_stock_null' => false,
+        ]);
+
+        $this->assertFalse($enabledPdv->canOrderProductWithStock(null));
+        $this->assertTrue($disabledPdv->canOrderProductWithStock(null));
+        $this->assertTrue($enabledPdv->canOrderProductWithStock((object) ['quantite_reste' => 12]));
+        $this->assertFalse($enabledPdv->canOrderProductWithStock((object) ['quantite_reste' => 0]));
+        $this->assertFalse($enabledPdv->canOrderProductWithStock((object) ['quantite_reste' => -3]));
+    }
 }

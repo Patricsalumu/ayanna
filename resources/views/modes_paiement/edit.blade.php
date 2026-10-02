@@ -17,11 +17,24 @@
                 @method('PUT')
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
-                        <thead><tr class="border-b text-left"><th class="py-3">Nom</th><th class="py-3">Code</th><th class="py-3 text-center">Actif</th><th class="py-3">Ordre</th></tr></thead>
+                        <thead><tr class="border-b text-left"><th class="py-3">Nom</th><th class="py-3">Compte comptable</th><th class="py-3">Code</th><th class="py-3 text-center">Actif</th><th class="py-3">Ordre</th></tr></thead>
                         <tbody>
                         @foreach($modesPaiement as $mode)
+                            @php
+                                $classeCompte = str_starts_with($mode->code, 'compte_client')
+                                    ? '4'
+                                    : (str_starts_with($mode->code, 'offre') ? '6' : '5');
+                            @endphp
                             <tr class="border-b">
                                 <td class="py-3 pr-3"><input name="modes[{{ $mode->id }}][nom]" value="{{ $mode->nom }}" required class="w-full rounded border-gray-300"></td>
+                                <td class="py-3 pr-3">
+                                    <select name="modes[{{ $mode->id }}][compte_id]" required class="w-full rounded border-gray-300">
+                                        <option value="">Choisir un compte de classe {{ $classeCompte }}</option>
+                                        @foreach($comptesParClasse[$classeCompte] as $compte)
+                                            <option value="{{ $compte->id }}" @selected($mode->compte_id == $compte->id)>{{ $compte->numero }} — {{ $compte->nom }}</option>
+                                        @endforeach
+                                    </select>
+                                </td>
                                 <td class="py-3 pr-3 text-gray-500">{{ $mode->code }}</td>
                                 <td class="py-3 text-center">
                                     <input type="hidden" name="modes[{{ $mode->id }}][actif]" value="0">
@@ -42,9 +55,16 @@
                 <h3 class="font-semibold mb-3">Ajouter un moyen</h3>
                 <div class="flex flex-col sm:flex-row gap-3">
                     <input name="nom" required placeholder="Ex. Chèque" class="flex-1 rounded border-gray-300">
+                    <select name="compte_id" required class="flex-1 rounded border-gray-300">
+                        <option value="">Compte de classe 5 ou 6</option>
+                        @foreach($comptesModesNouveaux as $compte)
+                            <option value="{{ $compte->id }}" data-classe="{{ substr($compte->classeComptable->numero, 0, 1) }}">{{ $compte->numero }} — {{ $compte->nom }} (classe {{ $compte->classeComptable->numero }})</option>
+                        @endforeach
+                    </select>
                     <input type="number" name="ordre" min="0" value="100" class="w-24 rounded border-gray-300">
                     <button class="px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-900">Ajouter</button>
                 </div>
+                <p class="mt-2 text-xs text-gray-500">Les moyens de paiement utilisent un compte de classe 5; une offre utilise un compte de charge de classe 6.</p>
             </form>
         </div>
     </div>

@@ -8,11 +8,455 @@ use App\Models\Compte;
 use App\Models\Commande;
 use App\Models\Paiement;
 use App\Models\EntreeSortie;
+use App\Models\PointDeVente;
+use App\Models\StockJournalier;
+use App\Models\ModePaiement;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ComptabiliteService
 {
+    public function genererBrouillonsFermetureSession(
+        PointDeVente $pointDeVente,
+        string $date,
+        string $session,
+        Carbon $debut,
+        Carbon $fin,
+        int $userId
+    ): array {
+        Log::info('[Comptabilité Session] Génération demandée', [
+            'point_de_vente_id' => $pointDeVente->id,
+            'entreprise_id' => $pointDeVente->entreprise_id,
+            'date' => $date,
+            'session' => $session,
+            'debut' => $debut->toDateTimeString(),
+            'fin' => $fin->toDateTimeString(),
+        ]);
+
+        return DB::transaction(function () use ($pointDeVente, $date, $session, $debut, $fin, $userId) {
+            $journaux = array_values(array_filter([
+                $this->genererBrouillonVentesSession($pointDeVente, $date, $session, $debut, $fin, $userId),
+                $this->genererBrouillonPaiementsSession($pointDeVente, $date, $session, $debut, $fin, $userId),
+                $this->genererBrouillonStockSession($pointDeVente, $date, $session, $userId),
+            ]));
+
+            Log::info('[Comptabilité Session] Génération terminée', [
+                'point_de_vente_id' => $pointDeVente->id,
+                'session' => $session,
+                'nombre_journaux' => count($journaux),
+                'types' => array_map(fn ($journal) => $journal->type_operation, $journaux),
+            ]);
+
+            return $journaux;
+        });
+    }
+
+    private function genererBrouillonVentesSession(PointDeVente $pointDeVente, string $date, string $session, Carbon $debut, Carbon $fin, int $userId): ?JournalComptable
+    {
+        if ($journal = $this->journalSessionExistant($pointDeVente, $date, $session, 'vente')) {
+            Log::info('[Comptabilité Session] Brouillon vente déjà existant', ['journal_id' => $journal->id, 'session' => $session]);
+            return $journal;
+        }
+
+        $commandes = Commande::with(['panier.client', 'panier.produits.categorie'])
+            ->whereBetween('created_at', [$debut, $fin])
+            ->whereHas('panier', fn ($query) => $query->where('point_de_vente_id', $pointDeVente->id))
+            ->whereNotExists(function ($query) {
+                $query->selectRaw('1')
+                    ->from('journal_comptable as journal_existant')
+                    ->whereColumn('journal_existant.commande_id', 'commandes.id')
+                    ->where('journal_existant.type_operation', 'vente');
+            })
+            ->get();
+
+        if ($commandes->isEmpty()) {
+            Log::info('[Comptabilité Session] Aucune commande à comptabiliser', [
+                'point_de_vente_id' => $pointDeVente->id,
+                'date' => $date,
+                'session' => $session,
+                'debut' => $debut->toDateTimeString(),
+                'fin' => $fin->toDateTimeString(),
+            ]);
+            return null;
+        }
+
+        Log::info('[Comptabilité Session] Commandes trouvées', [
+            'session' => $session,
+            'nombre' => $commandes->count(),
+            'commande_ids' => $commandes->pluck('id')->all(),
+        ]);
+
+        $compteClient = $this->compteClientSession($pointDeVente);
+        $debitsClients = [];
+        $creditsVentes = [];
+        $debitsRemises = [];
+        $creditsClientsRemises = [];
+
+        foreach ($commandes as $commande) {
+            $panier = $commande->panier;
+            if (!$panier || $panier->produits->isEmpty()) {
+                continue;
+            }
+
+            $montantsParCompteVente = [];
+            $montantBrut = 0.0;
+            foreach ($panier->produits as $produit) {
+                $quantite = (float) ($produit->pivot->quantite ?? 0);
+                $prix = (float) ($produit->pivot->prix ?? $produit->prix_vente ?? 0);
+                $montantLigne = round(max(0, $quantite) * max(0, $prix), 2);
+                if ($montantLigne <= 0) {
+                    continue;
+                }
+
+                $categorie = $produit->categorie;
+                $compteVente = $this->comptePourClasse(
+                    $categorie?->compte_vente_id,
+                    $pointDeVente->entreprise_id,
+                    '7',
+                    "compte de vente de la catégorie du produit {$produit->nom}"
+                );
+                $montantsParCompteVente[$compteVente->id] = ($montantsParCompteVente[$compteVente->id] ?? 0) + $montantLigne;
+                $montantBrut += $montantLigne;
+            }
+
+            if ($montantBrut <= 0) {
+                continue;
+            }
+
+            $remise = round(min(max(0, (float) ($panier->total_remise ?? $panier->remise ?? 0)), $montantBrut), 2);
+            $clientId = $panier->client_id;
+            $numeroFacture = $commande->numero_facture ?? $panier->numero_facture ?? $commande->id;
+            $debitsClients[] = [
+                'compte_id' => $compteClient->id,
+                'libelle' => 'Vente facture n° ' . $numeroFacture,
+                'debit' => $montantBrut,
+                'credit' => 0,
+                'client_id' => $clientId,
+            ];
+
+            if ($remise > 0) {
+                $compteRemise = $this->comptePourClasse(
+                    $pointDeVente->compte_remise_id,
+                    $pointDeVente->entreprise_id,
+                    '6',
+                    'compte de remise sur ventes du point de vente'
+                );
+                $debitsRemises[] = [
+                    'compte_id' => $compteRemise->id,
+                    'libelle' => 'Remise facture n° ' . $numeroFacture,
+                    'debit' => $remise,
+                    'credit' => 0,
+                    'client_id' => $clientId,
+                ];
+                $creditsClientsRemises[] = [
+                    'compte_id' => $compteClient->id,
+                    'libelle' => 'Remise accordée facture n° ' . $numeroFacture,
+                    'debit' => 0,
+                    'credit' => $remise,
+                    'client_id' => $clientId,
+                ];
+            }
+
+            foreach ($montantsParCompteVente as $compteId => $montantCredit) {
+                $creditsVentes[$compteId] = ($creditsVentes[$compteId] ?? 0) + round($montantCredit, 2);
+            }
+        }
+
+        $lignes = array_merge($debitsClients, $debitsRemises);
+        foreach ($creditsVentes as $compteId => $montant) {
+            $lignes[] = [
+                'compte_id' => $compteId,
+                'libelle' => 'Ventes par catégorie',
+                'debit' => 0,
+                'credit' => round($montant, 2),
+                'client_id' => null,
+            ];
+        }
+        $lignes = array_merge($lignes, $creditsClientsRemises);
+
+        $total = array_sum(array_column($lignes, 'debit'));
+        return $this->creerJournalBrouillonSession(
+            $pointDeVente, $date, $session, $userId, 'vente',
+            "Ventes de la session {$session} - {$pointDeVente->nom}", $total, $lignes
+        );
+    }
+
+    private function genererBrouillonPaiementsSession(PointDeVente $pointDeVente, string $date, string $session, Carbon $debut, Carbon $fin, int $userId): ?JournalComptable
+    {
+        if ($journal = $this->journalSessionExistant($pointDeVente, $date, $session, 'paiement')) {
+            Log::info('[Comptabilité Session] Brouillon paiement déjà existant', ['journal_id' => $journal->id, 'session' => $session]);
+            return $journal;
+        }
+
+        $modes = ModePaiement::where('entreprise_id', $pointDeVente->entreprise_id)->get();
+        $paiements = Paiement::with('commande.panier')
+            ->where('statut', 'validé')
+            ->whereBetween('created_at', [$debut, $fin])
+            ->whereNotExists(function ($query) {
+                $query->selectRaw('1')
+                    ->from('journal_comptable as journal_existant')
+                    ->whereColumn('journal_existant.paiement_id', 'paiements.id')
+                    ->where('journal_existant.type_operation', 'paiement');
+            })
+            ->whereHas('commande.panier', fn ($query) => $query->where('point_de_vente_id', $pointDeVente->id))
+            ->get();
+
+        if ($paiements->isEmpty()) {
+            Log::info('[Comptabilité Session] Aucun paiement à comptabiliser', [
+                'point_de_vente_id' => $pointDeVente->id,
+                'date' => $date,
+                'session' => $session,
+                'debut' => $debut->toDateTimeString(),
+                'fin' => $fin->toDateTimeString(),
+            ]);
+            return null;
+        }
+
+        Log::info('[Comptabilité Session] Paiements trouvés', [
+            'session' => $session,
+            'nombre' => $paiements->count(),
+            'paiement_ids' => $paiements->pluck('id')->all(),
+        ]);
+
+        $compteClient = $this->compteClientSession($pointDeVente);
+        $debitsParCompte = [];
+        $creditsParClient = [];
+
+        foreach ($paiements as $paiement) {
+            $codeMode = $this->normaliserMode($paiement->mode);
+            if ($codeMode === 'compte_client') {
+                continue;
+            }
+
+            $mode = $modes->first(fn ($item) => $this->normaliserMode($item->code) === $codeMode)
+                ?? $modes->first(fn ($item) => $this->normaliserMode($item->nom) === $codeMode);
+            if (!$mode) {
+                throw new \RuntimeException("Le mode de paiement « {$paiement->mode} » n'est pas configuré pour la comptabilité.");
+            }
+
+            $prefixClasse = str_starts_with($this->normaliserMode($mode->code), 'offre') ? '6' : '5';
+            $comptePaiement = $this->comptePourClasse(
+                $mode->compte_id,
+                $pointDeVente->entreprise_id,
+                $prefixClasse,
+                "compte du mode de paiement {$mode->nom}"
+            );
+            $montant = round((float) $paiement->montant, 2);
+            if ($montant <= 0) {
+                continue;
+            }
+
+            $debitsParCompte[$comptePaiement->id] = ($debitsParCompte[$comptePaiement->id] ?? 0) + $montant;
+            $clientId = $paiement->commande?->panier?->client_id;
+            $cleClient = $clientId ?? 'sans_client';
+            $creditsParClient[$cleClient] = [
+                'client_id' => $clientId,
+                'montant' => ($creditsParClient[$cleClient]['montant'] ?? 0) + $montant,
+            ];
+        }
+
+        $lignes = [];
+        foreach ($debitsParCompte as $compteId => $montant) {
+            $lignes[] = [
+                'compte_id' => $compteId,
+                'libelle' => 'Encaissements de la session',
+                'debit' => round($montant, 2),
+                'credit' => 0,
+                'client_id' => null,
+            ];
+        }
+        foreach ($creditsParClient as $client) {
+            $lignes[] = [
+                'compte_id' => $compteClient->id,
+                'libelle' => 'Règlements clients de la session',
+                'debit' => 0,
+                'credit' => round($client['montant'], 2),
+                'client_id' => $client['client_id'],
+            ];
+        }
+
+        $total = array_sum(array_column($lignes, 'debit'));
+        return $this->creerJournalBrouillonSession(
+            $pointDeVente, $date, $session, $userId, 'paiement',
+            "Règlements de la session {$session} - {$pointDeVente->nom}", $total, $lignes
+        );
+    }
+
+    private function genererBrouillonStockSession(PointDeVente $pointDeVente, string $date, string $session, int $userId): ?JournalComptable
+    {
+        if ($journal = $this->journalSessionExistant($pointDeVente, $date, $session, 'ajustement')) {
+            Log::info('[Comptabilité Session] Brouillon stock déjà existant', ['journal_id' => $journal->id, 'session' => $session]);
+            return $journal;
+        }
+
+        $stocks = StockJournalier::with('produit.categorie')
+            ->where('point_de_vente_id', $pointDeVente->id)
+            ->where('date', $date)
+            ->where('session', $session)
+            ->get();
+        Log::info('[Comptabilité Session] Lignes de stock trouvées', [
+            'point_de_vente_id' => $pointDeVente->id,
+            'date' => $date,
+            'session' => $session,
+            'nombre' => $stocks->count(),
+            'quantite_vendue' => $stocks->sum('quantite_vendue'),
+        ]);
+        $debitsVariation = [];
+        $creditsStock = [];
+
+        foreach ($stocks as $stock) {
+            $quantite = (float) ($stock->quantite_vendue ?? 0);
+            if ($quantite <= 0) {
+                continue;
+            }
+
+            $produit = $stock->produit;
+            if (!$produit || (float) $produit->prix_achat <= 0) {
+                throw new \RuntimeException('Le prix d’achat doit être configuré pour chaque produit vendu avant la clôture comptable.');
+            }
+
+            $categorie = $produit->categorie;
+            $compteStock = $this->comptePourClasse(
+                $categorie?->compte_stock_id,
+                $pointDeVente->entreprise_id,
+                '3',
+                "compte de stock de la catégorie du produit {$produit->nom}"
+            );
+            $compteVariation = $this->comptePourClasse(
+                $categorie?->compte_variation_stock_id,
+                $pointDeVente->entreprise_id,
+                '6',
+                "compte de variation de stock de la catégorie du produit {$produit->nom}"
+            );
+            $montant = round($quantite * (float) $produit->prix_achat, 2);
+
+            $debitsVariation[$compteVariation->id] = ($debitsVariation[$compteVariation->id] ?? 0) + $montant;
+            $creditsStock[$compteStock->id] = ($creditsStock[$compteStock->id] ?? 0) + $montant;
+        }
+
+        $lignes = [];
+        foreach ($debitsVariation as $compteId => $montant) {
+            $lignes[] = [
+                'compte_id' => $compteId,
+                'libelle' => 'Variation de stock vendu',
+                'debit' => round($montant, 2),
+                'credit' => 0,
+                'client_id' => null,
+            ];
+        }
+        foreach ($creditsStock as $compteId => $montant) {
+            $lignes[] = [
+                'compte_id' => $compteId,
+                'libelle' => 'Sortie de stock vendu',
+                'debit' => 0,
+                'credit' => round($montant, 2),
+                'client_id' => null,
+            ];
+        }
+
+        $total = array_sum($debitsVariation);
+        return $this->creerJournalBrouillonSession(
+            $pointDeVente, $date, $session, $userId, 'ajustement',
+            "Variation de stock de la session {$session} - {$pointDeVente->nom}", $total, $lignes
+        );
+    }
+
+    private function creerJournalBrouillonSession(PointDeVente $pointDeVente, string $date, string $session, int $userId, string $type, string $libelle, float $montant, array $lignes): ?JournalComptable
+    {
+        $montant = round($montant, 2);
+        if ($montant <= 0 || empty($lignes)) {
+            Log::info('[Comptabilité Session] Aucun journal créé : total nul ou aucune ligne', [
+                'point_de_vente_id' => $pointDeVente->id,
+                'session' => $session,
+                'type' => $type,
+                'montant' => $montant,
+                'nombre_lignes' => count($lignes),
+            ]);
+            return null;
+        }
+
+        $journal = JournalComptable::create([
+            'date_ecriture' => $date,
+            'numero_piece' => JournalComptable::genererNumeroPiece($type, $pointDeVente->entreprise_id, Carbon::parse($date)),
+            'libelle' => $libelle,
+            'montant_total' => $montant,
+            'entreprise_id' => $pointDeVente->entreprise_id,
+            'point_de_vente_id' => $pointDeVente->id,
+            'session' => $session,
+            'user_id' => $userId,
+            'type_operation' => $type,
+            'statut' => 'brouillon',
+        ]);
+
+        foreach ($lignes as $index => $ligne) {
+            EcritureComptable::create($ligne + [
+                'journal_id' => $journal->id,
+                'ordre' => $index + 1,
+            ]);
+        }
+
+        if (!$journal->fresh('ecritures')->estEquilibre()) {
+            throw new \RuntimeException("Le journal {$journal->numero_piece} n'est pas équilibré.");
+        }
+
+        Log::info('[Comptabilité Session] Brouillon équilibré créé', [
+            'journal_id' => $journal->id,
+            'numero_piece' => $journal->numero_piece,
+            'type' => $type,
+            'session' => $session,
+            'montant' => $montant,
+            'nombre_lignes' => count($lignes),
+            'statut' => $journal->statut,
+        ]);
+
+        return $journal;
+    }
+
+    private function journalSessionExistant(PointDeVente $pointDeVente, string $date, string $session, string $type): ?JournalComptable
+    {
+        return JournalComptable::where('point_de_vente_id', $pointDeVente->id)
+            ->where('date_ecriture', $date)
+            ->where('session', $session)
+            ->where('type_operation', $type)
+            ->first();
+    }
+
+    private function compteClientSession(PointDeVente $pointDeVente): Compte
+    {
+        $modeCompteClient = ModePaiement::where('entreprise_id', $pointDeVente->entreprise_id)
+            ->where('code', 'compte_client')
+            ->first();
+        $compteId = $modeCompteClient?->compte_id ?? $pointDeVente->compte_client_id;
+
+        return $this->comptePourClasse(
+            $compteId,
+            $pointDeVente->entreprise_id,
+            '4',
+            'compte client du point de vente'
+        );
+    }
+
+    private function comptePourClasse(?int $compteId, int $entrepriseId, string $classePrefixe, string $libelle): Compte
+    {
+        $compte = $compteId ? Compte::with('classeComptable')->find($compteId) : null;
+        if (
+            !$compte
+            || (int) $compte->entreprise_id !== $entrepriseId
+            || !$compte->classeComptable
+            || !str_starts_with((string) $compte->classeComptable->numero, $classePrefixe)
+        ) {
+            throw new \RuntimeException("Configurez {$libelle} avec un compte de classe {$classePrefixe} avant de fermer la session.");
+        }
+
+        return $compte;
+    }
+
+    private function normaliserMode(?string $mode): string
+    {
+        return strtolower(str_replace([' ', '-', 'é', 'è', 'ê', 'à'], ['_', '_', 'e', 'e', 'e', 'a'], trim((string) $mode)));
+    }
+
     /**
      * Enregistre automatiquement une vente dans le journal comptable
      */

@@ -7,7 +7,7 @@ class ModePaiement extends Model
 {
     protected $table = 'modes_paiement';
     protected $fillable = [
-        'nom', 'code', 'actif', 'est_systeme', 'ordre', 'entreprise_id'
+        'nom', 'code', 'actif', 'est_systeme', 'ordre', 'entreprise_id', 'compte_id'
     ];
     protected $casts = [
         'actif' => 'boolean',
@@ -16,5 +16,10 @@ class ModePaiement extends Model
     ];
     public function entreprise() {
         return $this->belongsTo(Entreprise::class);
+    }
+
+    public function compte()
+    {
+        return $this->belongsTo(Compte::class);
     }
 }

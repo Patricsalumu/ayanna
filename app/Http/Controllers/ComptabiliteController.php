@@ -9,6 +9,7 @@ use App\Services\ComptabiliteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -56,17 +57,25 @@ class ComptabiliteController extends Controller
 
     public function validerJournal(JournalComptable $journal)
     {
+        abort_unless((int) $journal->entreprise_id === (int) Auth::user()->entreprise_id, 403);
+
         if ($journal->statut !== 'brouillon') {
             return back()->with('error', 'Seules les écritures en brouillon peuvent être validées.');
         }
 
-        $journal->update(['statut' => 'valide']);
+        if (!$journal->estEquilibre()) {
+            return back()->with('error', 'Impossible de valider un journal déséquilibré.');
+        }
+
+        DB::transaction(fn () => $journal->update(['statut' => 'valide']));
 
         return back()->with('success', 'L’écriture a été validée avec succès.');
     }
 
     public function annulerJournal(JournalComptable $journal)
     {
+        abort_unless((int) $journal->entreprise_id === (int) Auth::user()->entreprise_id, 403);
+
         if ($journal->statut !== 'brouillon') {
             return back()->with('error', 'Seules les écritures en brouillon peuvent être annulées.');
         }
@@ -402,15 +411,17 @@ class ComptabiliteController extends Controller
         $entrepriseId = $user->entreprise_id;
         
         $pointsDeVente = \App\Models\PointDeVente::where('entreprise_id', $entrepriseId)->get();
-        $comptes = Compte::where('entreprise_id', $entrepriseId)->orderBy('numero')->get();
+        $comptesCaisse = $this->comptesParClasse($entrepriseId, '5');
+        $comptesClient = $this->comptesParClasse($entrepriseId, '4');
+        $comptesRemise = $this->comptesParClasse($entrepriseId, '6');
         
         $pointDeVente = null;
         if ($pointDeVenteId) {
-            $pointDeVente = \App\Models\PointDeVente::with(['compteCaisse', 'compteVente', 'compteClient'])
+            $pointDeVente = \App\Models\PointDeVente::with(['compteCaisse', 'compteVente', 'compteClient', 'compteRemise'])
                 ->findOrFail($pointDeVenteId);
         }
 
-        return view('comptabilite.configuration-pdv', compact('pointsDeVente', 'comptes', 'pointDeVente'));
+        return view('comptabilite.configuration-pdv', compact('pointsDeVente', 'comptesCaisse', 'comptesClient', 'comptesRemise', 'pointDeVente'));
     }
 
     /**
@@ -418,23 +429,35 @@ class ComptabiliteController extends Controller
      */
     public function sauvegarderConfigurationPdv(Request $request, $pointDeVenteId)
     {
+        $entrepriseId = (int) Auth::user()->entreprise_id;
+        $pointDeVente = \App\Models\PointDeVente::where('entreprise_id', $entrepriseId)->findOrFail($pointDeVenteId);
         $request->validate([
-            'compte_caisse_id' => 'nullable|exists:comptes,id',
-            'compte_vente_id' => 'nullable|exists:comptes,id',
-            'compte_client_id' => 'nullable|exists:comptes,id',
-            'comptabilite_active' => 'boolean'
+            'compte_caisse_id' => ['nullable', 'integer', Rule::in($this->comptesParClasse($entrepriseId, '5')->modelKeys())],
+            'compte_client_id' => ['nullable', 'integer', Rule::in($this->comptesParClasse($entrepriseId, '4')->modelKeys())],
+            'compte_remise_id' => ['nullable', 'integer', Rule::in($this->comptesParClasse($entrepriseId, '6')->modelKeys())],
+            'comptabilite_active' => 'boolean',
+            'interdire_commande_si_stock_null' => 'boolean',
+            'serveuse_peut_valider_paiement' => 'boolean'
         ]);
-
-        $pointDeVente = \App\Models\PointDeVente::findOrFail($pointDeVenteId);
         
         $pointDeVente->update([
             'compte_caisse_id' => $request->compte_caisse_id,
-            'compte_vente_id' => $request->compte_vente_id,
             'compte_client_id' => $request->compte_client_id,
-            'comptabilite_active' => $request->has('comptabilite_active')
+            'compte_remise_id' => $request->compte_remise_id,
+            'comptabilite_active' => $request->has('comptabilite_active'),
+            'interdire_commande_si_stock_null' => $request->has('interdire_commande_si_stock_null'),
+            'serveuse_peut_valider_paiement' => $request->has('serveuse_peut_valider_paiement')
         ]);
 
         return redirect()->back()->with('success', 'Configuration comptable sauvegardée avec succès.');
+    }
+
+    private function comptesParClasse(int $entrepriseId, string $classePrefixe)
+    {
+        return Compte::where('entreprise_id', $entrepriseId)
+            ->whereHas('classeComptable', fn ($query) => $query->where('numero', 'like', $classePrefixe . '%'))
+            ->orderBy('numero')
+            ->get();
     }
 
     /**

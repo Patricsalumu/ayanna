@@ -612,7 +612,20 @@ export function posApp() {
         this.transfer.loading = false;
       }
     },
+    isProduitIndisponible(prod) {
+      const interdit = Boolean(window.PDV_INTERDICTION_STOCK === true || window.PDV_INTERDICTION_STOCK === '1');
+      if (!interdit) {
+        return false;
+      }
+
+      return Number(prod?.stock_qte ?? 0) <= 0;
+    },
     ajouterProduit(prod){
+      if (this.isProduitIndisponible(prod)) {
+        alert('Ce produit est indisponible pour ce point de vente : stock insuffisant ou nul.');
+        return;
+      }
+
       const idx = this.panier.findIndex(i => i.id === prod.id);
       if (idx >= 0) this.panier[idx].qte++;
       else this.panier.push({ ...prod, qte: 1 });

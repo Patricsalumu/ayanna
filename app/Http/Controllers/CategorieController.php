@@ -3,7 +3,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Entreprise;
 use App\Models\Categorie;
+use App\Models\Compte;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CategorieController extends Controller
 {
@@ -25,13 +27,28 @@ class CategorieController extends Controller
 
         // On récupère uniquement les catégories de l'entreprise
         $categories = $entreprise->categories()->latest()->get();
+        $comptes = $this->comptesParClasse($entreprise);
         $module_id = request('module_id'); // récupère le module_id de la requête si présent
-        return view('categories.show', compact('entreprise', 'categories', 'module_id'));
+        return view('categories.show', [
+            'entreprise' => $entreprise,
+            'categories' => $categories,
+            'module_id' => $module_id,
+            'comptesVente' => $comptes['7'],
+            'comptesStock' => $comptes['3'],
+            'comptesVariationStock' => $comptes['6'],
+        ]);
 
     }
 
     public function create(Entreprise $entreprise) {
-        return view('categories.create', compact('entreprise'));
+        $comptes = $this->comptesParClasse($entreprise);
+
+        return view('categories.create', [
+            'entreprise' => $entreprise,
+            'comptesVente' => $comptes['7'],
+            'comptesStock' => $comptes['3'],
+            'comptesVariationStock' => $comptes['6'],
+        ]);
     }
 
     public function store(Request $request, Entreprise $entreprise)
@@ -44,11 +61,17 @@ class CategorieController extends Controller
         // Validation
         $validated = $request->validate([
             'nom' => 'required|string|max:255',
+            'compte_vente_id' => ['required', 'integer', Rule::in($this->comptesParClasse($entreprise)['7']->modelKeys())],
+            'compte_stock_id' => ['required', 'integer', Rule::in($this->comptesParClasse($entreprise)['3']->modelKeys())],
+            'compte_variation_stock_id' => ['required', 'integer', Rule::in($this->comptesParClasse($entreprise)['6']->modelKeys())],
         ]);
 
         // Création de la catégorie liée à l'entreprise
         $entreprise->categories()->create([
             'nom' => $validated['nom'],
+            'compte_vente_id' => $validated['compte_vente_id'],
+            'compte_stock_id' => $validated['compte_stock_id'],
+            'compte_variation_stock_id' => $validated['compte_variation_stock_id'],
         ]);
 
         return redirect()->route('categories.show', $entreprise->id)
@@ -66,7 +89,15 @@ class CategorieController extends Controller
         if ($categorie->entreprise_id !== $entreprise->id) {
             abort(404);
         }
-        return view('categories.edit', compact('entreprise', 'categorie'));
+        $comptes = $this->comptesParClasse($entreprise);
+
+        return view('categories.edit', [
+            'entreprise' => $entreprise,
+            'categorie' => $categorie,
+            'comptesVente' => $comptes['7'],
+            'comptesStock' => $comptes['3'],
+            'comptesVariationStock' => $comptes['6'],
+        ]);
     }
 
     // Mise à jour
@@ -80,8 +111,16 @@ class CategorieController extends Controller
         }
         $validated = $request->validate([
             'nom' => 'required|string|max:255',
+            'compte_vente_id' => ['required', 'integer', Rule::in($this->comptesParClasse($entreprise)['7']->modelKeys())],
+            'compte_stock_id' => ['required', 'integer', Rule::in($this->comptesParClasse($entreprise)['3']->modelKeys())],
+            'compte_variation_stock_id' => ['required', 'integer', Rule::in($this->comptesParClasse($entreprise)['6']->modelKeys())],
         ]);
-        $categorie->update(['nom' => $validated['nom']]);
+        $categorie->update([
+            'nom' => $validated['nom'],
+            'compte_vente_id' => $validated['compte_vente_id'],
+            'compte_stock_id' => $validated['compte_stock_id'],
+            'compte_variation_stock_id' => $validated['compte_variation_stock_id'],
+        ]);
         return redirect()->route('categories.show', $entreprise->id)
             ->with('success', 'Catégorie modifiée avec succès.');
     }
@@ -98,5 +137,24 @@ class CategorieController extends Controller
         $categorie->delete();
         return redirect()->route('categories.show', $entreprise->id)
             ->with('success', 'Catégorie supprimée avec succès.');
+    }
+
+    private function comptesParClasse(Entreprise $entreprise): array
+    {
+        $comptes = Compte::with('classeComptable')
+            ->where('entreprise_id', $entreprise->id)
+            ->whereHas('classeComptable', function ($query) {
+                $query->where(function ($classes) {
+                    $classes->where('numero', 'like', '3%')
+                        ->orWhere('numero', 'like', '6%')
+                        ->orWhere('numero', 'like', '7%');
+                });
+            })
+            ->orderBy('numero')
+            ->get();
+
+        return collect(['3', '6', '7'])
+            ->mapWithKeys(fn ($classe) => [$classe => $comptes->filter(fn ($compte) => str_starts_with($compte->classeComptable->numero, $classe))->values()])
+            ->all();
     }
 }

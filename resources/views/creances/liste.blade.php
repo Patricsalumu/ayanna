@@ -6,7 +6,7 @@
         $canPrintReceipt = app(\App\Services\PermissionService::class)->canPrintReceipt(auth()->user());
     @endphp
     @php
-        $canValidatePayment = app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user());
+        $canValidatePayment = app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user(), null);
     @endphp
     <!-- Messages de statut -->
     @if(session('success'))

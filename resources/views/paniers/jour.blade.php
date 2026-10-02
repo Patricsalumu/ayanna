@@ -252,7 +252,7 @@
                             @endif
                         @else
                             @php
-                                $afficherBoutonPaiement = app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user())
+                                $afficherBoutonPaiement = app(\App\Services\PermissionService::class)->canValidatePayment(auth()->user(), $panier->pointDeVente ?? null)
                                     && $panier->commande
                                     && $modeCode === 'compte_client'
                                     && $montantPaye < $netAPayer;

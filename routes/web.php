@@ -241,7 +241,7 @@ Route::patch('/paniers/{panier}/annuler', [\App\Http\Controllers\PanierControlle
 Route::post('/panier/impression/{panier}', [\App\Http\Controllers\PanierController::class, 'enregistrerImpression'])->name('panier.impression');
 
 // Ouvrir/Fermer un point de vente (vente)
-Route::post('/vente/{pointDeVente}/fermer', [App\Http\Controllers\VenteController::class, 'fermer'])->name('vente.fermer');
+Route::post('/vente/{pointDeVente}/fermer', [App\Http\Controllers\StockJournalierController::class, 'fermerSession'])->name('vente.fermer');
 Route::get('/vente/{pointDeVente}/ouvrir', [App\Http\Controllers\VenteController::class, 'ouvrir'])->name('vente.ouvrir');
 // Continuer une vente (accès direct à la page de vente d'un point de vente)
 Route::get('/vente/{pointDeVente}/continuer', [App\Http\Controllers\VenteController::class, 'continuer'])->name('vente.continuer');

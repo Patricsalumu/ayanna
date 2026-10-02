@@ -19,6 +19,7 @@ class JournalComptable extends Model
         'montant_total',
         'entreprise_id',
         'point_de_vente_id',
+        'session',
         'commande_id',
         'panier_id',
         'user_id',

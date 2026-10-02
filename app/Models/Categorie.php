@@ -9,7 +9,28 @@ class Categorie extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nom', 'entreprise_id'];
+    protected $fillable = [
+        'nom',
+        'entreprise_id',
+        'compte_vente_id',
+        'compte_stock_id',
+        'compte_variation_stock_id',
+    ];
+
+    public function compteVente()
+    {
+        return $this->belongsTo(Compte::class, 'compte_vente_id');
+    }
+
+    public function compteStock()
+    {
+        return $this->belongsTo(Compte::class, 'compte_stock_id');
+    }
+
+    public function compteVariationStock()
+    {
+        return $this->belongsTo(Compte::class, 'compte_variation_stock_id');
+    }
 
     public function produits()
     {

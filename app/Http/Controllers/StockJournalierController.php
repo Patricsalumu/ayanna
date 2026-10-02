@@ -879,7 +879,18 @@ class StockJournalierController extends Controller
      */
     public function fermerSession(Request $request, $pointDeVenteId)
     {
+        Log::info('[Fermeture Session] Requête reçue', [
+            'point_de_vente_id' => $pointDeVenteId,
+            'user_id' => Auth::id(),
+            'route' => $request->route()?->getName(),
+        ]);
+
         if (!$this->permissionService->canManageSalesSession(Auth::user())) {
+            Log::warning('[Fermeture Session] Permission refusée', [
+                'point_de_vente_id' => $pointDeVenteId,
+                'user_id' => Auth::id(),
+                'role' => Auth::user()?->role,
+            ]);
             abort(403, 'Seul un administrateur ou un caissier peut fermer une session.');
         }
 
@@ -890,10 +901,14 @@ class StockJournalierController extends Controller
         $pointDeVente = \App\Models\PointDeVente::findOrFail($pointDeVenteId);
 
         // Vérification backend : empêcher la fermeture si un panier en cours existe
-        $hasPanierEnCours = \App\Models\Panier::where('point_de_vente_id', $pointDeVenteId)
+        $paniersEnCours = \App\Models\Panier::where('point_de_vente_id', $pointDeVenteId)
             ->where('status', 'en_cours')
-            ->exists();
-        if ($hasPanierEnCours) {
+            ->get(['id', 'table_id', 'status']);
+        if ($paniersEnCours->isNotEmpty()) {
+            Log::warning('[Fermeture Session] Bloquée par des paniers en cours', [
+                'point_de_vente_id' => $pointDeVenteId,
+                'paniers' => $paniersEnCours->toArray(),
+            ]);
             return redirect()->back()->with('error', 'Impossible de fermer : il reste des paniers en cours pour ce point de vente.');
         }
 
@@ -911,6 +926,10 @@ class StockJournalierController extends Controller
             'lastSession' => $lastSession
         ]);
         if (!$lastSession) {
+            Log::warning('[Fermeture Session] Aucune session stock trouvée', [
+                'point_de_vente_id' => $pointDeVenteId,
+                'dernier_stock_id' => $lastStock?->id,
+            ]);
             return redirect()->back()->with('error', 'Aucune session à fermer.');
         }
         // Log pour debug : afficher la dernière date et session trouvées
@@ -919,41 +938,93 @@ class StockJournalierController extends Controller
             'lastDate' => $lastDate,
             'lastSession' => $lastSession
         ]);
-        // Pour chaque produit de la session, calculer la quantité restée et la sauvegarder
-        $stocks = StockJournalier::where('point_de_vente_id', $pointDeVenteId)
-            ->where('date', $lastDate)
-            ->where('session', $lastSession)
-            ->get();
-        foreach ($stocks as $stock) {
-            $q_total = ($stock->quantite_initiale ?? 0) + ($stock->quantite_ajoutee ?? 0);
-            $q_vendue = $stock->quantite_vendue ?? 0;
-            $quantite_reste = $q_total - $q_vendue;
-            $stock->quantite_reste = $quantite_reste;
-            // $stock->closed_at = $now; // si colonne à ajouter, sinon ignorer
-            $stock->save();
-        }
-        // Calcul du solde total de la session (somme des ventes)
-        $solde = 0;
-        foreach ($stocks as $stock) {
-            $produit = $stock->produit;
-            $prix = $produit ? $produit->prix_vente : 0;
-            $solde += ($stock->quantite_vendue ?? 0) * $prix;
-        }
-        // Historiser la fermeture avec solde et infos
-        \App\Models\Historiquepdv::create([
-            'point_de_vente_id' => $pointDeVente->id,
-            'user_id' => $userId,
-            'etat' => 'ferme',
-            'solde' => $solde,
-            'opened_at' => $lastStock->validated_at ?? null,
-            'closed_at' => $now,
-            'opened_by' => $lastStock->validated_by ?? null,
-            'closed_by' => $userId,
-            'created_at' => $now,
+        Log::info('[Fermeture Session] Début fermeture', [
+            'point_de_vente_id' => $pointDeVenteId,
+            'date_session' => (string) $lastDate,
+            'session' => (string) $lastSession,
+            'validated_at' => $lastStock->validated_at,
+            'comptabilite_active' => (bool) $pointDeVente->comptabilite_active,
         ]);
-        // Fermer le point de vente
-        $pointDeVente->etat = 'ferme';
-        $pointDeVente->save();
+        $stocks = collect();
+        $journauxBrouillon = [];
+        try {
+            DB::transaction(function () use ($pointDeVente, $pointDeVenteId, $lastDate, $lastSession, $lastStock, $now, $userId, &$stocks, &$journauxBrouillon) {
+                $stocks = StockJournalier::with('produit')
+                    ->where('point_de_vente_id', $pointDeVenteId)
+                    ->where('date', $lastDate)
+                    ->where('session', $lastSession)
+                    ->lockForUpdate()
+                    ->get();
+                Log::info('[Fermeture Session] Stocks chargés', [
+                    'point_de_vente_id' => $pointDeVenteId,
+                    'date_session' => (string) $lastDate,
+                    'session' => (string) $lastSession,
+                    'nombre_lignes_stock' => $stocks->count(),
+                    'quantite_vendue' => $stocks->sum('quantite_vendue'),
+                ]);
+
+                foreach ($stocks as $stock) {
+                    $quantiteTotale = ($stock->quantite_initiale ?? 0) + ($stock->quantite_ajoutee ?? 0);
+                    $stock->quantite_reste = $quantiteTotale - ($stock->quantite_vendue ?? 0);
+                    $stock->save();
+                }
+
+                $solde = $stocks->sum(function ($stock) {
+                    return ($stock->quantite_vendue ?? 0) * ($stock->produit?->prix_vente ?? 0);
+                });
+
+                Historiquepdv::create([
+                    'point_de_vente_id' => $pointDeVente->id,
+                    'user_id' => $userId,
+                    'etat' => 'ferme',
+                    'solde' => $solde,
+                    'opened_at' => $lastStock->validated_at ?? null,
+                    'closed_at' => $now,
+                    'opened_by' => $lastStock->validated_by ?? null,
+                    'closed_by' => $userId,
+                    'created_at' => $now,
+                ]);
+
+                $debutSession = $lastStock->validated_at
+                    ? Carbon::parse($lastStock->validated_at)
+                    : Carbon::parse($lastDate)->startOfDay();
+                $journauxBrouillon = $pointDeVente->comptabilite_active
+                    ? app(\App\Services\ComptabiliteService::class)->genererBrouillonsFermetureSession(
+                        $pointDeVente,
+                        (string) $lastDate,
+                        (string) $lastSession,
+                        $debutSession,
+                        Carbon::parse($now),
+                        $userId
+                    )
+                    : [];
+
+                Log::info('[Fermeture Session] Brouillons comptables préparés', [
+                    'point_de_vente_id' => $pointDeVenteId,
+                    'session' => (string) $lastSession,
+                    'journaux' => collect($journauxBrouillon)->map(fn ($journal) => [
+                        'id' => $journal->id,
+                        'type' => $journal->type_operation,
+                        'numero_piece' => $journal->numero_piece,
+                        'montant_total' => $journal->montant_total,
+                        'statut' => $journal->statut,
+                    ])->values()->all(),
+                ]);
+
+                $pointDeVente->etat = 'ferme';
+                $pointDeVente->save();
+            });
+        } catch (\Throwable $e) {
+            Log::error('[Fermeture Session] Échec génération brouillons comptables', [
+                'point_de_vente_id' => $pointDeVenteId,
+                'session' => $lastSession,
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()->with('error', 'La session n’a pas été fermée : ' . $e->getMessage());
+        }
 
         $this->invalidateOtherSessions();
         // DEBUG : log des infos session fermée
@@ -964,8 +1035,14 @@ class StockJournalierController extends Controller
             'nbStocks' => $stocks->count(),
             'produits' => $stocks->pluck('produit_id')->toArray(),
         ]);
+        Log::info('[Fermeture Session] Fermeture terminée', [
+            'point_de_vente_id' => $pointDeVenteId,
+            'date_session' => (string) $lastDate,
+            'session' => (string) $lastSession,
+            'journaux_brouillon' => count($journauxBrouillon),
+        ]);
         return redirect()->route('pointsDeVente.show', [$pointDeVente->entreprise_id, $pointDeVente->id])
-            ->with('success', 'Session fermée. Quantités sauvegardées.');
+            ->with('success', 'Session fermée. ' . count($journauxBrouillon) . ' journal(aux) comptable(s) créé(s) en brouillon.');
     }
 
     private function invalidateOtherSessions(): void

@@ -63,7 +63,33 @@ class PanierController extends Controller
         }
 
         $table_id = $request->input('table_id');
-        $quantite = $request->input('quantite', 1);
+        $quantite = max(1, (int) $request->input('quantite', 1));
+        $pointDeVenteId = $request->input('point_de_vente_id');
+
+        $pointDeVente = $pointDeVenteId ? PointDeVente::find($pointDeVenteId) : null;
+        $produit = $produit_id ? \App\Models\Produit::find($produit_id) : null;
+        $stock = $pointDeVente && $produit_id ? StockJournalier::where('point_de_vente_id', $pointDeVenteId)
+            ->where('produit_id', $produit_id)
+            ->orderByDesc('session')
+            ->orderByDesc('id')
+            ->first() : null;
+
+        if ($pointDeVente && $pointDeVente->interdire_commande_si_stock_null && $produit) {
+            $stockDisponible = $produit->stockDisponiblePourPointDeVente($pointDeVenteId);
+            if ($quantite > $stockDisponible) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Stock insuffisant pour ce produit : seulement ' . $stockDisponible . ' disponible(s).',
+                ], 422);
+            }
+        }
+
+        if ($pointDeVente && $pointDeVente->interdire_commande_si_stock_null && $pointDeVente->canOrderProductWithStock($stock) === false) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Ce produit ne peut pas être ajouté au panier car son stock est nul ou non défini pour ce point de vente.',
+            ], 422);
+        }
 
         $panier = Panier::where('table_id', $table_id)
             ->where('status', 'en_cours')
@@ -128,11 +154,37 @@ class PanierController extends Controller
                 if ($existant) {
                     $panier->produits()->detach($produit_id);
                 }
-            } elseif ($existant) {
-                $panier->produits()->updateExistingPivot($produit_id, ['quantite' => $quantite]);
             } else {
+                $pointDeVente = $panier->pointDeVente;
+                $stock = \App\Models\StockJournalier::where('point_de_vente_id', $panier->point_de_vente_id)
+                    ->where('produit_id', $produit_id)
+                    ->orderByDesc('session')
+                    ->orderByDesc('id')
+                    ->first();
+
+                if ($pointDeVente && $pointDeVente->canOrderProductWithStock($stock) === false) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Ce produit ne peut pas être commandé car son stock est nul ou non défini pour ce point de vente.',
+                    ], 422);
+                }
+
                 $produit = \App\Models\Produit::find($produit_id);
-                $panier->produits()->attach($produit_id, ['quantite' => $quantite, 'prix' => $produit?->prix_vente ?? 0]);
+                if ($pointDeVente && $pointDeVente->interdire_commande_si_stock_null && $produit) {
+                    $stockDisponible = $produit->stockDisponiblePourPointDeVente($panier->point_de_vente_id, $panier->id);
+                    if ($quantite > $stockDisponible) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'Stock insuffisant pour ce produit : seulement ' . $stockDisponible . ' disponible(s).',
+                        ], 422);
+                    }
+                }
+
+                if ($existant) {
+                    $panier->produits()->updateExistingPivot($produit_id, ['quantite' => $quantite]);
+                } else {
+                    $panier->produits()->attach($produit_id, ['quantite' => $quantite, 'prix' => $produit?->prix_vente ?? 0]);
+                }
             }
 
             $panier->load('produits');

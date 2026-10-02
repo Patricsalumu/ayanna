@@ -127,13 +127,14 @@ class VenteController extends Controller
 
             // Formater les produits pour JavaScript
             $tableSalleId = $tableCourante ? \App\Models\TableResto::find($tableCourante)?->salle_id : null;
-            $produitsArray = $produits->map(function($produit) use ($tableSalleId) {
+            $produitsArray = $produits->map(function($produit) use ($tableSalleId, $pointDeVenteId) {
                 return [
                     'id' => $produit->id,
                     'nom' => $produit->nom,
                     'prix' => $produit->prixPourSalle($tableSalleId),
                     'image' => $produit->image ? asset('storage/'.$produit->image) : null,
                     'categorie_id' => $produit->categorie_id,
+                    'stock_qte' => $produit->stockDisponiblePourPointDeVente($pointDeVenteId),
                 ];
             })->values()->toArray();
 
@@ -307,10 +308,36 @@ class VenteController extends Controller
 
             // 2. Vérifier si le produit est déjà dans le panier
             $produitModel = \App\Models\Produit::find($produitId);
+            $pointDeVente = \App\Models\PointDeVente::find($pointDeVenteId);
+            $stock = \App\Models\StockJournalier::where('point_de_vente_id', $pointDeVenteId)
+                ->where('produit_id', $produitId)
+                ->orderByDesc('session')
+                ->orderByDesc('id')
+                ->first();
+
+            if ($pointDeVente && $pointDeVente->canOrderProductWithStock($stock) === false) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Ce produit ne peut pas être commandé car son stock est nul ou non défini pour ce point de vente.',
+                ], 422);
+            }
+
             $table = \App\Models\TableResto::find($tableId);
             $salleId = $table?->salle_id;
             $prix = $produitModel?->prixPourSalle($salleId) ?? 0;
             $existant = $panier->produits()->where('produit_id', $produitId)->first();
+            $quantiteDemande = (int) ($existant?->pivot?->quantite ?? 0) + 1;
+
+            if ($pointDeVente && $pointDeVente->interdire_commande_si_stock_null) {
+                $stockDisponible = $produitModel?->stockDisponiblePourPointDeVente($pointDeVenteId, $panier->id) ?? 0;
+                if ($quantiteDemande > $stockDisponible) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Stock insuffisant pour ce produit : seulement ' . $stockDisponible . ' disponible(s) pour ce point de vente.',
+                    ], 422);
+                }
+            }
+
             if ($existant) {
                 $nouvelleQte = $existant->pivot->quantite + 1;
                 $panier->produits()->updateExistingPivot($produitId, [
@@ -467,6 +494,7 @@ class VenteController extends Controller
                 ]
             );
 
+            $pointDeVente = PointDeVente::find($pointDeVenteId);
             $syncData = [];
             foreach ($items as $item) {
                 $produitId = $item['id'] ?? null;
@@ -475,6 +503,17 @@ class VenteController extends Controller
 
                 if (!$produitId || $quantite <= 0) {
                     continue;
+                }
+
+                $produit = \App\Models\Produit::find($produitId);
+                if ($pointDeVente && $pointDeVente->interdire_commande_si_stock_null && $produit) {
+                    $stockDisponible = $produit->stockDisponiblePourPointDeVente($pointDeVenteId, $panier->id);
+                    if ($quantite > $stockDisponible) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'Stock insuffisant pour le produit "' . $produit->nom . '" : seulement ' . $stockDisponible . ' disponible(s).',
+                        ], 422);
+                    }
                 }
 
                 $syncData[(int) $produitId] = [
@@ -940,7 +979,8 @@ class VenteController extends Controller
             Log::info('[VALIDATION PAIEMENT] Clés disponibles', ['keys' => array_keys($data)]);
 
             $user = Auth::user();
-            if (!$this->permissionService->canValidatePayment($user)) {
+            $pointDeVente = !empty($data['point_de_vente_id']) ? PointDeVente::find($data['point_de_vente_id']) : null;
+            if (!$this->permissionService->canValidatePayment($user, $pointDeVente)) {
                 return response()->json(['success' => false, 'error' => 'Vous n\'êtes pas autorisé à valider un paiement.'], 403);
             }
 
@@ -1051,15 +1091,16 @@ class VenteController extends Controller
             }
 
             // Calculer le montant depuis le panier si pas fourni
+            $panier->load('produits');
+            $this->verifierStockDisponiblePourPanier($panier);
+
             if (!$montant) {
-                $panier->load('produits');
                 $panierTotalHt = $panier->produits->sum(function($produit) {
                     return ($produit->pivot->quantite ?? 0) * (($produit->pivot->prix ?? $produit->prix_vente) ?? 0);
                 });
                 $montant = max(0, $panierTotalHt - $remise);
                 Log::info('[VALIDATION PAIEMENT] Montant calculé depuis le panier', ['total_ht' => $panierTotalHt, 'remise' => $remise, 'montant_calcule' => $montant]);
             } else {
-                $panier->load('produits');
                 $panierTotalHt = $panier->produits->sum(function($produit) {
                     return ($produit->pivot->quantite ?? 0) * (($produit->pivot->prix ?? $produit->prix_vente) ?? 0);
                 });
@@ -1127,42 +1168,12 @@ class VenteController extends Controller
                 ]);
             }
 
-            // 3. ENREGISTREMENT COMPTABLE AUTOMATIQUE
-            try {
-                // Vérifier si la comptabilité est active pour ce point de vente
-                $pointDeVente = $panier->pointDeVente;
-                if ($pointDeVente && $pointDeVente->comptabilite_active) {
-                    $comptabiliteService = new \App\Services\ComptabiliteService();
-                    $journalComptable = $comptabiliteService->enregistrerVente($commande);
-                    
-                    if ($journalComptable) {
-                        Log::info('[VALIDATION PAIEMENT] Écriture comptable créée', [
-                            'journal_id' => $journalComptable->id,
-                            'commande_id' => $commande->id,
-                            'montant' => $montant,
-                            'mode_paiement' => $data['mode_paiement']
-                        ]);
-                    } else {
-                        Log::info('[VALIDATION PAIEMENT] Comptabilité désactivée pour ce point de vente');
-                    }
-                } else {
-                    Log::info('[VALIDATION PAIEMENT] Point de vente sans comptabilité active');
-                }
-            } catch (\Exception $e) {
-                Log::error('[VALIDATION PAIEMENT] Erreur lors de l\'enregistrement comptable', [
-                    'error' => $e->getMessage(),
-                    'commande_id' => $commande->id
-                ]);
-                // Ne pas faire échouer la transaction pour une erreur comptable
-                // L'écriture pourra être faite manuellement plus tard
-            }
-
-            // 4. Marquer le panier comme terminé
+            // 3. Marquer le panier comme terminé
             $panier->status = 'validé';
             $panier->save();
             Log::info('[VALIDATION PAIEMENT] Panier marqué comme validé', ['panier_id' => $panier->id]);
 
-            // 5. MAJ quantité vendue dans le stock journalier
+            // 4. MAJ quantité vendue dans le stock journalier
             $this->majQuantiteVendueStock($panier);
             Log::info('[VALIDATION PAIEMENT] Stock journalier mis à jour');
 
@@ -1201,6 +1212,30 @@ class VenteController extends Controller
                 'success' => false,
                 'error' => 'Erreur lors de la validation: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    private function verifierStockDisponiblePourPanier(Panier $panier): void
+    {
+        if (!$panier || !$panier->point_de_vente_id) {
+            return;
+        }
+
+        $pointDeVente = $panier->pointDeVente;
+        if (!$pointDeVente || !$pointDeVente->interdire_commande_si_stock_null) {
+            return;
+        }
+
+        foreach ($panier->produits as $produit) {
+            $quantiteDemandee = (int) ($produit->pivot->quantite ?? 0);
+            if ($quantiteDemandee <= 0) {
+                continue;
+            }
+
+            $stockDisponible = $produit->stockDisponiblePourPointDeVente($panier->point_de_vente_id, $panier->id);
+            if ($quantiteDemandee > $stockDisponible) {
+                throw new \RuntimeException('Stock insuffisant pour le produit \"' . $produit->nom . '\". Disponible : ' . $stockDisponible . ', demandé : ' . $quantiteDemandee . '.');
+            }
         }
     }
 
@@ -1329,9 +1364,10 @@ class VenteController extends Controller
 
     public function confirmerCreance($commandeId)
     {
-        abort_unless($this->permissionService->canValidatePayment(Auth::user()), 403);
+        $commande = \App\Models\Commande::with('panier.pointDeVente')->findOrFail($commandeId);
+        $pointDeVente = $commande->panier?->pointDeVente;
 
-        $commande = \App\Models\Commande::findOrFail($commandeId);
+        abort_unless($this->permissionService->canValidatePayment(Auth::user(), $pointDeVente), 403);
         $commande->statut = 'payé';
         $commande->validated_by = Auth::id();
         $commande->numero_facture ??= $commande->panier?->numero_facture;
@@ -1342,7 +1378,10 @@ class VenteController extends Controller
     public function enregistrerPaiement(Request $request, $commandeId)
     {
         try {
-            if (!$this->permissionService->canValidatePayment(Auth::user())) {
+            $commande = Commande::with(['panier.pointDeVente'])->findOrFail($commandeId);
+            $pointDeVente = $commande->panier?->pointDeVente;
+
+            if (!$this->permissionService->canValidatePayment(Auth::user(), $pointDeVente)) {
                 return response()->json([
                     'success' => false,
                     'error' => 'Vous n\'êtes pas autorisé à enregistrer un paiement.',
@@ -1474,14 +1513,6 @@ class VenteController extends Controller
             
             Log::info('Paiement créé', ['paiement' => $paiement->toArray()]);
             
-            // Enregistrer en comptabilité (écritures comptables et journal)
-            $comptabiliteService = new \App\Services\ComptabiliteService();
-            $journal = $comptabiliteService->enregistrerPaiementCreance($paiement);
-            
-            if ($journal) {
-                Log::info('Paiement créance enregistré en comptabilité', ['journal_id' => $journal->id]);
-            }
-            
             // Créer une entrée dans entrees_sorties pour le rapport journalier
             \App\Models\EntreeSortie::create([
                 'compte_id' => $compteId,
@@ -1490,7 +1521,7 @@ class VenteController extends Controller
                 'type' => 'entree',
                 'user_id' => Auth::id(),
                 'point_de_vente_id' => $pointDeVenteId,
-                'comptabilise' => true // Déjà comptabilisé par le service ci-dessus
+                'comptabilise' => false
             ]);
             
             Log::info('Entrée créée pour rapport journalier', [

@@ -60,6 +60,7 @@
                         <option value="od" {{ $typeOperation == 'od' ? 'selected' : '' }}>OD</option>
                         <option value="caisse" {{ $typeOperation == 'caisse' ? 'selected' : '' }}>Caisse</option>
                         <option value="paiement" {{ $typeOperation == 'paiement' ? 'selected' : '' }}>Paiement</option>
+                        <option value="ajustement" {{ $typeOperation == 'ajustement' ? 'selected' : '' }}>Stock</option>
                         <option value="mouvement" {{ $typeOperation == 'mouvement' ? 'selected' : '' }}>Mouvement</option>
                     </select>
                 </div>
@@ -89,6 +90,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Libellé</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Point de vente</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Session</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -104,7 +106,7 @@
                         @endphp
                         <tr class="journal-row hover:bg-gray-50 {{ $estAnnule ? 'bg-gray-100 opacity-60' : '' }}"
                             data-journal-id="{{ $journal->id }}"
-                            data-journal-search="{{ strtolower($journal->libelle . ' ' . ($journal->reference ?? '') . ' ' . $journal->ecritures->map(fn($ecriture) => ($ecriture->compte->numero ?? '') . ' ' . ($ecriture->compte->nom ?? '') . ' ' . ($ecriture->libelle_ecriture ?? ''))->implode(' ')) }}">
+                            data-journal-search="{{ strtolower($journal->libelle . ' ' . ($journal->reference ?? '') . ' ' . ($journal->session ?? '') . ' ' . $journal->ecritures->map(fn($ecriture) => ($ecriture->compte->numero ?? '') . ' ' . ($ecriture->compte->nom ?? '') . ' ' . ($ecriture->libelle_ecriture ?? ''))->implode(' ')) }}">
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 <div>{{ \Carbon\Carbon::parse($journal->date_ecriture)->format('d/m/Y') }}</div>
                                 @if(!empty($journal->heure_ecriture))
@@ -122,6 +124,7 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {{ $journal->pointDeVente->nom ?? 'N/A' }}
                             </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $journal->session ?? '—' }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @php
                                     $typeColors = [
@@ -130,6 +133,7 @@
                                         'od' => 'bg-indigo-100 text-indigo-800',
                                         'caisse' => 'bg-cyan-100 text-cyan-800',
                                         'paiement' => 'bg-blue-100 text-blue-800',
+                                        'ajustement' => 'bg-amber-100 text-amber-800',
                                         'mouvement' => 'bg-purple-100 text-purple-800'
                                     ];
                                 @endphp
@@ -170,7 +174,7 @@
                         
                         <!-- Détail des écritures (masqué par défaut) -->
                         <tr id="detail-{{ $journal->id }}" class="journal-detail-row bg-gray-50 hidden">
-                            <td colspan="6" class="px-6 py-4">
+                            <td colspan="7" class="px-6 py-4">
                                 <div class="bg-white rounded-lg p-4 shadow-sm">
                                     <h4 class="font-medium text-gray-900 mb-3">Détail des écritures</h4>
                                     <div class="overflow-x-auto">

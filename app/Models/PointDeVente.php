@@ -17,12 +17,36 @@ class PointDeVente extends Model
         'compte_caisse_id',
         'compte_vente_id', 
         'compte_client_id',
-        'comptabilite_active'
+        'compte_remise_id',
+        'comptabilite_active',
+        'interdire_commande_si_stock_null',
+        'serveuse_peut_valider_paiement'
     ];
 
     protected $casts = [
-        'comptabilite_active' => 'boolean'
+        'comptabilite_active' => 'boolean',
+        'interdire_commande_si_stock_null' => 'boolean',
+        'serveuse_peut_valider_paiement' => 'boolean',
     ];
+
+    public function canOrderProductWithStock($stock = null): bool
+    {
+        if (!$this->interdire_commande_si_stock_null) {
+            return true;
+        }
+
+        if ($stock === null) {
+            return false;
+        }
+
+        $stockQty = is_object($stock) ? ($stock->quantite_reste ?? null) : $stock;
+
+        if ($stockQty === null) {
+            return false;
+        }
+
+        return (int) $stockQty > 0;
+    }
 
     public function categories()
     {
@@ -98,6 +122,11 @@ class PointDeVente extends Model
     public function compteClient()
     {
         return $this->belongsTo(Compte::class, 'compte_client_id');
+    }
+
+    public function compteRemise()
+    {
+        return $this->belongsTo(Compte::class, 'compte_remise_id');
     }
 
     public function journaux()

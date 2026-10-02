@@ -8,11 +8,11 @@
         showDeleteModal: false,
         loading: false,
         errors: {},
-        form: { nom: '' },
-        editForm: { id: null, nom: '' },
+        form: { nom: '', compte_vente_id: '', compte_stock_id: '', compte_variation_stock_id: '' },
+        editForm: { id: null, nom: '', compte_vente_id: '', compte_stock_id: '', compte_variation_stock_id: '' },
         deleteId: null,
-        openAdd() { this.form = { nom: '' }; this.errors = {}; this.showAddModal = true; },
-        openEdit(categorie) { this.editForm = { id: categorie.id, nom: categorie.nom }; this.errors = {}; this.showEditModal = true; },
+        openAdd() { this.form = { nom: '', compte_vente_id: '', compte_stock_id: '', compte_variation_stock_id: '' }; this.errors = {}; this.showAddModal = true; },
+        openEdit(categorie) { this.editForm = { ...categorie }; this.errors = {}; this.showEditModal = true; },
         openDelete(id) { this.deleteId = id; this.showDeleteModal = true; },
         submitCategorie() {
             this.loading = true;
@@ -53,7 +53,7 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     'Accept': 'application/json',
                 },
-                body: JSON.stringify({ nom: this.editForm.nom })
+                body: JSON.stringify(this.editForm)
             })
             .then(async res => {
                 const contentType = res.headers.get('content-type');
@@ -118,7 +118,7 @@
 
     <!-- Modal ajout catégorie -->
     <div x-show="showAddModal" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto p-6 relative">
             <img src="{{ asset('storage/logos/favicon.png') }}" alt="Favicon" class="h-8 w-8 absolute top-4 left-4">
             <button @click="showAddModal = false" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600">&times;</button>
             <h2 class="text-lg font-bold mb-4 pl-12">Nouvelle catégorie</h2>
@@ -129,6 +129,41 @@
                     <template x-if="errors.nom">
                         <div class="text-red-600 text-xs mt-1" x-text="errors.nom[0]"></div>
                     </template>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Compte de vente (classe 7)</label>
+                    <select x-model="form.compte_vente_id" required class="mt-1 block w-full rounded border-gray-300">
+                        <option value="">Choisir un compte de vente</option>
+                        @foreach($comptesVente as $compte)
+                            <option value="{{ $compte->id }}">{{ $compte->numero }} — {{ $compte->nom }}</option>
+                        @endforeach
+                    </select>
+                    @if($comptesVente->isEmpty())<p class="mt-1 text-xs text-amber-700">Aucun compte de classe 7 disponible.</p>@endif
+                    <template x-if="errors.compte_vente_id"><div class="text-red-600 text-xs mt-1" x-text="errors.compte_vente_id[0]"></div></template>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Compte de stock (classe 3)</label>
+                    <select x-model="form.compte_stock_id" required class="mt-1 block w-full rounded border-gray-300">
+                        <option value="">Choisir un compte de stock</option>
+                        @foreach($comptesStock as $compte)
+                            <option value="{{ $compte->id }}">{{ $compte->numero }} — {{ $compte->nom }}</option>
+                        @endforeach
+                    </select>
+                    @if($comptesStock->isEmpty())
+                        <p class="mt-1 text-xs text-amber-700">Aucun compte de classe 3. <a class="underline" href="{{ route('comptes.create', ['entreprise_id' => $entreprise->id]) }}" target="_blank">Créer un compte</a>.</p>
+                    @endif
+                    <template x-if="errors.compte_stock_id"><div class="text-red-600 text-xs mt-1" x-text="errors.compte_stock_id[0]"></div></template>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Variation de stock (classe 6)</label>
+                    <select x-model="form.compte_variation_stock_id" required class="mt-1 block w-full rounded border-gray-300">
+                        <option value="">Choisir un compte de variation</option>
+                        @foreach($comptesVariationStock as $compte)
+                            <option value="{{ $compte->id }}">{{ $compte->numero }} — {{ $compte->nom }}</option>
+                        @endforeach
+                    </select>
+                    @if($comptesVariationStock->isEmpty())<p class="mt-1 text-xs text-amber-700">Aucun compte de classe 6 disponible.</p>@endif
+                    <template x-if="errors.compte_variation_stock_id"><div class="text-red-600 text-xs mt-1" x-text="errors.compte_variation_stock_id[0]"></div></template>
                 </div>
                 <div class="flex justify-end gap-2">
                     <button type="button" @click="showAddModal = false" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Annuler</button>
@@ -143,7 +178,7 @@
 
     <!-- Modal modification catégorie -->
     <div x-show="showEditModal" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto p-6 relative">
             <img src="{{ asset('storage/logos/favicon.png') }}" alt="Favicon" class="h-8 w-8 absolute top-4 left-4">
             <button @click="showEditModal = false" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600">&times;</button>
             <h2 class="text-lg font-bold mb-4 pl-12">Modifier la catégorie</h2>
@@ -154,6 +189,37 @@
                     <template x-if="errors.nom">
                         <div class="text-red-600 text-xs mt-1" x-text="errors.nom[0]"></div>
                     </template>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Compte de vente (classe 7)</label>
+                    <select x-model="editForm.compte_vente_id" required class="mt-1 block w-full rounded border-gray-300">
+                        <option value="">Choisir un compte de vente</option>
+                        @foreach($comptesVente as $compte)
+                            <option value="{{ $compte->id }}">{{ $compte->numero }} — {{ $compte->nom }}</option>
+                        @endforeach
+                    </select>
+                    <template x-if="errors.compte_vente_id"><div class="text-red-600 text-xs mt-1" x-text="errors.compte_vente_id[0]"></div></template>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Compte de stock (classe 3)</label>
+                    <select x-model="editForm.compte_stock_id" required class="mt-1 block w-full rounded border-gray-300">
+                        <option value="">Choisir un compte de stock</option>
+                        @foreach($comptesStock as $compte)
+                            <option value="{{ $compte->id }}">{{ $compte->numero }} — {{ $compte->nom }}</option>
+                        @endforeach
+                    </select>
+                    @if($comptesStock->isEmpty())<p class="mt-1 text-xs text-amber-700">Aucun compte de classe 3 configuré.</p>@endif
+                    <template x-if="errors.compte_stock_id"><div class="text-red-600 text-xs mt-1" x-text="errors.compte_stock_id[0]"></div></template>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Variation de stock (classe 6)</label>
+                    <select x-model="editForm.compte_variation_stock_id" required class="mt-1 block w-full rounded border-gray-300">
+                        <option value="">Choisir un compte de variation</option>
+                        @foreach($comptesVariationStock as $compte)
+                            <option value="{{ $compte->id }}">{{ $compte->numero }} — {{ $compte->nom }}</option>
+                        @endforeach
+                    </select>
+                    <template x-if="errors.compte_variation_stock_id"><div class="text-red-600 text-xs mt-1" x-text="errors.compte_variation_stock_id[0]"></div></template>
                 </div>
                 <div class="flex justify-end gap-2">
                     <button type="button" @click="showEditModal = false" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">Annuler</button>
@@ -194,7 +260,7 @@
                         <span class="block w-1 h-1 bg-gray-700 rounded-full"></span>
                     </button>
                     <div x-show="open" @click.away="open = false" class="absolute right-0 mt-2 w-40 bg-white border rounded shadow-lg z-10">
-                        <a href="#" @click.prevent="openEdit({id: {{ $categorie->id }}, nom: '{{ addslashes($categorie->nom) }}'})" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        <a href="#" @click.prevent="openEdit({id: {{ $categorie->id }}, nom: {{ Js::from($categorie->nom) }}, compte_vente_id: {{ Js::from($categorie->compte_vente_id) }}, compte_stock_id: {{ Js::from($categorie->compte_stock_id) }}, compte_variation_stock_id: {{ Js::from($categorie->compte_variation_stock_id) }}})" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z" /></svg>
                             Modifier
                         </a>
@@ -238,7 +304,7 @@
                             </td>
                             <td class="p-3 text-center">{{ $categorie->produits->count() }}</td>
                             <td class="p-3 flex gap-2">
-                                <a href="#" @click.prevent="openEdit({id: {{ $categorie->id }}, nom: '{{ addslashes($categorie->nom) }}'})" class="inline-flex items-center gap-1 bg-indigo-600 text-white px-3 py-1 rounded-md text-sm hover:bg-indigo-700">
+                                <a href="#" @click.prevent="openEdit({id: {{ $categorie->id }}, nom: {{ Js::from($categorie->nom) }}, compte_vente_id: {{ Js::from($categorie->compte_vente_id) }}, compte_stock_id: {{ Js::from($categorie->compte_stock_id) }}, compte_variation_stock_id: {{ Js::from($categorie->compte_variation_stock_id) }}})" class="inline-flex items-center gap-1 bg-indigo-600 text-white px-3 py-1 rounded-md text-sm hover:bg-indigo-700">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z" /></svg>
                                     Modifier
                                 </a>

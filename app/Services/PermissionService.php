@@ -42,9 +42,17 @@ class PermissionService
         return $this->isAdmin($user) || $this->isCashier($user) || $this->isSupervisor($user);
     }
 
-    public function canValidatePayment(?object $user): bool
+    public function canValidatePayment(?object $user, ?object $pointDeVente = null): bool
     {
-        return $this->isAdmin($user) || $this->isCashier($user) && !$this->isSupervisor($user);
+        if ($this->isAdmin($user) || ($this->isCashier($user) && !$this->isSupervisor($user))) {
+            return true;
+        }
+
+        if ($this->isWaitress($user)) {
+            return (bool) ($pointDeVente?->serveuse_peut_valider_paiement ?? false);
+        }
+
+        return false;
     }
 
     public function canPrintBill(?object $user): bool
