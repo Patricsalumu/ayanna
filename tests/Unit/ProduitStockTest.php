@@ -109,4 +109,69 @@ class ProduitStockTest extends TestCase
         $this->assertSame(7, $produit->stockDisponiblePourPointDeVente($pointDeVente->id));
         $this->assertSame(9, $produit->stockDisponiblePourPointDeVente($pointDeVente->id, $panierCourant->id));
     }
+
+    public function test_session_close_recalculates_stock_rest_from_initial_plus_added_minus_sold(): void
+    {
+        $entreprise = Entreprise::create([
+            'nom' => 'Ayanna',
+            'email' => 'contact@ayanna.test',
+            'telephone' => '0000000000',
+            'adresse' => 'Adresse test',
+            'devise' => 'XAF',
+        ]);
+
+        $categorie = Categorie::create([
+            'nom' => 'Boissons',
+            'entreprise_id' => $entreprise->id,
+        ]);
+
+        $pointDeVente = PointDeVente::create([
+            'nom' => 'PDV 1',
+            'etat' => 'ouvert',
+        ]);
+
+        $produit = Produit::create([
+            'categorie_id' => $categorie->id,
+            'nom' => 'Coca Cola',
+            'description' => 'Boisson gazeuse',
+            'prix_achat' => 120,
+            'prix_vente' => 250,
+        ]);
+
+        StockJournalier::create([
+            'produit_id' => $produit->id,
+            'point_de_vente_id' => $pointDeVente->id,
+            'date' => '2026-10-02',
+            'session' => '20261002090000',
+            'quantite_initiale' => 10,
+            'quantite_ajoutee' => 5,
+            'quantite_vendue' => 3,
+            'quantite_reste' => 0,
+        ]);
+
+        StockJournalier::create([
+            'produit_id' => $produit->id,
+            'point_de_vente_id' => $pointDeVente->id,
+            'date' => '2026-10-02',
+            'session' => '20261002090000',
+            'quantite_initiale' => 0,
+            'quantite_ajoutee' => 0,
+            'quantite_vendue' => 0,
+            'quantite_reste' => 0,
+        ]);
+
+        $updatedRows = StockJournalier::recalculerQuantiteRestePourSession($pointDeVente->id, '2026-10-02', '20261002090000');
+
+        $this->assertSame(2, $updatedRows);
+
+        $rows = StockJournalier::where('produit_id', $produit->id)
+            ->where('point_de_vente_id', $pointDeVente->id)
+            ->where('date', '2026-10-02')
+            ->where('session', '20261002090000')
+            ->orderBy('id')
+            ->get();
+
+        $this->assertSame(12, $rows->first()->quantite_reste);
+        $this->assertSame(0, $rows->last()->quantite_reste);
+    }
 }

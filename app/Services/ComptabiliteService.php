@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\JournalComptable;
-use App\Models\EcritureComptable;
 use App\Models\Compte;
 use App\Models\Commande;
+use App\Models\EcritureComptable;
+use App\Models\JournalComptable;
 use App\Models\Paiement;
 use App\Models\EntreeSortie;
 use App\Models\PointDeVente;
@@ -88,10 +88,9 @@ class ComptabiliteService
         ]);
 
         $compteClient = $this->compteClientSession($pointDeVente);
+        $dateLibelle = $this->dateLibelleSession($date);
         $debitsClients = [];
         $creditsVentes = [];
-        $debitsRemises = [];
-        $creditsClientsRemises = [];
 
         foreach ($commandes as $commande) {
             $panier = $commande->panier;
@@ -99,7 +98,6 @@ class ComptabiliteService
                 continue;
             }
 
-            $montantsParCompteVente = [];
             $montantBrut = 0.0;
             foreach ($panier->produits as $produit) {
                 $quantite = (float) ($produit->pivot->quantite ?? 0);
@@ -116,7 +114,11 @@ class ComptabiliteService
                     '7',
                     "compte de vente de la catégorie du produit {$produit->nom}"
                 );
-                $montantsParCompteVente[$compteVente->id] = ($montantsParCompteVente[$compteVente->id] ?? 0) + $montantLigne;
+                $creditsVentes[$categorie->id] = [
+                    'compte_id' => $compteVente->id,
+                    'categorie' => $categorie->nom,
+                    'montant' => ($creditsVentes[$categorie->id]['montant'] ?? 0) + $montantLigne,
+                ];
                 $montantBrut += $montantLigne;
             }
 
@@ -124,61 +126,37 @@ class ComptabiliteService
                 continue;
             }
 
-            $remise = round(min(max(0, (float) ($panier->total_remise ?? $panier->remise ?? 0)), $montantBrut), 2);
             $clientId = $panier->client_id;
-            $numeroFacture = $commande->numero_facture ?? $panier->numero_facture ?? $commande->id;
-            $debitsClients[] = [
-                'compte_id' => $compteClient->id,
-                'libelle' => 'Vente facture n° ' . $numeroFacture,
-                'debit' => $montantBrut,
-                'credit' => 0,
+            $cleClient = $clientId ?? 'sans_client';
+            $debitsClients[$cleClient] = [
                 'client_id' => $clientId,
+                'montant' => ($debitsClients[$cleClient]['montant'] ?? 0) + $montantBrut,
             ];
-
-            if ($remise > 0) {
-                $compteRemise = $this->comptePourClasse(
-                    $pointDeVente->compte_remise_id,
-                    $pointDeVente->entreprise_id,
-                    '6',
-                    'compte de remise sur ventes du point de vente'
-                );
-                $debitsRemises[] = [
-                    'compte_id' => $compteRemise->id,
-                    'libelle' => 'Remise facture n° ' . $numeroFacture,
-                    'debit' => $remise,
-                    'credit' => 0,
-                    'client_id' => $clientId,
-                ];
-                $creditsClientsRemises[] = [
-                    'compte_id' => $compteClient->id,
-                    'libelle' => 'Remise accordée facture n° ' . $numeroFacture,
-                    'debit' => 0,
-                    'credit' => $remise,
-                    'client_id' => $clientId,
-                ];
-            }
-
-            foreach ($montantsParCompteVente as $compteId => $montantCredit) {
-                $creditsVentes[$compteId] = ($creditsVentes[$compteId] ?? 0) + round($montantCredit, 2);
-            }
         }
 
-        $lignes = array_merge($debitsClients, $debitsRemises);
-        foreach ($creditsVentes as $compteId => $montant) {
+        $lignes = [];
+        foreach ($debitsClients as $client) {
             $lignes[] = [
-                'compte_id' => $compteId,
-                'libelle' => 'Ventes par catégorie',
+                'compte_id' => $compteClient->id,
+                'libelle' => 'Ventes du ' . $dateLibelle,
+                'debit' => round($client['montant'], 2),
+                'credit' => 0,
+                'client_id' => $client['client_id'],
+            ];
+        }
+        foreach ($creditsVentes as $vente) {
+            $lignes[] = [
+                'compte_id' => $vente['compte_id'],
+                'libelle' => 'Vente ' . $vente['categorie'] . ' du ' . $dateLibelle,
                 'debit' => 0,
-                'credit' => round($montant, 2),
+                'credit' => round($vente['montant'], 2),
                 'client_id' => null,
             ];
         }
-        $lignes = array_merge($lignes, $creditsClientsRemises);
-
         $total = array_sum(array_column($lignes, 'debit'));
         return $this->creerJournalBrouillonSession(
             $pointDeVente, $date, $session, $userId, 'vente',
-            "Ventes de la session {$session} - {$pointDeVente->nom}", $total, $lignes
+            'Vente du ' . Carbon::parse($date)->format('d-m-Y') . ' - ' . $pointDeVente->nom, $total, $lignes
         );
     }
 
@@ -202,7 +180,27 @@ class ComptabiliteService
             ->whereHas('commande.panier', fn ($query) => $query->where('point_de_vente_id', $pointDeVente->id))
             ->get();
 
-        if ($paiements->isEmpty()) {
+        $commandesSession = Commande::with('panier')
+            ->whereBetween('created_at', [$debut, $fin])
+            ->whereHas('panier', fn ($query) => $query->where('point_de_vente_id', $pointDeVente->id))
+            ->get();
+        $remisesParClient = [];
+        foreach ($commandesSession as $commande) {
+            $panier = $commande->panier;
+            $montantRemise = round(max(0, (float) ($panier?->total_remise ?? $panier?->remise ?? 0)), 2);
+            if ($montantRemise <= 0) {
+                continue;
+            }
+
+            $clientId = $panier->client_id;
+            $cleClient = $clientId ?? 'sans_client';
+            $remisesParClient[$cleClient] = [
+                'client_id' => $clientId,
+                'montant' => ($remisesParClient[$cleClient]['montant'] ?? 0) + $montantRemise,
+            ];
+        }
+
+        if ($paiements->isEmpty() && empty($remisesParClient)) {
             Log::info('[Comptabilité Session] Aucun paiement à comptabiliser', [
                 'point_de_vente_id' => $pointDeVente->id,
                 'date' => $date,
@@ -220,8 +218,9 @@ class ComptabiliteService
         ]);
 
         $compteClient = $this->compteClientSession($pointDeVente);
-        $debitsParCompte = [];
-        $creditsParClient = [];
+        $dateLibelle = $this->dateLibelleSession($date);
+        $paiementsParMode = [];
+        $creditsClientsParMode = [];
 
         foreach ($paiements as $paiement) {
             $codeMode = $this->normaliserMode($paiement->mode);
@@ -235,7 +234,10 @@ class ComptabiliteService
                 throw new \RuntimeException("Le mode de paiement « {$paiement->mode} » n'est pas configuré pour la comptabilité.");
             }
 
-            $prefixClasse = str_starts_with($this->normaliserMode($mode->code), 'offre') ? '6' : '5';
+            $modeCode = $this->normaliserMode($mode->code);
+            $modeNom = $this->normaliserMode($mode->nom);
+            $estOffre = str_starts_with($modeCode, 'offre') || str_starts_with($modeNom, 'offre');
+            $prefixClasse = $estOffre ? '6' : '5';
             $comptePaiement = $this->comptePourClasse(
                 $mode->compte_id,
                 $pointDeVente->entreprise_id,
@@ -247,39 +249,73 @@ class ComptabiliteService
                 continue;
             }
 
-            $debitsParCompte[$comptePaiement->id] = ($debitsParCompte[$comptePaiement->id] ?? 0) + $montant;
+            $cleMode = $mode->id;
+            $paiementsParMode[$cleMode] = [
+                'mode' => $mode,
+                'compte_id' => $comptePaiement->id,
+                'montant' => ($paiementsParMode[$cleMode]['montant'] ?? 0) + $montant,
+            ];
             $clientId = $paiement->commande?->panier?->client_id;
-            $cleClient = $clientId ?? 'sans_client';
-            $creditsParClient[$cleClient] = [
+            $cleClient = $cleMode . '|' . ($clientId ?? 'sans_client');
+            $creditsClientsParMode[$cleClient] = [
+                'mode' => $mode,
                 'client_id' => $clientId,
-                'montant' => ($creditsParClient[$cleClient]['montant'] ?? 0) + $montant,
+                'montant' => ($creditsClientsParMode[$cleClient]['montant'] ?? 0) + $montant,
             ];
         }
 
         $lignes = [];
-        foreach ($debitsParCompte as $compteId => $montant) {
+        foreach ($paiementsParMode as $paiementMode) {
+            $libelle = $this->libellePaiementSession($paiementMode['mode'], $dateLibelle);
             $lignes[] = [
-                'compte_id' => $compteId,
-                'libelle' => 'Encaissements de la session',
-                'debit' => round($montant, 2),
+                'compte_id' => $paiementMode['compte_id'],
+                'libelle' => $libelle,
+                'debit' => round($paiementMode['montant'], 2),
                 'credit' => 0,
                 'client_id' => null,
             ];
         }
-        foreach ($creditsParClient as $client) {
+        foreach ($creditsClientsParMode as $client) {
             $lignes[] = [
                 'compte_id' => $compteClient->id,
-                'libelle' => 'Règlements clients de la session',
+                'libelle' => $this->libellePaiementSession($client['mode'], $dateLibelle),
                 'debit' => 0,
                 'credit' => round($client['montant'], 2),
                 'client_id' => $client['client_id'],
             ];
         }
 
+        if (!empty($remisesParClient)) {
+            $compteRemise = $this->comptePourClasse(
+                $pointDeVente->compte_remise_id,
+                $pointDeVente->entreprise_id,
+                '6',
+                'compte de remise sur ventes du point de vente'
+            );
+            $montantTotalRemises = array_sum(array_column($remisesParClient, 'montant'));
+            $lignes[] = [
+                'compte_id' => $compteRemise->id,
+                'libelle' => 'Remise du ' . $dateLibelle,
+                'debit' => round($montantTotalRemises, 2),
+                'credit' => 0,
+                'client_id' => null,
+            ];
+
+            foreach ($remisesParClient as $remise) {
+                $lignes[] = [
+                    'compte_id' => $compteClient->id,
+                    'libelle' => 'Remise du ' . $dateLibelle,
+                    'debit' => 0,
+                    'credit' => round($remise['montant'], 2),
+                    'client_id' => $remise['client_id'],
+                ];
+            }
+        }
+
         $total = array_sum(array_column($lignes, 'debit'));
         return $this->creerJournalBrouillonSession(
             $pointDeVente, $date, $session, $userId, 'paiement',
-            "Règlements de la session {$session} - {$pointDeVente->nom}", $total, $lignes
+            'Règlement de la session du ' . Carbon::parse($date)->format('d-m-Y'), $total, $lignes
         );
     }
 
@@ -302,6 +338,7 @@ class ComptabiliteService
             'nombre' => $stocks->count(),
             'quantite_vendue' => $stocks->sum('quantite_vendue'),
         ]);
+        $dateLibelle = $this->dateLibelleSession($date);
         $debitsVariation = [];
         $creditsStock = [];
 
@@ -312,8 +349,21 @@ class ComptabiliteService
             }
 
             $produit = $stock->produit;
-            if (!$produit || (float) $produit->prix_achat <= 0) {
+            if (!$produit) {
                 throw new \RuntimeException('Le prix d’achat doit être configuré pour chaque produit vendu avant la clôture comptable.');
+            }
+
+            $prixAchat = (float) $produit->prix_achat;
+            if ($prixAchat < 0) {
+                throw new \RuntimeException('Le prix d’achat ne peut pas être négatif.');
+            }
+            if ($prixAchat === 0.0) {
+                Log::info('[Comptabilité Session] Produit vendu considéré gratuit', [
+                    'produit_id' => $produit->id,
+                    'produit' => $produit->nom,
+                    'quantite_vendue' => $quantite,
+                ]);
+                continue;
             }
 
             $categorie = $produit->categorie;
@@ -329,36 +379,44 @@ class ComptabiliteService
                 '6',
                 "compte de variation de stock de la catégorie du produit {$produit->nom}"
             );
-            $montant = round($quantite * (float) $produit->prix_achat, 2);
+            $montant = round($quantite * $prixAchat, 2);
 
-            $debitsVariation[$compteVariation->id] = ($debitsVariation[$compteVariation->id] ?? 0) + $montant;
-            $creditsStock[$compteStock->id] = ($creditsStock[$compteStock->id] ?? 0) + $montant;
+            $debitsVariation[$categorie->id] = [
+                'compte_id' => $compteVariation->id,
+                'categorie' => $categorie->nom,
+                'montant' => ($debitsVariation[$categorie->id]['montant'] ?? 0) + $montant,
+            ];
+            $creditsStock[$categorie->id] = [
+                'compte_id' => $compteStock->id,
+                'categorie' => $categorie->nom,
+                'montant' => ($creditsStock[$categorie->id]['montant'] ?? 0) + $montant,
+            ];
         }
 
         $lignes = [];
-        foreach ($debitsVariation as $compteId => $montant) {
+        foreach ($debitsVariation as $variation) {
             $lignes[] = [
-                'compte_id' => $compteId,
-                'libelle' => 'Variation de stock vendu',
-                'debit' => round($montant, 2),
+                'compte_id' => $variation['compte_id'],
+                'libelle' => 'Variation stock ' . $variation['categorie'] . ' du ' . $dateLibelle,
+                'debit' => round($variation['montant'], 2),
                 'credit' => 0,
                 'client_id' => null,
             ];
         }
-        foreach ($creditsStock as $compteId => $montant) {
+        foreach ($creditsStock as $sortie) {
             $lignes[] = [
-                'compte_id' => $compteId,
-                'libelle' => 'Sortie de stock vendu',
+                'compte_id' => $sortie['compte_id'],
+                'libelle' => 'Sortie stock ' . $sortie['categorie'] . ' du ' . $dateLibelle,
                 'debit' => 0,
-                'credit' => round($montant, 2),
+                'credit' => round($sortie['montant'], 2),
                 'client_id' => null,
             ];
         }
 
-        $total = array_sum($debitsVariation);
+        $total = array_sum(array_column($debitsVariation, 'montant'));
         return $this->creerJournalBrouillonSession(
             $pointDeVente, $date, $session, $userId, 'ajustement',
-            "Variation de stock de la session {$session} - {$pointDeVente->nom}", $total, $lignes
+            'Variation stock du ' . Carbon::parse($date)->format('d-m-Y'), $total, $lignes
         );
     }
 
@@ -455,6 +513,27 @@ class ComptabiliteService
     private function normaliserMode(?string $mode): string
     {
         return strtolower(str_replace([' ', '-', 'é', 'è', 'ê', 'à'], ['_', '_', 'e', 'e', 'e', 'a'], trim((string) $mode)));
+    }
+
+    private function dateLibelleSession(string $date): string
+    {
+        return Carbon::parse($date)->locale('fr')->translatedFormat('l d-m-Y');
+    }
+
+    private function libellePaiementSession(ModePaiement $mode, string $date): string
+    {
+        $code = $this->normaliserMode($mode->code);
+        $nom = $this->normaliserMode($mode->nom);
+
+        if (str_starts_with($code, 'offre') || str_starts_with($nom, 'offre')) {
+            return 'Offre du ' . $date;
+        }
+
+        if ($code === 'especes' || $nom === 'especes') {
+            return 'Règlement factures clients par ' . $mode->nom . ' du ' . $date;
+        }
+
+        return 'Règlement facture par ' . $mode->nom . ' du ' . $date;
     }
 
     /**

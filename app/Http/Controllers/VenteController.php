@@ -1246,26 +1246,23 @@ class VenteController extends Controller
     {
         if (!$panier) return;
         $pointDeVenteId = $panier->point_de_vente_id;
-        $date = now()->toDateString();
-        // Récupérer la session en cours (la plus récente pour ce point de vente et ce jour)
-        $session = \App\Models\StockJournalier::where('point_de_vente_id', $pointDeVenteId)
-            ->where('date', $date)
+        $lastStock = \App\Models\StockJournalier::where('point_de_vente_id', $pointDeVenteId)
+            ->orderByDesc('date')
             ->orderByDesc('session')
-            ->value('session');
-        if (!$session) return;
+            ->orderByDesc('id')
+            ->first(['date', 'session']);
+        if (!$lastStock) return;
+
         foreach ($panier->produits as $produit) {
             $stock = \App\Models\StockJournalier::where('point_de_vente_id', $pointDeVenteId)
-                ->where('date', $date)
-                ->where('session', $session)
+                ->where('date', $lastStock->date)
+                ->where('session', $lastStock->session)
                 ->where('produit_id', $produit->id)
                 ->first();
             if ($stock) {
                 $qteVendue = $produit->pivot->quantite;
                 $stock->quantite_vendue = ($stock->quantite_vendue ?? 0) + $qteVendue;
-                // Mettre à jour la quantité restée
-                $q_total = ($stock->quantite_initiale ?? 0) + ($stock->quantite_ajoutee ?? 0);
-                $stock->quantite_reste = $q_total - $stock->quantite_vendue;
-                $stock->save();
+                $stock->recalculerQuantiteReste();
             }
         }
     }

@@ -963,11 +963,7 @@ class StockJournalierController extends Controller
                     'quantite_vendue' => $stocks->sum('quantite_vendue'),
                 ]);
 
-                foreach ($stocks as $stock) {
-                    $quantiteTotale = ($stock->quantite_initiale ?? 0) + ($stock->quantite_ajoutee ?? 0);
-                    $stock->quantite_reste = $quantiteTotale - ($stock->quantite_vendue ?? 0);
-                    $stock->save();
-                }
+                StockJournalier::recalculerQuantiteRestePourSession($pointDeVenteId, $lastDate, $lastSession);
 
                 $solde = $stocks->sum(function ($stock) {
                     return ($stock->quantite_vendue ?? 0) * ($stock->produit?->prix_vente ?? 0);
