@@ -16,11 +16,11 @@ class PointDeVenteController extends Controller
     {
         $user = Auth::user();
         // Si l'utilisateur n'a pas d'entreprise ou n'est pas associé à celle de l'URL
-        if (!$user->entreprise_id || $user->entreprise_id != $entreprise->id) {
+        if (!$this->permissionService->isSuperAdmin($user)
+            && (!$user->entreprise_id || (int) $user->entreprise_id !== (int) $entreprise->id)) {
             // Si l'utilisateur a une entreprise, on le redirige vers la sienne
             if ($user->entreprise_id) {
-                return redirect()->route('pointsDeVente.show', $user->entreprise_id)
-                    ->with('error', "Vous n'avez pas accès à cette entreprise. Redirection vers votre entreprise.");
+                return redirect()->route('pointsDeVente.show', $user->entreprise_id);
             } else {
                 // Sinon, on l'invite à créer une entreprise
                 return redirect()->route('entreprises.create')
@@ -58,8 +58,7 @@ class PointDeVenteController extends Controller
         $user = \Illuminate\Support\Facades\Auth::user();
         if (!$user->entreprise_id || $user->entreprise_id != $entreprise->id) {
             if ($user->entreprise_id) {
-                return redirect()->route('pointsDeVente.create', [$user->entreprise_id])
-                    ->with('error', "Vous n'avez pas accès à cette entreprise. Redirection vers votre entreprise.");
+                return redirect()->route('pointsDeVente.create', [$user->entreprise_id]);
             } else {
                 return redirect()->route('entreprises.create')
                     ->with('error', "Vous n'avez pas encore d'entreprise. Veuillez en créer une pour accéder au système.");

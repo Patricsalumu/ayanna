@@ -41,7 +41,7 @@
                         </svg>
                     </a>
                     <!-- Lien Dashboard -->
-                    <a href="{{ url()->previous() }}" class="text-gray-600 hover:text-gray-800">Tableau de board</a>
+                    <a href="{{ route('pointsDeVente.show', ['entreprise' => Auth::user()->entreprise_id]) }}" class="text-gray-600 hover:text-gray-800">Tableau de board</a>
                     @if(isset($module) && $module)
                     <!-- Bouton Ajout (modale AJAX) -->
                     <button @click="ajoutPdvOpen = true; loadPdvForm()" type="button" title="Ajouter" class="text-gray-600 hover:text-gray-800 focus:outline-none">
