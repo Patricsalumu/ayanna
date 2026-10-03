@@ -6,6 +6,7 @@ use App\Models\Compte;
 use App\Models\EntreeSortie;
 use App\Models\StockJournalier;
 use App\Services\ComptabiliteService;
+use App\Services\PermissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,10 +15,15 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class MouvementPointDeVenteController extends Controller
 {
+    public function __construct(private PermissionService $permissionService)
+    {
+    }
+
     // Affiche les mouvements de la session en cours pour un point de vente
     public function index(Request $request, $pointDeVenteId)
     {
         $pointDeVente = PointDeVente::findOrFail($pointDeVenteId);
+        $this->authorizePointDeVenteAccess($pointDeVente);
         $comptes = Compte::where('entreprise_id', $pointDeVente->entreprise_id)->orderBy('nom')->get();
         $q = $request->query('q');
         $selectionSession = $this->selectionSession(
@@ -55,6 +61,7 @@ class MouvementPointDeVenteController extends Controller
     public function store(Request $request, $pointDeVenteId)
     {
         $pointDeVente = PointDeVente::findOrFail($pointDeVenteId);
+        $this->authorizePointDeVenteAccess($pointDeVente);
 
         if (!$this->intervalleSession($pointDeVente)) {
             return redirect()->back()->withErrors(['error' => 'Impossible d’ajouter un mouvement sans session ouverte.']);
@@ -119,6 +126,9 @@ class MouvementPointDeVenteController extends Controller
     // Annuler (soft) un mouvement — marque 'annule' à true
     public function annuler(Request $request, $pointDeVenteId, $mouvementId)
     {
+        $pointDeVente = PointDeVente::findOrFail($pointDeVenteId);
+        $this->authorizePointDeVenteAccess($pointDeVente);
+
         try {
             $mvt = EntreeSortie::where('point_de_vente_id', $pointDeVenteId)->findOrFail($mouvementId);
             $mvt->annule = true;
@@ -134,6 +144,7 @@ class MouvementPointDeVenteController extends Controller
     public function exportPdf(Request $request, $pointDeVenteId)
     {
         $pointDeVente = PointDeVente::findOrFail($pointDeVenteId);
+        $this->authorizePointDeVenteAccess($pointDeVente);
         $q = $request->query('q');
         $selectionSession = $this->selectionSession(
             $pointDeVente,
@@ -165,6 +176,13 @@ class MouvementPointDeVenteController extends Controller
             ->setPaper('a4', 'portrait');
 
         return $pdf->download('mouvements_'.$pointDeVente->id.'_'.now()->format('Ymd_His').'.pdf');
+    }
+
+    private function authorizePointDeVenteAccess(PointDeVente $pointDeVente): void
+    {
+        if (!$this->permissionService->canAccessPointDeVente(Auth::user(), (int) $pointDeVente->id)) {
+            abort(403, 'Vous n’êtes pas autorisé à accéder à ce point de vente.');
+        }
     }
 
     private function requeteMouvementsSession(PointDeVente $pointDeVente, array $selectionSession)

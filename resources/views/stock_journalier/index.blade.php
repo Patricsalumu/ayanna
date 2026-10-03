@@ -1,6 +1,48 @@
 @extends('layouts.appvente')
 @section('content')
 
+@php
+    $stockSummaryMetrics = [
+        ['key' => 'q_init', 'label' => 'Quantité initiale'],
+        ['key' => 'q_ajout', 'label' => 'Quantité ajoutée'],
+        ['key' => 'q_total', 'label' => 'Quantité totale'],
+        ['key' => 'q_vendue', 'label' => 'Quantité vendue'],
+        ['key' => 'q_abimee', 'label' => 'Quantité abîmée'],
+        ['key' => 'q_reste', 'label' => 'Quantité restante'],
+    ];
+    $stockCategorySummaries = [];
+    $stockOverallSummary = [];
+
+    foreach ($stockSummaryMetrics as $metric) {
+        $stockOverallSummary[$metric['key']] = ['quantity' => 0, 'purchase' => 0, 'sale' => 0];
+    }
+
+    foreach (($produitsByCategory ?? collect()) as $categoryName => $categoryProducts) {
+        $categorySummary = ['name' => $categoryName, 'metrics' => []];
+
+        foreach ($stockSummaryMetrics as $metric) {
+            $quantity = collect($categoryProducts)->sum(fn ($product) => (int) ($product[$metric['key']] ?? 0));
+            $purchaseAmount = collect($categoryProducts)->sum(
+                fn ($product) => (int) ($product[$metric['key']] ?? 0) * (float) ($product['prix_achat'] ?? 0)
+            );
+            $saleAmount = collect($categoryProducts)->sum(
+                fn ($product) => (int) ($product[$metric['key']] ?? 0) * (float) ($product['prix'] ?? 0)
+            );
+
+            $categorySummary['metrics'][$metric['key']] = [
+                'quantity' => $quantity,
+                'purchase' => $purchaseAmount,
+                'sale' => $saleAmount,
+            ];
+            $stockOverallSummary[$metric['key']]['quantity'] += $quantity;
+            $stockOverallSummary[$metric['key']]['purchase'] += $purchaseAmount;
+            $stockOverallSummary[$metric['key']]['sale'] += $saleAmount;
+        }
+
+        $stockCategorySummaries[] = $categorySummary;
+    }
+@endphp
+
 <div class="max-w-7xl mx-auto px-6 py-6">
     <!-- Messages de statut -->
     @if(session('success'))
@@ -110,6 +152,13 @@
                 <button type="button" onclick="openDamagedStockModal()" class="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 text-white font-semibold rounded-lg hover:bg-rose-700 shadow transition">
                     <span aria-hidden="true">!</span>
                     Déclarer un produit abîmé
+                </button>
+            @endif
+
+            @if(count($stockCategorySummaries) > 0)
+                <button type="button" onclick="openCategorySummaryModal()" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 shadow transition">
+                    <span aria-hidden="true">▦</span>
+                    Détail des montants par catégorie
                 </button>
             @endif
             
@@ -334,6 +383,71 @@
     @endif
 </div>
 
+@if(count($stockCategorySummaries) > 0)
+<div id="modal-stock-categories" class="fixed inset-0 z-[80] hidden items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="modal-stock-categories-title">
+    <div class="flex max-h-[90vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+            <div>
+                <h2 id="modal-stock-categories-title" class="text-lg font-bold text-gray-900">Détail du stock et des montants par catégorie</h2>
+                <p class="mt-1 text-sm text-gray-600">Les montants sont calculés aux prix d'achat et de vente unitaires de chaque produit.</p>
+            </div>
+            <button type="button" onclick="closeCategorySummaryModal()" class="rounded-lg p-2 text-2xl leading-none text-gray-500 hover:bg-gray-100 hover:text-gray-900" aria-label="Fermer">&times;</button>
+        </div>
+        <div class="overflow-auto p-4">
+            <table class="min-w-[1050px] w-full border-collapse text-sm">
+                <thead class="sticky top-0 bg-gray-100 text-left text-gray-700">
+                    <tr>
+                        <th class="border border-gray-200 px-3 py-3">Catégorie</th>
+                        @foreach($stockSummaryMetrics as $metric)
+                            <th class="border border-gray-200 px-3 py-3 text-center">{{ $metric['label'] }}</th>
+                        @endforeach
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($stockCategorySummaries as $categorySummary)
+                        <tr class="even:bg-gray-50">
+                            <th class="border border-gray-200 px-3 py-3 text-left font-semibold text-gray-900">{{ $categorySummary['name'] }}</th>
+                            @foreach($stockSummaryMetrics as $metric)
+                                @php($amounts = $categorySummary['metrics'][$metric['key']])
+                                <td class="border border-gray-200 px-3 py-3 text-right">
+                                    <div class="font-semibold text-gray-900">{{ $amounts['quantity'] }} unité(s)</div>
+                                    <div class="mt-1 whitespace-nowrap text-xs text-gray-600">
+                                        Achat : {{ optional(auth()->user()?->entreprise)->formatAmount($amounts['purchase'], true, 2) }}
+                                    </div>
+                                    <div class="whitespace-nowrap text-xs font-medium text-indigo-700">
+                                        Vente : {{ optional(auth()->user()?->entreprise)->formatAmount($amounts['sale'], true, 2) }}
+                                    </div>
+                                </td>
+                            @endforeach
+                        </tr>
+                    @endforeach
+                </tbody>
+                <tfoot class="bg-indigo-50 font-bold text-gray-900">
+                    <tr>
+                        <th class="border border-gray-200 px-3 py-3 text-left">Total général</th>
+                        @foreach($stockSummaryMetrics as $metric)
+                            @php($amounts = $stockOverallSummary[$metric['key']])
+                            <td class="border border-gray-200 px-3 py-3 text-right">
+                                <div>{{ $amounts['quantity'] }} unité(s)</div>
+                                <div class="mt-1 whitespace-nowrap text-xs font-normal text-gray-600">
+                                    Achat : {{ optional(auth()->user()?->entreprise)->formatAmount($amounts['purchase'], true, 2) }}
+                                </div>
+                                <div class="whitespace-nowrap text-xs font-semibold text-indigo-700">
+                                    Vente : {{ optional(auth()->user()?->entreprise)->formatAmount($amounts['sale'], true, 2) }}
+                                </div>
+                            </td>
+                        @endforeach
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="flex justify-end border-t border-gray-200 px-5 py-3">
+            <button type="button" onclick="closeCategorySummaryModal()" class="rounded-lg bg-gray-100 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-200">Fermer</button>
+        </div>
+    </div>
+</div>
+@endif
+
 @if($sessionEnCours ?? false)
 <div id="modal-produit-abime" class="fixed inset-0 bg-black/50 hidden z-[70] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-produit-abime-title">
     <div class="w-full max-w-md rounded-xl bg-white shadow-2xl">
@@ -406,6 +520,26 @@
 </div>
 
 <script>
+    function openCategorySummaryModal() {
+        const modal = document.getElementById('modal-stock-categories');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeCategorySummaryModal() {
+        const modal = document.getElementById('modal-stock-categories');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = 'auto';
+    }
+
+    document.getElementById('modal-stock-categories')?.addEventListener('click', function (event) {
+        if (event.target === this) closeCategorySummaryModal();
+    });
+
     function openDamagedStockModal() {
         document.getElementById('modal-produit-abime')?.classList.remove('hidden');
         document.getElementById('damaged-product-search')?.focus();
@@ -556,6 +690,7 @@
     // Fermer modal avec Échap
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
+            closeCategorySummaryModal();
             closeModal();
         }
     });

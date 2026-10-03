@@ -33,7 +33,7 @@
                     @php $isServeuse = in_array(Auth::user()?->role, ['Serveuse', 'serveuse'], true); @endphp
                     @if(!$isServeuse)
                     @if($entrepriseId && $pointDeVenteId)
-                    <x-nav-link href="{{ route('pointsDeVente.show', ['entreprise' => $entrepriseId]) }}" :active="request()->routeIs('pointsDeVente.*')">
+                    <x-nav-link href="{{ route('pointsDeVente.show', ['entreprise' => Auth::user()->entreprise_id]) }}" :active="request()->routeIs('pointsDeVente.*')">
                         {{ __('Tableau de board') }}
                     </x-nav-link>
                     @else

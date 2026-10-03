@@ -19,6 +19,80 @@ class MouvementPointDeVenteSessionTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_cashier_can_view_movements_and_access_the_create_endpoint(): void
+    {
+        $entreprise = Entreprise::create([
+            'nom' => 'Ayanna',
+            'email' => 'mouvements-caissier@ayanna.test',
+            'telephone' => '0000000000',
+            'adresse' => 'Adresse test',
+            'devise' => 'XAF',
+        ]);
+        $user = User::factory()->create([
+            'entreprise_id' => $entreprise->id,
+            'role' => 'Caissier',
+        ]);
+        $pointDeVente = PointDeVente::create([
+            'nom' => 'PDV caissier',
+            'etat' => 'ouvert',
+            'entreprise_id' => $entreprise->id,
+        ]);
+        $compte = Compte::create([
+            'numero' => '7580',
+            'nom' => 'Autres produits',
+            'type' => 'passif',
+            'entreprise_id' => $entreprise->id,
+        ]);
+        $compteCaisse = Compte::create([
+            'numero' => '5701',
+            'nom' => 'Caisse test',
+            'type' => 'actif',
+            'entreprise_id' => $entreprise->id,
+        ]);
+        $pointDeVente->update(['compte_caisse_id' => $compteCaisse->id]);
+        $categorie = Categorie::create([
+            'nom' => 'Test',
+            'entreprise_id' => $entreprise->id,
+        ]);
+        $produit = Produit::create([
+            'categorie_id' => $categorie->id,
+            'nom' => 'Produit test',
+            'prix_achat' => 0,
+            'prix_vente' => 0,
+        ]);
+        $sessionStart = now();
+        $stock = StockJournalier::create([
+            'produit_id' => $produit->id,
+            'point_de_vente_id' => $pointDeVente->id,
+            'date' => $sessionStart->toDateString(),
+            'session' => $sessionStart->format('YmdHis'),
+            'quantite_initiale' => 0,
+        ]);
+        $stock->forceFill(['validated_at' => $sessionStart])->save();
+
+        $this->actingAs($user)
+            ->get(route('mouvements.pdv', $pointDeVente->id))
+            ->assertOk()
+            ->assertSee('Nouveau mouvement');
+
+        foreach (['entree', 'sortie'] as $type) {
+            $this->actingAs($user)
+                ->post(route('mouvements.pdv.store', $pointDeVente->id), [
+                'compte_id' => $compte->id,
+                'type_mouvement' => $type,
+                'montant' => 100,
+                'libele' => 'Mouvement caissier ' . $type,
+            ])
+                ->assertRedirect(route('mouvements.pdv', $pointDeVente->id))
+                ->assertSessionHas('success');
+        }
+
+        $this->assertEqualsCanonicalizing(
+            ['entree', 'sortie'],
+            EntreeSortie::where('point_de_vente_id', $pointDeVente->id)->pluck('type')->all()
+        );
+    }
+
     public function test_movement_list_only_shows_current_session_for_requested_pdv(): void
     {
         $this->travelTo(Carbon::parse('2026-10-02 16:00:00'));

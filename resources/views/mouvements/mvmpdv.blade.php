@@ -203,14 +203,14 @@
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap text-center">
-                                        @if(!$mvt->annule)
+                                        @if($mvt->annule)
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">Annulé</span>
+                                        @elseif(in_array(strtolower(trim((string) auth()->user()->role)), ['admin', 'administrateur', 'super_admin'], true))
                                             <form method="POST" action="{{ route('mouvements.pdv.annuler', ['pointDeVente' => $pointDeVente->id, 'mouvement' => $mvt->id]) }}" onsubmit="return confirm('Confirmer annulation (soft) ?');">
                                                 @csrf
                                                 @method('PATCH')
                                                 <button type="submit" class="text-xs px-3 py-1 rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200 hover:bg-yellow-200">Annuler</button>
                                             </form>
-                                        @else
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">Annulé</span>
                                         @endif
                                     </td>
                                 </tr>

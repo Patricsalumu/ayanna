@@ -175,11 +175,16 @@ Route::middleware(['auth', 'entreprise.not_blocked', 'serveuse.session.timeout']
 });
 
 // Mouvements (entrées/sorties) d'un point de vente
-Route::middleware(['auth', 'entreprise.not_blocked', 'role.access:admin'])->group(function () {
-    Route::get('/points-de-vente/{pointDeVente}/mouvements', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'index'])->name('mouvements.pdv');
-    Route::post('/points-de-vente/{pointDeVente}/mouvements', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'store'])->name('mouvements.pdv.store');
-    Route::patch('/points-de-vente/{pointDeVente}/mouvements/{mouvement}/annuler', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'annuler'])->name('mouvements.pdv.annuler');
-    Route::get('/points-de-vente/{pointDeVente}/mouvements/export-pdf', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'exportPdf'])->name('mouvements.pdv.export_pdf');
+Route::middleware(['auth', 'entreprise.not_blocked'])->group(function () {
+    Route::middleware(['role.access:admin,cashier,cashier1,cashier2'])->group(function () {
+        Route::get('/points-de-vente/{pointDeVente}/mouvements', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'index'])->name('mouvements.pdv');
+        Route::post('/points-de-vente/{pointDeVente}/mouvements', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'store'])->name('mouvements.pdv.store');
+        Route::get('/points-de-vente/{pointDeVente}/mouvements/export-pdf', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'exportPdf'])->name('mouvements.pdv.export_pdf');
+    });
+
+    Route::patch('/points-de-vente/{pointDeVente}/mouvements/{mouvement}/annuler', [\App\Http\Controllers\MouvementPointDeVenteController::class, 'annuler'])
+        ->middleware(['role.access:admin'])
+        ->name('mouvements.pdv.annuler');
 });
 
 

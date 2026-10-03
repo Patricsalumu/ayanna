@@ -6,6 +6,7 @@ use App\Models\Categorie;
 use App\Models\Entreprise;
 use App\Models\PointDeVente;
 use App\Models\Produit;
+use App\Models\Salle;
 use App\Models\StockJournalier;
 use App\Models\User;
 use Carbon\Carbon;
@@ -47,6 +48,11 @@ class StockJournalierProduitsAbimesTest extends TestCase
             'prix_achat' => 50,
             'prix_vente' => 100,
         ]);
+        $salle = Salle::create([
+            'nom' => 'Salle test',
+            'entreprise_id' => $entreprise->id,
+        ]);
+        $produit->salles()->attach($salle->id, ['prix' => 100]);
         $stock = StockJournalier::create([
             'produit_id' => $produit->id,
             'point_de_vente_id' => $pointDeVente->id,
@@ -65,6 +71,9 @@ class StockJournalierProduitsAbimesTest extends TestCase
             ->assertOk()
             ->assertSee('Déclarer un produit abîmé')
             ->assertSee('Q. Abîmée')
+            ->assertSee('Détail du stock et des montants par catégorie')
+            ->assertSee('Achat : 600,00 $', false)
+            ->assertSee('Vente : 1 200,00 $', false)
             ->assertViewHas('produitsByCategory', function ($categories) {
                 return $categories->flatten(1)->first()['q_abimee'] === 0;
             });
